@@ -1,0 +1,20 @@
+The git-version-gen script is not included in tarball releases,
+so we need to avoid attempts to call it when running autoreconf.
+
+Upstream-Status: Inappropriate [configuration]
+
+Signed-off-by: Andre McCurdy <armccurdy@gmail.com>
+
+diff --git a/configure.ac b/configure.ac
+index 7004bd3..b2b03c6 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -31,7 +31,7 @@
+ 
+ AC_PREREQ(2.57)
+ AC_INIT([strace],
+-	m4_esyscmd([./git-version-gen .tarball-version]),
++	m4_esyscmd_s([cat .tarball-version]),
+ 	[strace-devel@lists.sourceforge.net],
+ 	[strace],
+ 	[https://strace.io])

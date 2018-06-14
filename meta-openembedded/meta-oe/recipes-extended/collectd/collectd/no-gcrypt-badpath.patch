@@ -1,0 +1,43 @@
+Index: collectd-5.7.1/configure.ac
+===================================================================
+--- collectd-5.7.1.orig/configure.ac
++++ collectd-5.7.1/configure.ac
+@@ -2305,7 +2305,7 @@ AC_ARG_WITH(libgcrypt, [AS_HELP_STRING([
+ 	 with_libgcrypt="yes"
+  else if test -f "$withval/bin/gcrypt-config" && test -x "$withval/bin/gcrypt-config"
+  then
+-	 with_libgcrypt_config="$withval/bin/gcrypt-config"
++	 with_libgcrypt_config="$withval/bin/pkg-config"
+ 	 with_libgcrypt="yes"
+  else if test -d "$withval"
+  then
+@@ -2313,12 +2313,12 @@ AC_ARG_WITH(libgcrypt, [AS_HELP_STRING([
+ 	 GCRYPT_LDFLAGS="$GCRYPT_LDFLAGS -L$withval/lib"
+ 	 with_libgcrypt="yes"
+  else
+-	 with_libgcrypt_config="gcrypt-config"
++	 with_libgcrypt_config="pkg-config"
+ 	 with_libgcrypt="$withval"
+  fi; fi; fi
+ ],
+ [
+- with_libgcrypt_config="libgcrypt-config"
++ with_libgcrypt_config="pkg-config"
+  with_libgcrypt="yes"
+ ])
+ 
+@@ -2326,12 +2326,12 @@ if test "x$with_libgcrypt" = "xyes" && t
+ then
+ 	if test "x$GCRYPT_CPPFLAGS" = "x"
+ 	then
+-		GCRYPT_CPPFLAGS=`"$with_libgcrypt_config" --cflags 2>/dev/null`
++		GCRYPT_CPPFLAGS=`"$with_libgcrypt_config" --cflags libgcrypt 2>/dev/null`
+ 	fi
+ 
+ 	if test "x$GCRYPT_LIBS" = "x"
+ 	then
+-		GCRYPT_LIBS=`"$with_libgcrypt_config" --libs 2>/dev/null`
++		GCRYPT_LIBS=`"$with_libgcrypt_config" --lib libgcrypt 2>/dev/null`
+ 	fi
+ fi
+ 
