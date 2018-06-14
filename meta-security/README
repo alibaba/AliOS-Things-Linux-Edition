@@ -1,0 +1,103 @@
+This README file contains information on the contents of the
+meta-secure-core layer.
+
+Please see the corresponding sections below for details.
+
+
+Dependencies
+============
+
+This layer depends on:
+
+  URI: git://git.openembedded.org/bitbake
+  branch: master
+
+  URI: git://git.openembedded.org/openembedded-core
+  layers: meta
+  branch: master
+
+
+Patches
+=======
+
+Please submit any patches against the meta-secure-core layer to the
+maintainer:
+
+Maintainer: Jia Zhang <lans.zhang2008@gmail.com>
+
+
+Table of Contents
+=================
+
+  I. Adding the meta-secure-core layer to your build
+ II. Configure meta-secure-core
+III. Build meta-secure-core
+
+
+I. Adding the meta-secure-core layer to your build
+==================================================
+
+In order to use this layer, you need to make the build system aware of
+it.
+
+Assuming the meta-secure-core layer exists at the top-level of your
+yocto build tree, you can add it to the build system by adding the
+location of the meta-secure-core layer to bblayers.conf, along with any
+other layers needed. e.g.:
+
+  BBLAYERS ?= "\
+    /path/to/yocto/meta \
+    /path/to/yocto/meta-poky \
+    /path/to/yocto/meta-yocto-bsp \
+    /path/to/yocto/meta-meta-secure-core/meta \
+    /path/to/yocto/meta-meta-secure-core/meta-signing-key \
+    /path/to/yocto/meta-meta-secure-core/meta-tpm \
+    /path/to/yocto/meta-meta-secure-core/meta-tpm2 \
+    /path/to/yocto/meta-meta-secure-core/meta-efi-secure-boot \
+    /path/to/yocto/meta-meta-secure-core/meta-integrity \
+    /path/to/yocto/meta-meta-secure-core/meta-encrypted-storage \
+    "
+
+or run bitbake-layers to add the meta-secure-core and its sub-layers:
+
+    $ bitbake-layers add-layer /path/to/yocto/meta-secure-core/meta
+    $ bitbake-layers add-layer /path/to/yocto/meta-secure-core/meta-signing-key
+    $ bitbake-layers add-layer /path/to/yocto/meta-secure-core/meta-tpm
+    $ bitbake-layers add-layer /path/to/yocto/meta-secure-core/meta-tpm2
+    $ bitbake-layers add-layer /path/to/yocto/meta-secure-core/meta-efi-secure-boot
+    $ bitbake-layers add-layer /path/to/yocto/meta-secure-core/meta-integrity
+    $ bitbake-layers add-layer /path/to/yocto/meta-secure-core/meta-encrypted-storage
+
+II. Configure meta-secure-core
+==============================
+
+The full features in meta-secure-core can be configured with these definitions
+in local.conf:
+
+INITRAMFS_IMAGE = "secure-core-image-initramfs"
+DISTRO_FEATURES_NATIVE_append += "systemd ima tpm tpm2 efi-secure-boot luks"
+DISTRO_FEATURES_append += "systemd ima tpm tpm2 efi-secure-boot luks modsign"
+MACHINE_FEATURES_NATIVE_append += "efi"
+MACHINE_FEATURES_append += "efi"
+INHERIT += "sign_rpm_ext"
+SECURE_CORE_IMAGE_EXTRA_INSTALL ?= "\
+    packagegroup-efi-secure-boot \
+    packagegroup-tpm \
+    packagegroup-tpm2 \
+    packagegroup-ima \
+    packagegroup-luks \
+"
+DEBUG_FLAGS_forcevariable = ""
+
+III. Build meta-secure-core
+===========================
+
+The meta-secure-core provides an image called secure-core-image. Run the
+following command to build it.
+
+    $ bitbake secure-core-image
+
+Reference
+=========
+
+[SecureCore - a reference implementation based on meta-secure-core](https://github.com/jiazhang0/SecureCore)

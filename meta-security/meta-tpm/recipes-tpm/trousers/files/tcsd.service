@@ -1,0 +1,17 @@
+[Unit]
+Description=TrouSerS TCG Core Services daemon
+After=syslog.target network.target
+ConditionPathExists=|/dev/tpm0
+ConditionPathExists=|/dev/tpm
+
+[Service]
+Type=forking
+ExecStart=@SBINDIR@/tcsd
+TimeoutSec=30s
+Restart=on-failure
+RestartSec=4
+StartLimitInterval=25
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target

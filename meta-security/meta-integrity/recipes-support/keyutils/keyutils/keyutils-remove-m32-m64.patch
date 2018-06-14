@@ -1,0 +1,38 @@
+From a47fef08f065003d417750abf1077387f755153f Mon Sep 17 00:00:00 2001
+From: Wenzong Fan <wenzong.fan@windriver.com>
+Date: Tue, 26 Sep 2017 07:15:41 +0000
+Subject: [PATCH] keyutils: fix cflags for arm, aarch64, mips, mips64, powerpc
+
+Remove m32, m64 from the CFLAGS to fix error:
+
+  error: unrecognized command line option '-m32/-m64'
+
+Upstream-Status: Pending
+
+Signed-off-by: Wenzong Fan <wenzong.fan@windriver.com>
+---
+ Makefile | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index d24cc44..230d4b6 100644
+--- a/Makefile
++++ b/Makefile
+@@ -65,12 +65,12 @@ endif
+ BUILDFOR	:= $(shell file /usr/bin/make | sed -e 's!.*ELF \(32\|64\)-bit.*!\1!')-bit
+ 
+ ifeq ($(BUILDFOR),32-bit)
+-CFLAGS		+= -m32
++#CFLAGS		+= -m32
+ LIBDIR		:= /lib
+ USRLIBDIR	:= /usr/lib
+ else
+ ifeq ($(BUILDFOR),64-bit)
+-CFLAGS		+= -m64
++#CFLAGS		+= -m64
+ LIBDIR		:= /lib64
+ USRLIBDIR	:= /usr/lib64
+ endif
+-- 
+2.11.0
+

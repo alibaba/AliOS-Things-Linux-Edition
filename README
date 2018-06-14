@@ -1,0 +1,21 @@
+Welcome to AliOS Things !!!
+
+documentation
+
+    => AliOS DOCS.
+
+meta-base
+
+    => Customization of YP meta.
+
+meta-external
+
+    => Provide third party libs.
+
+meta-misc
+
+    => Save misc layers.
+
+meta-security
+
+    => Provide security solutions.

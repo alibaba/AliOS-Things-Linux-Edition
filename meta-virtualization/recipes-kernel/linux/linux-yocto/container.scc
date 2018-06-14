@@ -1,0 +1,4 @@
+define KFEATURE_DESCRIPTION "Enable Features needed by pouch"
+define KFEATURE_COMPATIBILITY board
+
+kconf non-hardware container.cfg

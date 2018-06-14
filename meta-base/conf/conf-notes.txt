@@ -1,0 +1,15 @@
+Common targets are:
+    core-image-minimal
+    core-image-base
+    core-image-sato
+    meta-toolchain
+    meta-ide-support
+
+You can build targets like:
+
+    bitbake core-image-base
+
+You can also run generated qemu images with a command like:
+
+    runqemu qemux86-64 nographic
+

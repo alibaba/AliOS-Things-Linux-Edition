@@ -1,0 +1,73 @@
+From 6ef94a67490176a6d84b4968f303e6d1c51a49ce Mon Sep 17 00:00:00 2001
+From: Lans Zhang <jia.zhang@windriver.com>
+Date: Wed, 16 Aug 2017 10:09:43 +0800
+Subject: [PATCH] Fix the deprecated ASN1_STRING_data() in openssl-1.1.0
+
+Signed-off-by: Lans Zhang <jia.zhang@windriver.com>
+---
+ src/idc.c       | 4 ++--
+ src/idc.h       | 4 ++++
+ src/sbkeysync.c | 3 ++-
+ 3 files changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/src/idc.c b/src/idc.c
+index 236cefd..7f99a53 100644
+--- a/src/idc.c
++++ b/src/idc.c
+@@ -238,7 +238,7 @@ struct idc *IDC_get(PKCS7 *p7, BIO *bio)
+ 
+ 	/* extract the idc from the signed PKCS7 'other' data */
+ 	str = p7->d.sign->contents->d.other->value.asn1_string;
+-	idcbuf = buf = ASN1_STRING_data(str);
++	idcbuf = buf = (const unsigned char *)ASN1_STRING_get0_data(str);
+ 	idc = d2i_IDC(NULL, &buf, ASN1_STRING_length(str));
+ 
+ 	/* If we were passed a BIO, write the idc data, minus type and length,
+@@ -289,7 +289,7 @@ int IDC_check_hash(struct idc *idc, struct image *image)
+ 	}
+ 
+ 	/* check hash against the one we calculated from the image */
+-	buf = ASN1_STRING_data(str);
++	buf = (const unsigned char *)ASN1_STRING_get0_data(str);
+ 	if (memcmp(buf, sha, sizeof(sha))) {
+ 		fprintf(stderr, "Hash doesn't match image\n");
+ 		fprintf(stderr, " got:       %s\n", sha256_str(buf));
+diff --git a/src/idc.h b/src/idc.h
+index a6526de..8011237 100644
+--- a/src/idc.h
++++ b/src/idc.h
+@@ -36,6 +36,10 @@
+ 
+ #include <openssl/pkcs7.h>
+ 
++#if OPENSSL_VERSION_NUMBER < 0x10100000L
++#define ASN1_STRING_get0_data	ASN1_STRING_data
++#endif
++
+ struct idc;
+ 
+ int IDC_set(PKCS7 *p7, PKCS7_SIGNER_INFO *si, struct image *image);
+diff --git a/src/sbkeysync.c b/src/sbkeysync.c
+index a63d3b8..223a047 100644
+--- a/src/sbkeysync.c
++++ b/src/sbkeysync.c
+@@ -54,6 +54,7 @@
+ 
+ #include "fileio.h"
+ #include "efivars.h"
++#include "idc.h"
+ 
+ #define EFIVARS_MOUNTPOINT	"/sys/firmware/efi/efivars"
+ #define PSTORE_FSTYPE		0x6165676C
+@@ -210,7 +211,7 @@ static int x509_key_parse(struct key *key, uint8_t *data, size_t len)
+ 	serial = x509->cert_info->serialNumber;
+ 
+ 	key->id_len = ASN1_STRING_length(serial);
+-	key->id = talloc_memdup(key, ASN1_STRING_data(serial), key->id_len);
++	key->id = talloc_memdup(key, ASN1_STRING_get0_data(serial), key->id_len);
+ 
+ 	key->description = talloc_array(key, char, description_len);
+ 	X509_NAME_oneline(x509->cert_info->subject,
+-- 
+2.7.5
+

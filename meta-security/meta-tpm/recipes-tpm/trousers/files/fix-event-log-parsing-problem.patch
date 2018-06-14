@@ -1,0 +1,38 @@
+commit 3545a0675ee3cfee6297f968276b5a9b64799057
+Author: Genli Pan <genli.pan@windriver.com>
+Date:   Tue Aug 25 15:12:36 2015 +0800
+
+trousers: fix event log parsing problem
+
+Due to the change of format of kernel ima event log, trousers
+failed to parse the log to extract information. this commit adjust
+trousers to adapt the change.
+
+Signed-off-by: Genli Pan <genli.pan@windriver.com>
+
+--- a/src/tcs/tcs_evlog_imaem.c	2014-04-25 02:05:44.000000000 +0800
++++ b/src/tcs/tcs_evlog_imaem.c	2015-08-24 14:16:46.000000000 +0800
+@@ -145,11 +145,6 @@
+ 			result = TCSERR(TSS_E_INTERNAL_ERROR);
+ 			goto free_list;
+ 		}
+-		if (fread(digest, 1, sizeof digest, fp) != (sizeof(digest))) {
+-			LogError("Failed to read event log file");
+-			result = TCSERR(TSS_E_INTERNAL_ERROR);
+-			goto free_list;
+-		}
+ }
+ 		/* Get the template data namelen and data */
+ 		if (fread(&cur->event.ulEventLength, 1, sizeof(int), fp) != sizeof(int)) {
+@@ -286,11 +281,6 @@
+ 						LogError("Failed to read event log file");
+ 						result = TCSERR(TSS_E_INTERNAL_ERROR);
+ 						goto done;
+-					}
+-					if (fread(digest, 1, sizeof(digest), fp) != sizeof(digest)) {
+-						LogError("Failed to read event log file");
+-						result = TCSERR(TSS_E_INTERNAL_ERROR);
+-						goto done;
+ 					}
+ 				}
+ 				/* Get the template data namelen and data */

@@ -1,0 +1,9 @@
+#!/bin/sh
+
+rm -f oe-init-build-env
+rm -f bitbake
+rm -f scripts
+
+ln -s ./meta-yp/oe-init-build-env ./oe-init-build-env
+ln -s ./meta-yp/bitbake           ./bitbake
+ln -s ./meta-yp/scripts           ./scripts

@@ -1,0 +1,36 @@
+From 85e74fa95094175753e39acdd694f9c639069abf Mon Sep 17 00:00:00 2001
+From: Lans Zhang <jia.zhang@windriver.com>
+Date: Fri, 18 Mar 2016 12:30:08 +0800
+Subject: [PATCH 05/11] Fix signing failure due to not finding certificate
+
+Upstream-Status: Pending
+
+The shim.p12 containing private sample key should be imported after
+importing the corresponding certificate shim.crt. Otherwise, the
+nick name of shim certificate cannot be used.
+
+Signed-off-by: Lans Zhang <jia.zhang@windriver.com>
+---
+ Makefile | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index dcfa357..efab050 100644
+--- a/Makefile
++++ b/Makefile
+@@ -124,10 +124,10 @@ version.c : version.c.in
+ 		-e "s,@@COMMIT@@,$(shell if [ -d .git ] ; then git log -1 --pretty=format:%H ; elif [ -f commit ]; then cat commit ; else echo commit id not available; fi)," \
+ 		< version.c.in > version.c
+ 
+-certdb/secmod.db: shim.crt
++certdb/secmod.db: shim.crt shim.p12
+ 	-mkdir certdb
+-	$(PK12UTIL) -d certdb/ -i shim.p12 -W "" -K ""
+ 	$(CERTUTIL) -d certdb/ -A -i shim.crt -n shim -t u
++	$(PK12UTIL) -d certdb/ -i shim.p12 -W "" -K ""
+ 
+ shim.o: $(SOURCES) shim_cert.h
+ shim.o: $(wildcard *.h)
+-- 
+2.11.0
+

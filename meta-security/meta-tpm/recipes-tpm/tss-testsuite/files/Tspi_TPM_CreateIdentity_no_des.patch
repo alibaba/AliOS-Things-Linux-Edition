@@ -1,0 +1,45 @@
+diff --git a/tcg/highlevel/tpm/Tspi_TPM_CreateIdentity.c b/tcg/highlevel/tpm/Tspi_TPM_CreateIdentity.c
+index 01a8aca..128f238 100644
+--- a/tcg/highlevel/tpm/Tspi_TPM_CreateIdentity.c
++++ b/tcg/highlevel/tpm/Tspi_TPM_CreateIdentity.c
+@@ -66,8 +66,8 @@
+ 
+ #define CERT_VERIFY_BYTE 0x5a
+ 
+-TCPA_ALGORITHM_ID symAlg = TCPA_ALG_3DES;
+-TSS_ALGORITHM_ID tssSymAlg = TSS_ALG_3DES;
++TCPA_ALGORITHM_ID symAlg = TCPA_ALG_AES;
++TSS_ALGORITHM_ID tssSymAlg = TSS_ALG_AES;
+ 
+ /* substitute this for TPM_IDENTITY_CREDENTIAL in the TPM docs */
+ struct trousers_ca_tpm_identity_credential
+@@ -299,12 +299,14 @@ ca_create_credential(TSS_HCONTEXT hContext, TSS_HTPM hTPM,
+		case TCPA_ALG_AES:
+			asymContents.sessionKey.size = 128/8;
+			break;
++#ifndef OPENSSL_NO_DES
+		case TCPA_ALG_DES:
+			asymContents.sessionKey.size = 64/8;
+			break;
+		case TCPA_ALG_3DES:
+			asymContents.sessionKey.size = 192/8;
+			break;
++#endif /* OPENSSL_NO_DES */
+		default:
+			print_error("Invalid symmetric algorithm!", -1);
+			return TSS_E_INTERNAL_ERROR;
+@@ -569,12 +571,14 @@ main_v1_1(void){
+	}
+
+	switch (symKey.algId) {
++#ifndef OPENSSL_NO_DES
+		case TCPA_ALG_DES:
+			algID = TSS_ALG_DES;
+			break;
+		case TCPA_ALG_3DES:
+			algID = TSS_ALG_3DES;
+			break;
++#endif /* OPENSSL_NO_DES */
+		case TCPA_ALG_AES:
+			algID = TSS_ALG_AES;
+			break;

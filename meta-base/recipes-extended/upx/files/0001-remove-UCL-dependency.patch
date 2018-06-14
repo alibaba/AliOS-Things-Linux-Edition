@@ -1,0 +1,322 @@
+From 95ab8f014294bdd3878545ea320e109f8959ccac Mon Sep 17 00:00:00 2001
+From: yangjie wang <wanyoungj@gmail.com>
+Date: Mon, 7 May 2018 14:04:21 +0800
+Subject: [PATCH] remove UCL dependency
+
+---
+ src/Makefile          | 20 ++++++++++----------
+ src/compress.cpp      |  2 +-
+ src/compress_zlib.cpp |  2 --
+ src/conf.h            | 28 +++++++++++++++++++++-------
+ src/main.cpp          |  7 ++++++-
+ src/options.h         |  9 ++++++++-
+ src/p_exe.cpp         |  2 ++
+ src/p_ps1.cpp         |  2 ++
+ src/p_tos.cpp         |  2 ++
+ src/packer.cpp        |  6 ++++--
+ 10 files changed, 56 insertions(+), 24 deletions(-)
+
+diff --git a/src/Makefile b/src/Makefile
+index 00fd117..f223d7a 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -50,7 +50,7 @@ ifneq ($(wildcard $(UPX_UCLDIR)/include/ucl/ucl.h),)
+ INCLUDES += -I$(UPX_UCLDIR)/include
+ LIBS += $(addprefix -L,$(dir $(wildcard $(UPX_UCLDIR)/libucl$(libext) $(UPX_UCLDIR)/src/.libs/libucl$(libext))))
+ endif
+-LIBS += -lucl -lz
++LIBS += -lz
+ # LZMA from https://github.com/upx/upx-lzma-sdk
+ include $(top_srcdir)/src/stub/src/c/Makevars.lzma
+ 
+@@ -103,15 +103,15 @@ else
+ .PHONY: ./.depend
+ endif
+ 
+-CHECK_WHITESPACE =
+-ifeq ($(shell uname),Linux)
+-CHECK_WHITESPACE = $(top_srcdir)/src/stub/scripts/check_whitespace.sh $(top_srcdir)
+-ifneq ($(wildcard $(top_srcdir)/.git/.),)
+-CHECK_WHITESPACE = $(top_srcdir)/src/stub/scripts/check_whitespace_git.sh $(top_srcdir)
+-endif
+-check-whitespace : ; $(CHECK_WHITESPACE)
+-endif
+-.PHONY: check-whitespace
++#CHECK_WHITESPACE =
++#ifeq ($(shell uname),Linux)
++#CHECK_WHITESPACE = $(top_srcdir)/src/stub/scripts/check_whitespace.sh $(top_srcdir)
++#ifneq ($(wildcard $(top_srcdir)/.git/.),)
++#CHECK_WHITESPACE = $(top_srcdir)/src/stub/scripts/check_whitespace_git.sh $(top_srcdir)
++#endif
++#check-whitespace : ; $(CHECK_WHITESPACE)
++#endif
++#.PHONY: check-whitespace
+ 
+ mostlyclean clean distclean maintainer-clean:
+ 	rm -f *.d *.ii *.map *.o *.obj *.res ./.depend upx.exe upx.out upx.ttp upx$(exeext)
+diff --git a/src/compress.cpp b/src/compress.cpp
+index aee85bb..d38ce87 100644
+--- a/src/compress.cpp
++++ b/src/compress.cpp
+@@ -40,7 +40,7 @@ unsigned upx_adler32(const void *buf, unsigned len, unsigned adler)
+     if (len == 0)
+         return adler;
+     assert(buf != NULL);
+-#if 1
++#if (WITH_UCL)
+     return upx_ucl_adler32(buf, len, adler);
+ #else
+     return upx_zlib_adler32(buf, len, adler);
+diff --git a/src/compress_zlib.cpp b/src/compress_zlib.cpp
+index 65c34d6..454ba36 100644
+--- a/src/compress_zlib.cpp
++++ b/src/compress_zlib.cpp
+@@ -236,12 +236,10 @@ const char *upx_zlib_version_string(void)
+     return zlibVersion();
+ }
+ 
+-#if 0 /* UNUSED */
+ unsigned upx_zlib_adler32(const void *buf, unsigned len, unsigned adler)
+ {
+     return adler32(adler, (const Bytef *) buf, len);
+ }
+-#endif
+ 
+ #if 0 /* UNUSED */
+ unsigned upx_zlib_crc32(const void *buf, unsigned len, unsigned crc)
+diff --git a/src/conf.h b/src/conf.h
+index 484bfe5..b5e7e87 100644
+--- a/src/conf.h
++++ b/src/conf.h
+@@ -130,7 +130,7 @@ typedef unsigned char   upx_byte;
+ #endif
+ 
+ #define WITH_LZMA 0x443
+-#define WITH_UCL 1
++#define WITH_UCL 0
+ #define WITH_ZLIB 1
+ #if (WITH_UCL)
+ #  define ucl_compress_config_t REAL_ucl_compress_config_t
+@@ -538,12 +538,12 @@ struct lzma_compress_config_t
+     void reset();
+ };
+ 
+-
++#if (WITH_UCL)
+ struct ucl_compress_config_t : public REAL_ucl_compress_config_t
+ {
+     void reset() { memset(this, 0xff, sizeof(*this)); }
+ };
+-
++#endif
+ 
+ struct zlib_compress_config_t
+ {
+@@ -562,9 +562,17 @@ struct zlib_compress_config_t
+ struct upx_compress_config_t
+ {
+     lzma_compress_config_t  conf_lzma;
++#if (WITH_UCL)
+     ucl_compress_config_t   conf_ucl;
++#endif
+     zlib_compress_config_t  conf_zlib;
+-    void reset() { conf_lzma.reset(); conf_ucl.reset(); conf_zlib.reset(); }
++    void reset() { 
++        conf_lzma.reset(); 
++#if (WITH_UCL)
++        conf_ucl.reset(); 
++#endif
++        conf_zlib.reset(); 
++    }
+ };
+ 
+ #define NULL_cconf  ((upx_compress_config_t *) NULL)
+@@ -588,14 +596,14 @@ struct lzma_compress_result_t
+     void reset() { memset(this, 0, sizeof(*this)); }
+ };
+ 
+-
++#if (WITH_UCL)
+ struct ucl_compress_result_t
+ {
+     ucl_uint result[16];
+ 
+     void reset() { memset(this, 0, sizeof(*this)); }
+ };
+-
++#endif
+ 
+ struct zlib_compress_result_t
+ {
+@@ -612,12 +620,18 @@ struct upx_compress_result_t
+     unsigned u_len, c_len;
+ 
+     lzma_compress_result_t  result_lzma;
++#if (WITH_UCL)
+     ucl_compress_result_t   result_ucl;
++#endif
+     zlib_compress_result_t  result_zlib;
+ 
+     void reset() {
+         memset(this, 0, sizeof(*this));
+-        result_lzma.reset(); result_ucl.reset(); result_zlib.reset();
++        result_lzma.reset();
++#if (WITH_UCL)
++        result_ucl.reset(); 
++#endif
++        result_zlib.reset();
+     }
+ };
+ 
+diff --git a/src/main.cpp b/src/main.cpp
+index b2c3d93..4d069b2 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -588,7 +588,9 @@ static int do_option(int optc, const char *arg)
+         opt->method = -1;
+         opt->all_filters = true;
+         opt->filter = -1;
++#if (WITH_UCL)
+         opt->crp.crp_ucl.m_size = 999999;
++#endif
+         /* fallthrough */
+     case 900:                               // --best
+         if (!set_method(-1, 10))
+@@ -679,6 +681,7 @@ static int do_option(int optc, const char *arg)
+         opt->exact = true;
+         break;
+     // compression runtime parameters
++#if (WITH_UCL)
+     case 801:
+         getoptvar(&opt->crp.crp_ucl.c_flags, 0, 3, arg);
+         break;
+@@ -700,6 +703,7 @@ static int do_option(int optc, const char *arg)
+     case 807:
+         getoptvar(&opt->crp.crp_ucl.m_size, 10000u, 999999u, arg);
+         break;
++#endif
+     case 811:
+         getoptvar(&opt->crp.crp_lzma.pos_bits, arg);
+         break;
+@@ -1453,7 +1457,7 @@ int __acc_cdecl_main main(int argc, char *argv[])
+         progname += 2;
+ 
+     set_term(stderr);
+-
++#if (WITH_UCL)
+     if (upx_ucl_init() != 0)
+     {
+         show_head();
+@@ -1463,6 +1467,7 @@ int __acc_cdecl_main main(int argc, char *argv[])
+                     (long) UCL_VERSION, (long) ucl_version());
+         e_exit(EXIT_INIT);
+     }
++#endif
+     assert(upx_lzma_init() == 0);
+     assert(upx_zlib_init() == 0);
+ #if (WITH_NRV)
+diff --git a/src/options.h b/src/options.h
+index cb2a018..addfe4e 100644
+--- a/src/options.h
++++ b/src/options.h
+@@ -102,9 +102,16 @@ struct options_t {
+     // compression runtime parameters - see struct XXX_compress_config_t
+     struct crp_t {
+         lzma_compress_config_t  crp_lzma;
++#if (WITH_UCL)
+         ucl_compress_config_t   crp_ucl;
++#endif
+         zlib_compress_config_t  crp_zlib;
+-        void reset() { crp_lzma.reset(); crp_ucl.reset(); crp_zlib.reset(); }
++        void reset() { 
++            crp_lzma.reset();
++#if (WITH_UCL) 
++            crp_ucl.reset(); 
++#endif
++            crp_zlib.reset(); }
+     };
+     crp_t crp;
+ 
+diff --git a/src/p_exe.cpp b/src/p_exe.cpp
+index 80bdb0f..0d53faf 100644
+--- a/src/p_exe.cpp
++++ b/src/p_exe.cpp
+@@ -506,7 +506,9 @@ void PackExe::pack(OutputFile *fo)
+     Filter ft(ph.level);
+     // compress (max_match = 8192)
+     upx_compress_config_t cconf; cconf.reset();
++#if (WITH_UCL)
+     cconf.conf_ucl.max_match = MAXMATCH;
++#endif
+     cconf.conf_lzma.max_num_probs = 1846 + (768 << 4); // ushort: ~28 KiB stack
+     compressWithFilters(&ft, 32, &cconf);
+ 
+diff --git a/src/p_ps1.cpp b/src/p_ps1.cpp
+index e8478a2..d166d14 100644
+--- a/src/p_ps1.cpp
++++ b/src/p_ps1.cpp
+@@ -499,7 +499,9 @@ void PackPs1::pack(OutputFile *fo)
+ 
+     // compress (max_match = 65535)
+     upx_compress_config_t cconf; cconf.reset();
++#if (WITH_UCL)
+     cconf.conf_ucl.max_match = 65535;
++#endif
+     cconf.conf_lzma.max_num_probs = 1846 + (768 << 4); // ushort: ~28 KiB stack
+     compressWithFilters(&ft, sa_cnt, &cconf);
+ 
+diff --git a/src/p_tos.cpp b/src/p_tos.cpp
+index 984d758..8cf08f1 100644
+--- a/src/p_tos.cpp
++++ b/src/p_tos.cpp
+@@ -506,7 +506,9 @@ void PackTos::pack(OutputFile *fo)
+     Filter ft(ph.level);
+     // compress (max_match = 65535)
+     upx_compress_config_t cconf; cconf.reset();
++#if (WITH_UCL)
+     cconf.conf_ucl.max_match = 65535;
++#endif
+     cconf.conf_lzma.max_num_probs = 1846 + (768 << 4); // ushort: ~28 KiB stack
+     compressWithFilters(&ft, 512, &cconf);
+ 
+diff --git a/src/packer.cpp b/src/packer.cpp
+index bdc3e63..489ca6c 100644
+--- a/src/packer.cpp
++++ b/src/packer.cpp
+@@ -208,6 +208,7 @@ bool Packer::compress(upx_bytep i_ptr, unsigned i_len, upx_bytep o_ptr,
+     if (cconf_parm)
+         cconf = *cconf_parm;
+     // cconf options
++#if (WITH_UCL)
+     if (M_IS_NRV2B(ph.method) || M_IS_NRV2D(ph.method) || M_IS_NRV2E(ph.method))
+     {
+         if (opt->crp.crp_ucl.c_flags != -1)
+@@ -225,6 +226,7 @@ bool Packer::compress(upx_bytep i_ptr, unsigned i_len, upx_bytep o_ptr,
+             step = 0;
+ #endif
+     }
++#endif
+     if (M_IS_LZMA(ph.method))
+     {
+         oassign(cconf.conf_lzma.pos_bits, opt->crp.crp_lzma.pos_bits);
+@@ -258,7 +260,7 @@ bool Packer::compress(upx_bytep i_ptr, unsigned i_len, upx_bytep o_ptr,
+         throwOutOfMemoryException();
+     if (r != UPX_E_OK)
+         throwInternalError("compression failed");
+-
++#if (WITH_UCL)
+     if (M_IS_NRV2B(ph.method) || M_IS_NRV2D(ph.method) || M_IS_NRV2E(ph.method))
+     {
+         const ucl_uint *res = ph.compress_result.result_ucl.result;
+@@ -276,7 +278,7 @@ bool Packer::compress(upx_bytep i_ptr, unsigned i_len, upx_bytep o_ptr,
+             assert(cconf.conf_ucl.max_match == 0 || cconf.conf_ucl.max_match >= ph.max_match_found);
+         }
+     }
+-
++#endif
+     //printf("\nPacker::compress: %d/%d: %7d -> %7d\n", ph.method, ph.level, ph.u_len, ph.c_len);
+     if (!checkCompressionRatio(ph.u_len, ph.c_len))
+         return false;
+-- 
+2.7.4
+

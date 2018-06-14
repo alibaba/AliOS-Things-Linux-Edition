@@ -1,0 +1,4 @@
+# meta-apparmor
+This layer provides apparmor support, which is a simple file path-based linux
+Mandatory Access Control(MAC), it implements the mandatory access control based
+on the Linux Security Modules (LSM).

@@ -1,0 +1,79 @@
+#!/bin/sh
+
+PATH="/sbin:/bin:/usr/sbin:/usr/bin"
+ROOTFS_MOUNT="/rootfs"
+INIT="/sbin/init"
+
+mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t devtmpfs none /dev
+mount -t tmpfs none /run
+
+cmdline="`cat /proc/cmdline`"
+for arg in $cmdline; do
+    optarg=`expr "x$arg" : 'x[^=]*=\(.*\)'`
+
+    case "$arg" in
+    root=*)
+        ROOTFS_DEV="$optarg"
+        ;;
+    init=*)
+        INIT="$optarg"
+        ;;
+    esac
+done
+
+[ -z "$ROOTFS_DEV" ] && {
+    echo "exiting on missing the kernel parameter root= ..."
+    exit 1
+}
+
+mkdir -p "$ROOTFS_MOUNT"
+
+try_to_mount_rootfs() {
+    local mount_flags="rw,noatime,iversion"
+
+    mount -o "$mount_flags" "$ROOTFS_DEV" "$ROOTFS_MOUNT" \
+        2>/dev/null && return 0
+
+    [ -x /init.cryptfs ] &&
+        /init.cryptfs "$ROOTFS_MOUNT" "$ROOTFS_DEV" \
+            "$mount_flags" && return 0
+
+    return 1
+}
+
+echo "Waiting for root device to be ready ..."
+
+while [ 1 ]; do
+    try_to_mount_rootfs && break
+    sleep 0.1
+done
+
+# Move the mount points of some filesystems over to
+# the corresponding directories under the real root filesystem.
+for dir in `cat /proc/mounts | grep -v rootfs | awk '{ print $2 }'` ; do
+    mkdir -p "$ROOTFS_MOUNT"/${dir##*/}
+    mount -nv --move "$dir" "$ROOTFS_MOUNT"/${dir##*/}
+done
+
+cd "$ROOTFS_MOUNT"
+
+# !!! The Big Fat Warnings !!!
+#
+# The IMA policy may enforce appraising the executable and verifying the
+# signature stored in xattr. However, ramfs doesn't support xattr, and all
+# other initializations must *NOT* be placed after IMA initialization!
+[ -x /init.ima ] && /init.ima "$ROOTFS_MOUNT" && {
+    # switch_root is an exception. We call it in the real rootfs and it
+    # should be already signed properly.
+    switch_root="usr/sbin/switch_root.static"
+} || {
+    switch_root="switch_root"
+}
+
+exec "$switch_root" "$ROOTFS_MOUNT" "$INIT" || {
+    "$ROOTFS_MOUNT/bin/echo.coreutils" "Couldn't switch to the real rootfs"
+    # Cause kernel panic.
+    exit 2
+}

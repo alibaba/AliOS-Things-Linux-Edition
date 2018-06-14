@@ -1,0 +1,263 @@
+---
+ grub-core/Makefile.core.def     |    8 +
+ grub-core/commands/efi/efivar.c |  238 ++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 246 insertions(+)
+
+--- /dev/null
++++ b/grub-core/commands/efi/efivar.c
+@@ -0,0 +1,238 @@
++/* efivar.c - Read EFI global variables. */
++/*
++ *  GRUB  --  GRand Unified Bootloader
++ *  Copyright (C) 2015 Free Software Foundation, Inc.
++ *  Copyright (C) 2015 CloudFlare, Inc.
++ *
++ *  GRUB is free software: you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation, either version 3 of the License, or
++ *  (at your option) any later version.
++ *
++ *  GRUB is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with GRUB.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include <grub/types.h>
++#include <grub/mm.h>
++#include <grub/misc.h>
++#include <grub/efi/api.h>
++#include <grub/efi/efi.h>
++#include <grub/extcmd.h>
++#include <grub/env.h>
++#include <grub/lib/hexdump.h>
++
++GRUB_MOD_LICENSE ("GPLv3+");
++
++static const struct grub_arg_option options[] = {
++  {"format", 'f', GRUB_ARG_OPTION_OPTIONAL, N_("Parse EFI_VAR in specific format (hex, uint8, ascii, dump). Default: hex."), N_("FORMAT"), ARG_TYPE_STRING},
++  {"set", 's', GRUB_ARG_OPTION_OPTIONAL, N_("Save parsed result to environment variable (does not work with dump)."), N_("ENV_VAR"), ARG_TYPE_STRING},
++  {0, 0, 0, 0, 0, 0}
++};
++
++enum efi_var_type
++  {
++    EFI_VAR_ASCII = 0,
++    EFI_VAR_UINT8,
++    EFI_VAR_HEX,
++    EFI_VAR_DUMP,
++    EFI_VAR_INVALID = -1
++  };
++
++static enum efi_var_type
++parse_efi_var_type (const char *type)
++{
++  if (!grub_strncmp (type, "ascii", sizeof("ascii")))
++    return EFI_VAR_ASCII;
++
++  if (!grub_strncmp (type, "uint8", sizeof("uint8")))
++    return EFI_VAR_UINT8;
++
++  if (!grub_strncmp (type, "hex", sizeof("hex")))
++    return EFI_VAR_HEX;
++
++  if (!grub_strncmp (type, "dump", sizeof("dump")))
++    return EFI_VAR_DUMP;
++
++  return EFI_VAR_INVALID;
++}
++
++static int
++grub_print_ascii (char *str, char c)
++{
++  if (grub_iscntrl (c))
++  {
++    switch (c)
++      {
++        case '\0':
++          str[0] = '\\';
++          str[1] = '0';
++          return 2;
++
++        case '\a':
++          str[0] = '\\';
++          str[1] = 'a';
++          return 2;
++
++        case '\b':
++          str[0] = '\\';
++          str[1] = 'b';
++          return 2;
++
++        case '\f':
++          str[0] = '\\';
++          str[1] = 'f';
++          return 2;
++
++        case '\n':
++          str[0] = '\\';
++          str[1] = 'n';
++          return 2;
++
++        case '\r':
++          str[0] = '\\';
++          str[1] = 'r';
++          return 2;
++
++        case '\t':
++          str[0] = '\\';
++          str[1] = 't';
++          return 2;
++
++        case '\v':
++          str[0] = '\\';
++          str[1] = 'v';
++          return 2;
++
++        default:
++          str[0] = '.'; /* as in hexdump -C */
++          return 1;
++      }
++  }
++
++  str[0] = c;
++  return 1;
++}
++
++static grub_err_t
++grub_cmd_get_efi_var (struct grub_extcmd_context *ctxt,
++  int argc, char **args)
++{
++  struct grub_arg_list *state = ctxt->state;
++  grub_err_t status;
++  void *efi_var = NULL;
++  grub_size_t efi_var_size = 0;
++  enum efi_var_type efi_type = EFI_VAR_HEX;
++  grub_efi_guid_t global = GRUB_EFI_GLOBAL_VARIABLE_GUID;
++  char *env_var = NULL;
++  grub_size_t i;
++  char *ptr;
++
++  if (1 != argc)
++    return grub_error (GRUB_ERR_BAD_ARGUMENT, N_("one argument expected"));
++
++  if (state[0].set)
++    efi_type = parse_efi_var_type (state[0].arg);
++
++  if (EFI_VAR_INVALID == efi_type)
++    return grub_error (GRUB_ERR_BAD_ARGUMENT, N_("invalid format specifier"));
++
++  efi_var = grub_efi_get_variable (args[0], &global, &efi_var_size);
++  if (!efi_var || !efi_var_size)
++    {
++      status = grub_error (GRUB_ERR_READ_ERROR, N_("cannot read variable"));
++      goto err;
++    }
++
++  switch (efi_type)
++  {
++    case EFI_VAR_ASCII:
++      env_var = grub_malloc (efi_var_size * 2 + 1);
++      if (!env_var)
++        {
++          status = grub_error (GRUB_ERR_OUT_OF_MEMORY, N_("out of memory"));
++          break;
++        }
++
++      ptr = env_var;
++
++      for (i = 0; i < efi_var_size; i++)
++        ptr += grub_print_ascii (ptr, ((const char *)efi_var)[i]);
++      *ptr = '\0';
++      break;
++
++    case EFI_VAR_UINT8:
++      env_var = grub_malloc (4);
++      if (!env_var)
++        {
++          status = grub_error (GRUB_ERR_OUT_OF_MEMORY, N_("out of memory"));
++          break;
++        }
++      grub_snprintf (env_var, 4, "%u", *((grub_uint8_t *)efi_var));
++      break;
++
++    case EFI_VAR_HEX:
++      env_var = grub_malloc (efi_var_size * 2 + 1);
++      if (!env_var)
++        {
++          status = grub_error (GRUB_ERR_OUT_OF_MEMORY, N_("out of memory"));
++          break;
++        }
++      for (i = 0; i < efi_var_size; i++)
++        grub_snprintf (env_var + (i * 2), 3, "%02x", ((grub_uint8_t *)efi_var)[i]);
++      break;
++
++    case EFI_VAR_DUMP:
++      if (state[1].set)
++        status = grub_error (GRUB_ERR_BAD_ARGUMENT, N_("cannot set variable with dump format specifier"));
++      else
++        {
++          hexdump (0, (char *)efi_var, efi_var_size);
++          status = GRUB_ERR_NONE;
++        }
++      break;
++
++    default:
++      status = grub_error (GRUB_ERR_BUG, N_("should not happen (bug in module?)"));
++  }
++
++  if (efi_type != EFI_VAR_DUMP)
++    {
++      if (state[1].set)
++        status = grub_env_set (state[1].arg, env_var);
++      else
++        {
++          grub_printf ("%s\n", (const char *)env_var);
++          status = GRUB_ERR_NONE;
++        }
++    }
++
++err:
++
++  if (env_var)
++    grub_free (env_var);
++
++  if (efi_var)
++    grub_free (efi_var);
++
++  return status;
++}
++
++static grub_extcmd_t cmd = NULL;
++
++GRUB_MOD_INIT (efivar)
++{
++  cmd = grub_register_extcmd ("get_efivar", grub_cmd_get_efi_var, 0, N_("[-f FORMAT] [-s ENV_VAR] EFI_VAR"),
++ N_("Read EFI variable and print it or save its contents to environment variable."), options);
++}
++
++GRUB_MOD_FINI (efivar)
++{
++  if (cmd)
++    grub_unregister_extcmd (cmd);
++}
+--- a/grub-core/Makefile.core.def
++++ b/grub-core/Makefile.core.def
+@@ -539,6 +539,14 @@ module = {
+ };
+ 
+ module = {
++  name = efivar;
++
++  common = commands/efi/efivar.c;
++
++  enable = efi;
++};
++
++module = {
+   name = lsacpi;
+ 
+   common = commands/lsacpi.c;
