@@ -1,0 +1,6 @@
+# yocto-bsp-filename {{=machine}}.scc
+kconf hardware {{=machine}}.cfg
+kconf non-hardware {{machine}}-non_hardware.cfg
+
+include features/usb-net/usb-net.scc
+

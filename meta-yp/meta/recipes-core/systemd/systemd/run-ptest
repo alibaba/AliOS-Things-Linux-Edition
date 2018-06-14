@@ -1,0 +1,6 @@
+#!/bin/sh
+
+cd tests
+tar -C test -xJf test/sys.tar.xz
+make check-TESTS
+cd ..

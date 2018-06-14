@@ -1,0 +1,801 @@
+<!DOCTYPE chapter PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN"
+"http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd"
+[<!ENTITY % poky SYSTEM "../poky.ent"> %poky; ] >
+
+<chapter id='dev-manual-start'>
+
+<title>Getting Started with the Yocto Project</title>
+
+<para>
+    This chapter provides procedures related to getting set up to use the
+    Yocto Project.
+    For a more front-to-end process that takes you from minimally preparing
+    a build host through building an image, see the
+    <ulink url='&YOCTO_DOCS_QS_URL;'>Yocto Project Quick Start</ulink>.
+</para>
+
+<section id='setting-up-the-development-host-to-use-the-yocto-project'>
+    <title>Setting Up the Development Host to Use the Yocto Project</title>
+
+    <para>
+        This section provides procedures to set up your development host to
+        use the Yocto Project.
+        You can use the Yocto Project on a native Linux development host or
+        you can use
+        <ulink url='https://git.yoctoproject.org/cgit/cgit.cgi/crops/about/'>CROPS</ulink>,
+        which leverages
+        <ulink url='https://www.docker.com/'>Docker Containers</ulink>,
+        to prepare any Linux, Mac, or Windows development host.
+    </para>
+
+    <para>
+        Once your development host is set up to use the Yocto Project,
+        further steps are necessary depending on what you want to
+        accomplish.
+        See the following references for information on how to prepare for
+        Board Support Package (BSP) development, kernel development, and
+        development using the <trademark class='trade'>Eclipse</trademark> IDE:
+        <itemizedlist>
+            <listitem><para>
+                <emphasis>BSP Development:</emphasis>
+                See the
+                "<ulink url='&YOCTO_DOCS_BSP_URL;#preparing-your-build-host-to-work-with-bsp-layers'>Preparing Your Build Host to Work With BSP Layers</ulink>"
+                section in the Yocto Project Board Support Package (BSP)
+                Developer's Guide.
+                </para></listitem>
+            <listitem><para>
+                <emphasis>Kernel Development:</emphasis>
+                See the
+                "<ulink url='&YOCTO_DOCS_KERNEL_DEV_URL;#preparing-the-build-host-to-work-on-the-kernel'>Preparing the Build Host to Work on the Kernel</ulink>"
+                section in the Yocto Project Linux Kernel Development Manual.
+                </para></listitem>
+            <listitem><para>
+                <emphasis>Eclipse Development:</emphasis>
+                See the
+                "<ulink url='&YOCTO_DOCS_SDK_URL;#sdk-developing-applications-using-eclipse'>Developing Applications Using Eclipse</ulink>"
+                section in the Yocto Project Software Development Kit (SDK)
+                Developer's Guide.
+                </para></listitem>
+        </itemizedlist>
+    </para>
+
+    <section id='setting-up-a-native-linux-host'>
+        <title>Setting Up a Native Linux Host</title>
+
+        <para>
+            Follow these steps to prepare a native Linux machine as your
+            Yocto Project development host:
+            <orderedlist>
+                <listitem><para>
+                    <emphasis>Use a Supported Linux Distribution:</emphasis>
+                    You should have a reasonably current Linux-based host
+                    system.
+                    You will have the best results with a recent release of
+                    Fedora, openSUSE, Debian, Ubuntu, or CentOS as these
+                    releases are frequently tested against the Yocto Project
+                    and officially supported.
+                    For a list of the distributions under validation and their
+                    status, see the
+                    "<ulink url='&YOCTO_DOCS_REF_URL;#detailed-supported-distros'>Supported Linux Distributions</ulink>" section
+                    in the Yocto Project Reference Manual and the wiki page at
+                    <ulink url='&YOCTO_WIKI_URL;/wiki/Distribution_Support'>Distribution Support</ulink>.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Have Enough Free Memory:</emphasis>
+                    You should have at least 50 Gbytes of free disk space
+                    for building images.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Meet Minimal Version Requirements:</emphasis>
+                    The OpenEmbedded build system should be able to run on any
+                    modern distribution that has the following versions for
+                    Git, tar, and Python.
+                    <itemizedlist>
+                        <listitem><para>
+                            Git 1.8.3.1 or greater
+                            </para></listitem>
+                        <listitem><para>
+                            tar 1.27 or greater
+                            </para></listitem>
+                        <listitem><para>
+                            Python 3.4.0 or greater.
+                            </para></listitem>
+                    </itemizedlist>
+                    If your build host does not meet any of these three listed
+                    version requirements, you can take steps to prepare the
+                    system so that you can still use the Yocto Project.
+                    See the
+                    "<ulink url='&YOCTO_DOCS_REF_URL;#required-git-tar-and-python-versions'>Required Git, tar, and Python Versions</ulink>"
+                    section in the Yocto Project Reference Manual for
+                    information.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Install Development Host Packages:</emphasis>
+                    Required development host packages vary depending on your
+                    build machine and what you want to do with the Yocto
+                    Project.
+                    Collectively, the number of required packages is large
+                    if you want to be able to cover all cases.</para>
+
+                    <para>For lists of required packages for all scenarios,
+                    see the
+                    "<ulink url='&YOCTO_DOCS_REF_URL;#required-packages-for-the-host-development-system'>Required Packages for the Host Development System</ulink>"
+                    section in the Yocto Project Reference Manual.
+                    </para></listitem>
+            </orderedlist>
+            Once you have completed the previous steps, you are ready to
+            continue using a given development path on your native Linux
+            machine.
+            If you are going to use BitBake, see the
+            "<link linkend='cloning-the-poky-repository'>Cloning the <filename>poky</filename> Repository</link>"
+            section.
+            If you are going to use the Extensible SDK, see the
+            "<ulink url='&YOCTO_DOCS_SDK_URL;#sdk-extensible'>Using the Extensible SDK</ulink>"
+            Chapter in the Yocto Project Software Development Kit (SDK)
+            Developer's Guide.
+            If you want to work on the kernel, see the
+            <ulink url='&YOCTO_DOCS_KERNEL_DEV_URL;'>Yocto Project Linux Kernel Development Manual</ulink>.
+            If you are going to use Toaster, see the
+            "<ulink url='&YOCTO_DOCS_TOAST_URL;#toaster-manual-setup-and-use'>Setting Up and Using Toaster</ulink>"
+            section in the Toaster User Manual.
+        </para>
+    </section>
+
+    <section id='setting-up-to-use-crops'>
+        <title>Setting Up to Use CROss PlatformS (CROPS)</title>
+
+        <para>
+            With
+            <ulink url='https://git.yoctoproject.org/cgit/cgit.cgi/crops/about/'>CROPS</ulink>,
+            which leverages
+            <ulink url='https://www.docker.com/'>Docker Containers</ulink>,
+            you can create a Yocto Project development environment that
+            is operating system agnostic.
+            You can set up a container in which you can develop using the
+            Yocto Project on a Windows, Mac, or Linux  machine.
+        </para>
+
+        <para>
+            Follow these general steps to prepare a Windows, Mac, or Linux
+            machine as your Yocto Project development host:
+            <orderedlist>
+                <listitem><para>
+                    <emphasis>Go to the Docker Installation Site:</emphasis>
+                    <ulink url='https://www.docker.com/what-docker'>Docker</ulink>
+                    is a software container platform that you need to install
+                    on the host development machine.
+                    To start the installation process, see the
+                    <ulink url='https://docs.docker.com/engine/installation/'>Docker Installation</ulink>
+                    site.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Choose Your Docker Edition:</emphasis>
+                    Docker comes in several editions.
+                    For the Yocto Project, the stable community edition
+                    (i.e. "Docker CE Stable") is adequate.
+                    You can learn more about the Docker editions from the
+                    site.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Go the Install Site for Your Platform:</emphasis>
+                    Click the link for the Docker edition associated with
+                    your development host machine's native software.
+                    For example, if your machine is running Microsoft
+                    Windows Version 10 and you want the Docker CE Stable
+                    edition, click that link under "Supported Platforms".
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Understand What You Need:</emphasis>
+                    The install page has pre-requisites your machine must
+                    meet.
+                    Be sure you read through this page and make sure your
+                    machine meets the requirements to run Docker.
+                    If your machine does not meet the requirements, the page
+                    has instructions to handle exceptions.
+                    For example, to run Docker on Windows 10, you must have
+                    the pro version of the operating system.
+                    If you have the home version, you need to install the
+                    <ulink url='https://docs.docker.com/toolbox/overview/#ready-to-get-started'>Docker Toolbox</ulink>.
+                    </para>
+
+                    <para>Another example is that a Windows machine needs to
+                    have Microsoft Hyper-V.
+                    If you have a legacy version of the the Microsoft
+                    operating system or for any other reason you do not have
+                    Microsoft Hyper-V, you would have to enter the BIOS and
+                    enable virtualization.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Install the Software:</emphasis>
+                    Once you have understood all the pre-requisites, you can
+                    download and install the appropriate software.
+                    Follow the instructions for your specific machine and
+                    the type of the software you need to install.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Optionally Orient Yourself With Dockers:</emphasis>
+                    If you are unfamiliar with Dockers and the container
+                    concept, you can learn more here -
+                    <ulink url='https://docs.docker.com/get-started/'></ulink>.
+                    You should be able to launch Docker or the Docker Toolbox
+                    and have a terminal shell on your development host.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Set Up the Containers to Use the Yocto Project:</emphasis>
+                    Go to
+                    <ulink url='https://github.com/crops/docker-win-mac-docs/wiki'></ulink>
+                    and follow the directions for your particular
+                    development host (i.e. Linux, Mac, or Windows).</para>
+
+                    <para>Once you complete the setup instructions for your
+                    machine, you have the Poky, Extensible SDK, and Toaster
+                    containers available.
+                    You can click those links from the page and learn more
+                    about using each of those containers.
+                    </para></listitem>
+            </orderedlist>
+            Once you have a container set up, everything is in place to
+            develop just as if you were running on a native Linux machine.
+            If you are going to use the Poky container, see the
+            "<link linkend='cloning-the-poky-repository'>Cloning the <filename>poky</filename> Repository</link>"
+            section.
+            If you are going to use the Extensible SDK container, see the
+            "<ulink url='&YOCTO_DOCS_SDK_URL;#sdk-extensible'>Using the Extensible SDK</ulink>"
+            Chapter in the Yocto Project Software Development Kit (SDK)
+            Developer's Guide.
+            If you are going to use the Toaster container, see the
+            "<ulink url='&YOCTO_DOCS_TOAST_URL;#toaster-manual-setup-and-use'>Setting Up and Using Toaster</ulink>"
+            section in the Toaster User Manual.
+        </para>
+    </section>
+</section>
+
+<section id='working-with-yocto-project-source-files'>
+    <title>Working With Yocto Project Source Files</title>
+
+    <para>
+        This section contains procedures related to locating and securing
+        Yocto Project files.
+        You establish and use these local files to work on projects.
+        <note><title>Notes</title>
+            <itemizedlist>
+                <listitem><para>
+                    For concepts and introductory information about Git as it
+                    is used in the Yocto Project, see the
+                    "<ulink url='&YOCTO_DOCS_REF_URL;#git'>Git</ulink>"
+                    section in the Yocto Project Reference Manual.
+                    </para></listitem>
+                <listitem><para>
+                    For concepts on Yocto Project source repositories, see the
+                    "<ulink url='&YOCTO_DOCS_REF_URL;#yocto-project-repositories'>Yocto Project Source Repositories</ulink>"
+                    section in the Yocto Project Reference Manual."
+                    </para></listitem>
+            </itemizedlist>
+        </note>
+    </para>
+
+    <section id='accessing-source-repositories'>
+        <title>Accessing Source Repositories</title>
+
+        <para>
+            Yocto Project maintains upstream Git
+            <ulink url='&YOCTO_DOCS_REF_URL;#source-repositories'>Source Repositories</ulink>
+            that you can examine and access using a browser-based UI:
+            <orderedlist>
+                <listitem><para>
+                    <emphasis>Access Repositories:</emphasis>
+                    Open a browser and go to
+                    <ulink url='&YOCTO_GIT_URL;'></ulink> to access the
+                    GUI-based interface into the Yocto Project source
+                    repositories.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Select a Repository:</emphasis>
+                    Click on any repository in which you are interested (e.g.
+                    <filename>poky</filename>).
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Find the URL Used to Clone the Repository:</emphasis>
+                    At the bottom of the page, note the URL used to
+                    <ulink url='&YOCTO_DOCS_REF_URL;#git-commands-clone'>clone</ulink>
+                    that repository (e.g.
+                    <filename>&YOCTO_GIT_URL;/poky</filename>).
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Examine Change History of the Repository:</emphasis>
+                    At the top of the page, click on any branch in which you
+                    might be interested (e.g.
+                    <filename>&DISTRO_NAME_NO_CAP;</filename>).
+                    You can then view the commit log or tree view for that
+                    development branch.
+                    </para></listitem>
+            </orderedlist>
+        </para>
+    </section>
+
+    <section id='accessing-index-of-releases'>
+        <title>Accessing Index of Releases</title>
+
+        <para>
+            Yocto Project maintains an Index of Releases area that contains
+            related files that contribute to the Yocto Project.
+            Rather than Git repositories, these files represent snapshot
+            tarballs.
+            <note><title>Tip</title>
+                The recommended method for accessing Yocto Project
+                components is to use Git to clone a repository and work from
+                within that local repository.
+                The procedure in this section exists should you desire a
+                tarball snapshot of any given component.
+            </note>
+            <orderedlist>
+                <listitem><para>
+                    <emphasis>Access the Index of Releases:</emphasis>
+                    Open a browser and go to
+                    <ulink url='&YOCTO_DL_URL;/releases'></ulink> to access the
+                    Index of Releases.
+                    The list represents released components (e.g.
+                    <filename>eclipse-plugin</filename>,
+                    <filename>sato</filename>, and so on).
+                    <note>
+                        The <filename>yocto</filename> directory contains the
+                        full array of released Poky tarballs.
+                        The <filename>poky</filename> directory in the
+                        Index of Releases was historically used for very
+                        early releases and exists for retroactive
+                        completeness only.
+                    </note>
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Select a Component:</emphasis>
+                    Click on any released component in which you are interested
+                    (e.g. <filename>yocto</filename>).
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Find the Tarball:</emphasis>
+                    Drill down to find the associated tarball.
+                    For example, click on <filename>yocto-&DISTRO;</filename> to
+                    view files associated with the Yocto Project &DISTRO;
+                    release (e.g. <filename>poky-&DISTRO_NAME_NO_CAP;-&POKYVERSION;.tar.bz2</filename>,
+                    which is the released Poky tarball).
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Download the Tarball:</emphasis>
+                    Click a tarball to download and save a snapshot of a
+                    given component.
+                    </para></listitem>
+            </orderedlist>
+        </para>
+    </section>
+
+    <section id='using-the-downloads-page'>
+        <title>Using the Downloads Page</title>
+
+        <para>
+            The
+            <ulink url='&YOCTO_HOME_URL;'>Yocto Project Website</ulink>
+            uses a "Downloads" area from which you can locate and download
+            tarballs of any Yocto Project release.
+            Rather than Git repositories, these files represent snapshot
+            tarballs.
+            <note><title>Tip</title>
+                The recommended method for accessing Yocto Project
+                components is to use Git to clone a repository and work from
+                within that local repository.
+                The procedure in this section exists should you desire a
+                tarball snapshot of any given component.
+            </note>
+            <orderedlist>
+                <listitem><para>
+                    <emphasis>Go to the Yocto Project Website:</emphasis>
+                    Open The
+                    <ulink url='&YOCTO_HOME_URL;'>Yocto Project Website</ulink>
+                    in your browser.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Get to the Downloads Area:</emphasis>
+                    Click the "Downloads" tab.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Select the Type of Files:</emphasis>
+                    Click the type of files you want (i.e "Build System",
+                    "Tools", or "Board Support Packages (BSPs)".
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Locate and Download the Tarball:</emphasis>
+                    From the list of releases, locate the appropriate
+                    download link and download the files.
+                    </para></listitem>
+            </orderedlist>
+        </para>
+    </section>
+
+    <section id='cloning-the-poky-repository'>
+        <title>Cloning the <filename>poky</filename> Repository</title>
+
+        <para>
+            To use the Yocto Project, you need a release of the Yocto Project
+            locally installed on your development system.
+            The locally installed set of files is referred to as the
+            <ulink url='&YOCTO_DOCS_REF_URL;#source-directory'>Source Directory</ulink>
+            in the Yocto Project documentation.
+        </para>
+
+        <para>
+            You create your Source Directory by using
+            <ulink url='&YOCTO_DOCS_REF_URL;#git'>Git</ulink> to clone a local
+            copy of the upstream <filename>poky</filename> repository.
+            <note><title>Tip</title>
+                The preferred method of getting the Yocto Project Source
+                Directory set up is to clone the repository.
+            </note>
+            Working from a copy of the upstream repository allows you
+            to contribute back into the Yocto Project or simply work with
+            the latest software on a development branch.
+            Because Git maintains and creates an upstream repository with
+            a complete history of changes and you are working with a local
+            clone of that repository, you have access to all the Yocto
+            Project development branches and tag names used in the upstream
+            repository.
+        </para>
+
+        <para>
+            Follow these steps to create a local version of the
+            upstream
+            <ulink url='&YOCTO_DOCS_REF_URL;#poky'><filename>poky</filename></ulink>
+            Git repository.
+            <orderedlist>
+                <listitem><para>
+                    <emphasis>Set Your Directory:</emphasis>
+                    Be in the directory where you want to create your local
+                    copy of poky.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Clone the Repository:</emphasis>
+                    The following command clones the repository and uses
+                    the default name "poky" for your local repository:
+                    <literallayout class='monospaced'>
+     $ git clone git://git.yoctoproject.org/poky
+     Cloning into 'poky'...
+     remote: Counting objects: 367178, done.
+     remote: Compressing objects: 100% (88161/88161), done.
+     remote: Total 367178 (delta 272761), reused 366942 (delta 272525)
+     Receiving objects: 100% (367178/367178), 133.26 MiB | 6.40 MiB/s, done.
+     Resolving deltas: 100% (272761/272761), done.
+     Checking connectivity... done.
+                    </literallayout>
+                    Unless you specify a specific development branch or
+                    tag name, Git clones the "master" branch, which results
+                    in a snapshot of the latest development changes for
+                    "master".
+                    For information on how to check out a specific
+                    development branch or on how to check out a local
+                    branch based on a tag name, see the
+                    "<link linkend='checking-out-by-branch-in-poky'>Checking Out By Branch in Poky</link>"
+                    and
+                    <link linkend='checkout-out-by-tag-in-poky'>Checking Out By Tag in Poky</link>",
+                    respectively.</para>
+
+                    <para>Once the repository is created, you can change to
+                    that directory and check its status.
+                    Here, the single "master" branch exists on your system
+                    and by default, it is checked out:
+                    <literallayout class='monospaced'>
+     $ cd ~/poky
+     $ git status
+     On branch master
+     Your branch is up-to-date with 'origin/master'.
+     nothing to commit, working directory clean
+     $ git branch
+     * master
+                    </literallayout>
+                    Your local repository of poky is identical to the
+                    upstream poky repository at the time from which it was
+                    cloned.
+                    </para></listitem>
+            </orderedlist>
+        </para>
+    </section>
+
+    <section id='checking-out-by-branch-in-poky'>
+        <title>Checking Out by Branch in Poky</title>
+
+        <para>
+            When you clone the upstream poky repository, you have access to
+            all its development branches.
+            Each development branch in a repository is unique as it forks
+            off the "master" branch.
+            To see and use the files of a particular development branch
+            locally, you need to know the branch name and then specifically
+            check out that development branch.
+            <note>
+                Checking out an active development branch by branch name
+                gives you a snapshot of that particular branch at the time
+                you check it out.
+                Further development on top of the branch that occurs after
+                check it out can occur.
+            </note>
+            <orderedlist>
+                <listitem><para>
+                    <emphasis>Switch to the Poky Directory:</emphasis>
+                    If you have a local poky Git repository, switch to that
+                    directory.
+                    If you do not have the local copy of poky, see the
+                    "<link linkend='cloning-the-poky-repository'>Cloning the <filename>poky</filename> Repository</link>"
+                    section.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Determine Existing Branch Names:</emphasis>
+                    <literallayout class='monospaced'>
+     $ git branch -a
+     * master
+       remotes/origin/1.1_M1
+       remotes/origin/1.1_M2
+       remotes/origin/1.1_M3
+       remotes/origin/1.1_M4
+       remotes/origin/1.2_M1
+       remotes/origin/1.2_M2
+       remotes/origin/1.2_M3
+           .
+           .
+           .
+       remotes/origin/master-next
+       remotes/origin/master-next2
+       remotes/origin/morty
+       remotes/origin/pinky
+       remotes/origin/purple
+       remotes/origin/pyro
+       remotes/origin/rocko
+                    </literallayout>
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Checkout the Branch:</emphasis>
+                    Checkout the development branch in which you want to work.
+                    For example, to access the files for the Yocto Project
+                    &DISTRO; Release (&DISTRO_NAME;), use the following command:
+                    <literallayout class='monospaced'>
+     $ git checkout -b &DISTRO_NAME_NO_CAP; origin/&DISTRO_NAME_NO_CAP;
+     Branch &DISTRO_NAME_NO_CAP; set up to track remote branch &DISTRO_NAME_NO_CAP; from origin.
+     Switched to a new branch '&DISTRO_NAME_NO_CAP;'
+                    </literallayout>
+                    The previous command checks out the "&DISTRO_NAME_NO_CAP;"
+                    development branch and reports that the branch is tracking
+                    the upstream "origin/&DISTRO_NAME_NO_CAP;" branch.</para>
+
+                    <para>The following command displays the branches
+                    that are now part of your local poky repository.
+                    The asterisk character indicates the branch that is
+                    currently checked out for work:
+                    <literallayout class='monospaced'>
+     $ git branch
+       master
+     * &DISTRO_NAME_NO_CAP;
+                    </literallayout>
+                    </para></listitem>
+            </orderedlist>
+        </para>
+    </section>
+
+    <section id='checkout-out-by-tag-in-poky'>
+        <title>Checking Out by Tag in Poky</title>
+
+        <para>
+            Similar to branches, the upstream repository uses tags
+            to mark specific commits associated with significant points in
+            a development branch (i.e. a release point or stage of a
+            release).
+            You might want to set up a local branch based on one of those
+            points in the repository.
+            The process is similar to checking out by branch name except you
+            use tag names.
+            <note>
+                Checking out a branch based on a tag gives you a
+                stable set of files not affected by development on the
+                branch above the tag.
+            </note>
+            <orderedlist>
+                <listitem><para>
+                    <emphasis>Switch to the Poky Directory:</emphasis>
+                    If you have a local poky Git repository, switch to that
+                    directory.
+                    If you do not have the local copy of poky, see the
+                    "<link linkend='cloning-the-poky-repository'>Cloning the <filename>poky</filename> Repository</link>"
+                    section.
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Fetch the Tag Names:</emphasis>
+                    To checkout the branch based on a tag name, you need to
+                    fetch the upstream tags into your local repository:
+                    <literallayout class='monospaced'>
+     $ git fetch --tags
+     $
+                    </literallayout>
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>List the Tag Names:</emphasis>
+                    You can list the tag names now:
+                    <literallayout class='monospaced'>
+     $ git tag
+     1.1_M1.final
+     1.1_M1.rc1
+     1.1_M1.rc2
+     1.1_M2.final
+     1.1_M2.rc1
+        .
+        .
+        .
+     yocto-2.2
+     yocto-2.2.1
+     yocto-2.3
+     yocto-2.3.1
+     yocto-2.4
+     yocto_1.5_M5.rc8
+                    </literallayout>
+                    </para></listitem>
+                <listitem><para>
+                    <emphasis>Checkout the Branch:</emphasis>
+                    <literallayout class='monospaced'>
+     $ git checkout tags/&DISTRO; -b my_yocto_&DISTRO;
+     Switched to a new branch 'my_yocto_&DISTRO;'
+     $ git branch
+       master
+     * my_yocto_&DISTRO;
+                    </literallayout>
+                    The previous command creates and checks out a local
+                    branch named "my_yocto_&DISTRO;", which is based on
+                    the commit in the upstream poky repository that has
+                    the same tag.
+                    In this example, the files you have available locally
+                    as a result of the <filename>checkout</filename>
+                    command are a snapshot of the
+                    "&DISTRO_NAME_NO_CAP;" development branch at the point
+                    where Yocto Project &DISTRO; was released.
+                    </para></listitem>
+            </orderedlist>
+        </para>
+    </section>
+</section>
+
+<section id='performing-a-simple-build'>
+    <title>Performing a Simple Build</title>
+
+    <para>
+        Several methods exist that allow you to build an image within the
+        Yocto Project.
+        This procedure shows how to build an image using BitBake from a
+        Linux host.
+        <note><title>Notes</title>
+            <itemizedlist>
+                <listitem><para>
+                    For information on how to build an image using
+                    <ulink url='&YOCTO_DOCS_REF_URL;#toaster-term'>Toaster</ulink>,
+                    see the
+                    <ulink url='&YOCTO_DOCS_TOAST_URL;'>Yocto Project Toaster Manual</ulink>.
+                    </para></listitem>
+                <listitem><para>
+                    For information on how to use
+                    <filename>devtool</filename> to build images, see the
+                    "<ulink url='&YOCTO_DOCS_SDK_URL;#using-devtool-in-your-sdk-workflow'>Using <filename>devtool</filename> in Your SDK Workflow</ulink>"
+                    section in the Yocto Project Software Development Kit
+                    (SDK) Developer's Guide.
+                    </para></listitem>
+            </itemizedlist>
+        </note>
+    </para>
+
+    <para>
+        The build process creates an entire Linux distribution from source
+        and places it in your
+        <ulink url='&YOCTO_DOCS_REF_URL;#build-directory'>Build Directory</ulink>
+        under <filename>tmp/deploy/images</filename>.
+        For detailed information on the build process using BitBake, see the
+        "<ulink url='&YOCTO_DOCS_REF_URL;#images-dev-environment'>Images</ulink>"
+        section in the Yocto Project Reference Manual.
+        You can also reference the
+        "<ulink url='&YOCTO_DOCS_QS_URL;#qs-building-images'>Building Images</ulink>"
+        section in the Yocto Project Quick Start.
+    </para>
+
+    <para>
+        The following figure and list overviews the build process:
+        <imagedata fileref="figures/bitbake-build-flow.png" width="7in" depth="4in" align="center" scalefit="1" />
+        <orderedlist>
+            <listitem><para>
+                <emphasis>Set up Your Host Development System to Support
+                Development Using the Yocto Project</emphasis>:
+                See the
+                "<ulink url='&YOCTO_DOCS_QS_URL;#yp-resources'>Setting Up to Use the Yocto Project</ulink>"
+                section in the Yocto Project Quick Start for options on how
+                to get a build host ready to use the Yocto Project.
+                </para></listitem>
+            <listitem><para>
+                <emphasis>Initialize the Build Environment:</emphasis>
+                Initialize the build environment by sourcing the build
+                environment script (i.e.
+                <ulink url='&YOCTO_DOCS_REF_URL;#structure-core-script'><filename>&OE_INIT_FILE;</filename></ulink>).
+                </para></listitem>
+            <listitem><para>
+                <emphasis>Make Sure Your <filename>local.conf</filename>
+                File is Correct:</emphasis>
+                Ensure the <filename>conf/local.conf</filename> configuration
+                file, which is found in the
+                <ulink url='&YOCTO_DOCS_REF_URL;#build-directory'>Build Directory</ulink>,
+                is set up how you want it.
+                This file defines many aspects of the build environment
+                including the target machine architecture through the
+                <filename><ulink url='&YOCTO_DOCS_REF_URL;#var-MACHINE'>MACHINE</ulink></filename> variable,
+                the packaging format used during the build
+                (<ulink url='&YOCTO_DOCS_REF_URL;#var-PACKAGE_CLASSES'><filename>PACKAGE_CLASSES</filename></ulink>),
+                and a centralized tarball download directory through the
+                <filename><ulink url='&YOCTO_DOCS_REF_URL;#var-DL_DIR'>DL_DIR</ulink></filename> variable.
+                </para></listitem>
+            <listitem><para>
+                <emphasis>Build the Image:</emphasis>
+                Build the image using the <filename>bitbake</filename> command.
+                For example, the following command builds the
+                <filename>core-image-minimal</filename> image:
+                <literallayout class='monospaced'>
+     $ bitbake core-image-minimal
+                </literallayout>
+                For information on BitBake, see the
+                <ulink url='&YOCTO_DOCS_BB_URL;'>BitBake User Manual</ulink>.
+                </para></listitem>
+        </orderedlist>
+    </para>
+</section>
+
+<!--
+<section id='using-pre-built-binaries-and-qemu'>
+    <title>Using Pre-Built Binaries and QEMU</title>
+
+    <para>
+        Another option you have to get started is to use pre-built binaries.
+        The Yocto Project provides many types of binaries with each release.
+        See the "<ulink url='&YOCTO_DOCS_REF_URL;#ref-images'>Images</ulink>"
+        chapter in the Yocto Project Reference Manual
+        for descriptions of the types of binaries that ship with a Yocto Project
+        release.
+    </para>
+
+    <para>
+        Using a pre-built binary is ideal for developing software
+        applications to run on your target hardware.
+        To do this, you need to be able to access the appropriate
+        cross-toolchain tarball for the architecture on which you are
+        developing.
+        If you are using an SDK type image, the image ships with the complete
+        toolchain native to the architecture (i.e. a toolchain designed to
+        run on the
+        <ulink url='&YOCTO_DOCS_REF_URL;#var-SDKMACHINE'><filename>SDKMACHINE</filename></ulink>).
+        If you are not using an SDK type image, you need to separately download
+        and install the stand-alone Yocto Project cross-toolchain tarball.
+        See the
+        "<ulink url='&YOCTO_DOCS_SDK_URL;#sdk-appendix-obtain'>Obtaining the SDK</ulink>"
+        appendix in the Yocto Project Software Development Kit (SDK)
+        Developer's Guide for more information on locating and installing
+        cross-toolchains.
+    </para>
+
+    <para>
+        Regardless of the type of image you are using, you need to download the pre-built kernel
+        that you will boot in the QEMU emulator and then download and extract the target root
+        filesystem for your target machine’s architecture.
+        You can get architecture-specific binaries and file systems from
+        <ulink url='&YOCTO_MACHINES_DL_URL;'>machines</ulink>.
+        You can get installation scripts for stand-alone toolchains from
+        <ulink url='&YOCTO_TOOLCHAIN_DL_URL;'>toolchains</ulink>.
+        Once you have all your files, you set up the environment to emulate the hardware
+        by sourcing an environment setup script.
+        Finally, you start the QEMU emulator.
+        You can find details on all these steps in the
+        <ulink url='&YOCTO_DOCS_SDK_URL;#sdk-manual'>Yocto Project Software Development Kit (SDK) Developer's Guide</ulink>.
+        You can learn more about using QEMU with the Yocto Project in the
+        "<link linkend='dev-manual-qemu'>Using the Quick EMUlator (QEMU)</link>"
+        section.
+    </para>
+</section>
+-->
+</chapter>
+<!--
+vim: expandtab tw=80 ts=4
+-->

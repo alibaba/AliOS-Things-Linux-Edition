@@ -1,0 +1,31 @@
+From 0be9c08dd3f825e92fa02d4a08d8aff743109e61 Mon Sep 17 00:00:00 2001
+From: Li xin <lixin.fnst@cn.fujitsu.com>
+Date: Wed, 17 Jun 2015 14:46:30 +0900
+Subject: [PATCH] syslog-ng.service: the syslog-ng service can not start
+ successfully,so modify it.
+
+Upstream-Status: pending
+
+Signed-off-by: Li Xin <lixin.fnst@cn.fujitsu.com>
+---
+ contrib/systemd/syslog-ng.service | 5 ++---
+ 1 file changed, 2 insertion(+), 3 deletions(-)
+
+diff --git a/contrib/systemd/syslog-ng.service b/contrib/systemd/syslog-ng.service
+index fc16f8d..8e09deb 100644
+--- a/contrib/systemd/syslog-ng.service
++++ b/contrib/systemd/syslog-ng.service
+@@ -4,8 +4,8 @@ Description=System Logger Daemon
+ 
+ [Service]
+ Type=notify
+-ExecStart=/usr/sbin/syslog-ng -F $SYSLOGNG_OPTS
+-ExecReload=/bin/kill -HUP $MAINPID
++ExecStart=@SBINDIR@/syslog-ng -F $SYSLOGNG_OPTS -p @LOCALSTATEDIR@/run/syslogd.pid
++ExecReload=@BASEBINDIR@/kill -HUP $MAINPID
+ EnvironmentFile=-/etc/default/syslog-ng
+ EnvironmentFile=-/etc/sysconfig/syslog-ng
+ StandardOutput=journal
+-- 
+1.8.4.2
+
