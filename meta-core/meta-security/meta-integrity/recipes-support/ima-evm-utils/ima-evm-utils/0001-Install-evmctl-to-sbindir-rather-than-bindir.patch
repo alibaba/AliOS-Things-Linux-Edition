@@ -1,0 +1,28 @@
+From 412f60bbd5a7ed1eac7051bd2947d5fc0c95e86b Mon Sep 17 00:00:00 2001
+From: Lans Zhang <jia.zhang@windriver.com>
+Date: Thu, 12 Jan 2017 16:55:03 +0800
+Subject: [PATCH] Install evmctl to $sbindir rather than $bindir
+
+Setting security.ima requires sys_admin capability.
+
+Signed-off-by: Lans Zhang <jia.zhang@windriver.com>
+---
+ src/Makefile.am | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/Makefile.am b/src/Makefile.am
+index deb18fb..aa8f666 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -9,7 +9,7 @@ libimaevm_la_LIBADD =  $(OPENSSL_LIBS)
+ 
+ include_HEADERS = imaevm.h
+ 
+-bin_PROGRAMS = evmctl
++sbin_PROGRAMS = evmctl
+ 
+ evmctl_SOURCES = evmctl.c
+ evmctl_CPPFLAGS = $(OPENSSL_CFLAGS)
+-- 
+2.7.4
+

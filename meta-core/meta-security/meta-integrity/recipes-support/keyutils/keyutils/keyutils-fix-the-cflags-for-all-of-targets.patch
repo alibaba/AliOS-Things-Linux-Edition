@@ -1,0 +1,32 @@
+From 8a1331d4abf9a96ee65e5fb31a00c7a2e0eed7c8 Mon Sep 17 00:00:00 2001
+From: Lei Maohui <leimaohui at cn.fujitsu.com>
+Date: Mon, 17 Aug 2015 13:53:28 +0900
+Subject: [PATCH] fix the cflags for all of targets.
+
+Signed-off-by: Lei Maohui <leimaohui at cn.fujitsu.com>
+---
+ Makefile | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index e2d7e2d..82e1a0f 100644
+--- a/Makefile
++++ b/Makefile
+@@ -64,7 +64,6 @@ BUILDFOR	:= $(shell file /usr/bin/make | sed -e 's!.*ELF \(32\|64\)-bit.*!\1!')-
+ 
+ LNS		:= ln -sf
+ 
+-ifeq ($(origin CFLAGS),undefined)
+ ifeq ($(BUILDFOR),32-bit)
+ CFLAGS		+= -m32
+ LIBDIR		   := /usr/lib
+@@ -76,7 +75,6 @@ LIBDIR     := /usr/lib
+ USRLIBDIR	:= /usr/lib
+ endif
+ endif
+-endif
+ 
+ ###############################################################################
+ #
+-- 
+1.8.4.2

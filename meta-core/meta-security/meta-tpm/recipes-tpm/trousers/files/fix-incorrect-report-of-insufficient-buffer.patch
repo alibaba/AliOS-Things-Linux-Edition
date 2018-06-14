@@ -1,0 +1,22 @@
+commit 3452971ba08ced886db7a9adcfc2d977b07d1410
+Author: Genli Pan <genli.pan@windriver.com>
+Date:   Thu Jul 30 10:43:25 2015 +0800
+
+trousers: fix incorrect report of insufficient buffer
+
+"size" as the size of buffer, is also used as returned size of result,
+and so would be modified after "Tddli_TransmitData" function call.
+So has to set it back in every loop.
+
+Signed-off-by: Genli Pan <genli.pan@windriver.com>
+
+--- a/src/tcs/tcs_req_mgr.c     2014-04-25 02:05:44.000000000 +0800
++++ b/src/tcs/tcs_req_mgr.c     2015-07-22 16:38:49.000000000 +0800
+@@ -45,6 +45,7 @@
+ #endif
+ 
+ 	do {
++		size = TSS_TPM_TXBLOB_SIZE;
+ 		result = Tddli_TransmitData(blob, Decode_UINT32(&blob[2]), loc_buf, &size);
+ 	} while (!result && (Decode_UINT32(&loc_buf[6]) == TCPA_E_RETRY) && --retry);
+ 

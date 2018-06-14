@@ -1,0 +1,383 @@
+From 4b8790c81c1a7b870a43810ec95e08a2e501123d Mon Sep 17 00:00:00 2001
+From: "H.J. Lu" <hjl.tools@gmail.com>
+Date: Tue, 6 Sep 2016 08:50:55 -0700
+Subject: [PATCH] X86-64: Add _dl_runtime_resolve_avx[512]_{opt|slow} [BZ
+ #20508]
+
+There is transition penalty when SSE instructions are mixed with 256-bit
+AVX or 512-bit AVX512 load instructions.  Since _dl_runtime_resolve_avx
+and _dl_runtime_profile_avx512 save/restore 256-bit YMM/512-bit ZMM
+registers, there is transition penalty when SSE instructions are used
+with lazy binding on AVX and AVX512 processors.
+
+To avoid SSE transition penalty, if only the lower 128 bits of the first
+8 vector registers are non-zero, we can preserve %xmm0 - %xmm7 registers
+with the zero upper bits.
+
+For AVX and AVX512 processors which support XGETBV with ECX == 1, we can
+use XGETBV with ECX == 1 to check if the upper 128 bits of YMM registers
+or the upper 256 bits of ZMM registers are zero.  We can restore only the
+non-zero portion of vector registers with AVX/AVX512 load instructions
+which will zero-extend upper bits of vector registers.
+
+This patch adds _dl_runtime_resolve_sse_vex which saves and restores
+XMM registers with 128-bit AVX store/load instructions.  It is used to
+preserve YMM/ZMM registers when only the lower 128 bits are non-zero.
+_dl_runtime_resolve_avx_opt and _dl_runtime_resolve_avx512_opt are added
+and used on AVX/AVX512 processors supporting XGETBV with ECX == 1 so
+that we store and load only the non-zero portion of vector registers.
+This avoids SSE transition penalty caused by _dl_runtime_resolve_avx and
+_dl_runtime_profile_avx512 when only the lower 128 bits of vector
+registers are used.
+
+_dl_runtime_resolve_avx_slow is added and used for AVX processors which
+don't support XGETBV with ECX == 1.  Since there is no SSE transition
+penalty on AVX512 processors which don't support XGETBV with ECX == 1,
+_dl_runtime_resolve_avx512_slow isn't provided.
+
+	[BZ #20495]
+	[BZ #20508]
+	* sysdeps/x86/cpu-features.c (init_cpu_features): For Intel
+	processors, set Use_dl_runtime_resolve_slow and set
+	Use_dl_runtime_resolve_opt if XGETBV suports ECX == 1.
+	* sysdeps/x86/cpu-features.h (bit_arch_Use_dl_runtime_resolve_opt):
+	New.
+	(bit_arch_Use_dl_runtime_resolve_slow): Likewise.
+	(index_arch_Use_dl_runtime_resolve_opt): Likewise.
+	(index_arch_Use_dl_runtime_resolve_slow): Likewise.
+	* sysdeps/x86_64/dl-machine.h (elf_machine_runtime_setup): Use
+	_dl_runtime_resolve_avx512_opt and _dl_runtime_resolve_avx_opt
+	if Use_dl_runtime_resolve_opt is set.  Use
+	_dl_runtime_resolve_slow if Use_dl_runtime_resolve_slow is set.
+	* sysdeps/x86_64/dl-trampoline.S: Include <cpu-features.h>.
+	(_dl_runtime_resolve_opt): New.  Defined for AVX and AVX512.
+	(_dl_runtime_resolve): Add one for _dl_runtime_resolve_sse_vex.
+	* sysdeps/x86_64/dl-trampoline.h (_dl_runtime_resolve_avx_slow):
+	New.
+	(_dl_runtime_resolve_opt): Likewise.
+	(_dl_runtime_profile): Define only if _dl_runtime_profile is
+	defined.
+
+(cherry picked from commit fb0f7a6755c1bfaec38f490fbfcaa39a66ee3604)
+---
+ ChangeLog                      |   25 ++++++++++
+ sysdeps/x86/cpu-features.c     |   14 ++++++
+ sysdeps/x86/cpu-features.h     |    6 +++
+ sysdeps/x86_64/dl-machine.h    |   24 +++++++++-
+ sysdeps/x86_64/dl-trampoline.S |   20 ++++++++
+ sysdeps/x86_64/dl-trampoline.h |  104 +++++++++++++++++++++++++++++++++++++++-
+ 6 files changed, 190 insertions(+), 3 deletions(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index e6ea2df..de93501 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,3 +1,28 @@
++2016-11-30  H.J. Lu  <hongjiu.lu@intel.com>
++
++	[BZ #20495]
++	[BZ #20508]
++	* sysdeps/x86/cpu-features.c (init_cpu_features): For Intel
++	processors, set Use_dl_runtime_resolve_slow and set
++	Use_dl_runtime_resolve_opt if XGETBV suports ECX == 1.
++	* sysdeps/x86/cpu-features.h (bit_arch_Use_dl_runtime_resolve_opt):
++	New.
++	(bit_arch_Use_dl_runtime_resolve_slow): Likewise.
++	(index_arch_Use_dl_runtime_resolve_opt): Likewise.
++	(index_arch_Use_dl_runtime_resolve_slow): Likewise.
++	* sysdeps/x86_64/dl-machine.h (elf_machine_runtime_setup): Use
++	_dl_runtime_resolve_avx512_opt and _dl_runtime_resolve_avx_opt
++	if Use_dl_runtime_resolve_opt is set.  Use
++	_dl_runtime_resolve_slow if Use_dl_runtime_resolve_slow is set.
++	* sysdeps/x86_64/dl-trampoline.S: Include <cpu-features.h>.
++	(_dl_runtime_resolve_opt): New.  Defined for AVX and AVX512.
++	(_dl_runtime_resolve): Add one for _dl_runtime_resolve_sse_vex.
++	* sysdeps/x86_64/dl-trampoline.h (_dl_runtime_resolve_avx_slow):
++	New.
++	(_dl_runtime_resolve_opt): Likewise.
++	(_dl_runtime_profile): Define only if _dl_runtime_profile is
++	defined.
++
+ 2017-04-13  Florian Weimer  <fweimer@redhat.com>
+ 
+ 	[BZ #21361]
+diff --git a/sysdeps/x86/cpu-features.c b/sysdeps/x86/cpu-features.c
+index 9ce4b49..11b9af2 100644
+--- a/sysdeps/x86/cpu-features.c
++++ b/sysdeps/x86/cpu-features.c
+@@ -205,6 +205,20 @@ init_cpu_features (struct cpu_features *cpu_features)
+       if (CPU_FEATURES_ARCH_P (cpu_features, AVX2_Usable))
+ 	cpu_features->feature[index_arch_AVX_Fast_Unaligned_Load]
+ 	  |= bit_arch_AVX_Fast_Unaligned_Load;
++
++      /* To avoid SSE transition penalty, use _dl_runtime_resolve_slow.
++         If XGETBV suports ECX == 1, use _dl_runtime_resolve_opt.  */
++      cpu_features->feature[index_arch_Use_dl_runtime_resolve_slow]
++	|= bit_arch_Use_dl_runtime_resolve_slow;
++      if (cpu_features->max_cpuid >= 0xd)
++	{
++	  unsigned int eax;
++
++	  __cpuid_count (0xd, 1, eax, ebx, ecx, edx);
++	  if ((eax & (1 << 2)) != 0)
++	    cpu_features->feature[index_arch_Use_dl_runtime_resolve_opt]
++	      |= bit_arch_Use_dl_runtime_resolve_opt;
++	}
+     }
+   /* This spells out "AuthenticAMD".  */
+   else if (ebx == 0x68747541 && ecx == 0x444d4163 && edx == 0x69746e65)
+diff --git a/sysdeps/x86/cpu-features.h b/sysdeps/x86/cpu-features.h
+index 97ffe76..a8b5a73 100644
+--- a/sysdeps/x86/cpu-features.h
++++ b/sysdeps/x86/cpu-features.h
+@@ -37,6 +37,8 @@
+ #define bit_arch_Prefer_No_VZEROUPPER		(1 << 17)
+ #define bit_arch_Fast_Unaligned_Copy		(1 << 18)
+ #define bit_arch_Prefer_ERMS			(1 << 19)
++#define bit_arch_Use_dl_runtime_resolve_opt	(1 << 20)
++#define bit_arch_Use_dl_runtime_resolve_slow	(1 << 21)
+ 
+ /* CPUID Feature flags.  */
+ 
+@@ -107,6 +109,8 @@
+ # define index_arch_Prefer_No_VZEROUPPER FEATURE_INDEX_1*FEATURE_SIZE
+ # define index_arch_Fast_Unaligned_Copy	FEATURE_INDEX_1*FEATURE_SIZE
+ # define index_arch_Prefer_ERMS		FEATURE_INDEX_1*FEATURE_SIZE
++# define index_arch_Use_dl_runtime_resolve_opt FEATURE_INDEX_1*FEATURE_SIZE
++# define index_arch_Use_dl_runtime_resolve_slow FEATURE_INDEX_1*FEATURE_SIZE
+ 
+ 
+ # if defined (_LIBC) && !IS_IN (nonlib)
+@@ -277,6 +281,8 @@ extern const struct cpu_features *__get_cpu_features (void)
+ # define index_arch_Prefer_No_VZEROUPPER FEATURE_INDEX_1
+ # define index_arch_Fast_Unaligned_Copy	FEATURE_INDEX_1
+ # define index_arch_Prefer_ERMS		FEATURE_INDEX_1
++# define index_arch_Use_dl_runtime_resolve_opt FEATURE_INDEX_1
++# define index_arch_Use_dl_runtime_resolve_slow FEATURE_INDEX_1
+ 
+ #endif	/* !__ASSEMBLER__ */
+ 
+diff --git a/sysdeps/x86_64/dl-machine.h b/sysdeps/x86_64/dl-machine.h
+index ed0c1a8..c0f0fa1 100644
+--- a/sysdeps/x86_64/dl-machine.h
++++ b/sysdeps/x86_64/dl-machine.h
+@@ -68,7 +68,10 @@ elf_machine_runtime_setup (struct link_map *l, int lazy, int profile)
+   Elf64_Addr *got;
+   extern void _dl_runtime_resolve_sse (ElfW(Word)) attribute_hidden;
+   extern void _dl_runtime_resolve_avx (ElfW(Word)) attribute_hidden;
++  extern void _dl_runtime_resolve_avx_slow (ElfW(Word)) attribute_hidden;
++  extern void _dl_runtime_resolve_avx_opt (ElfW(Word)) attribute_hidden;
+   extern void _dl_runtime_resolve_avx512 (ElfW(Word)) attribute_hidden;
++  extern void _dl_runtime_resolve_avx512_opt (ElfW(Word)) attribute_hidden;
+   extern void _dl_runtime_profile_sse (ElfW(Word)) attribute_hidden;
+   extern void _dl_runtime_profile_avx (ElfW(Word)) attribute_hidden;
+   extern void _dl_runtime_profile_avx512 (ElfW(Word)) attribute_hidden;
+@@ -118,9 +121,26 @@ elf_machine_runtime_setup (struct link_map *l, int lazy, int profile)
+ 	     indicated by the offset on the stack, and then jump to
+ 	     the resolved address.  */
+ 	  if (HAS_ARCH_FEATURE (AVX512F_Usable))
+-	    *(ElfW(Addr) *) (got + 2) = (ElfW(Addr)) &_dl_runtime_resolve_avx512;
++	    {
++	      if (HAS_ARCH_FEATURE (Use_dl_runtime_resolve_opt))
++		*(ElfW(Addr) *) (got + 2)
++		  = (ElfW(Addr)) &_dl_runtime_resolve_avx512_opt;
++	      else
++		*(ElfW(Addr) *) (got + 2)
++		  = (ElfW(Addr)) &_dl_runtime_resolve_avx512;
++	    }
+ 	  else if (HAS_ARCH_FEATURE (AVX_Usable))
+-	    *(ElfW(Addr) *) (got + 2) = (ElfW(Addr)) &_dl_runtime_resolve_avx;
++	    {
++	      if (HAS_ARCH_FEATURE (Use_dl_runtime_resolve_opt))
++		*(ElfW(Addr) *) (got + 2)
++		  = (ElfW(Addr)) &_dl_runtime_resolve_avx_opt;
++	      else if (HAS_ARCH_FEATURE (Use_dl_runtime_resolve_slow))
++		*(ElfW(Addr) *) (got + 2)
++		  = (ElfW(Addr)) &_dl_runtime_resolve_avx_slow;
++	      else
++		*(ElfW(Addr) *) (got + 2)
++		  = (ElfW(Addr)) &_dl_runtime_resolve_avx;
++	    }
+ 	  else
+ 	    *(ElfW(Addr) *) (got + 2) = (ElfW(Addr)) &_dl_runtime_resolve_sse;
+ 	}
+diff --git a/sysdeps/x86_64/dl-trampoline.S b/sysdeps/x86_64/dl-trampoline.S
+index 12f1a5c..39f595e 100644
+--- a/sysdeps/x86_64/dl-trampoline.S
++++ b/sysdeps/x86_64/dl-trampoline.S
+@@ -18,6 +18,7 @@
+ 
+ #include <config.h>
+ #include <sysdep.h>
++#include <cpu-features.h>
+ #include <link-defines.h>
+ 
+ #ifndef DL_STACK_ALIGNMENT
+@@ -86,9 +87,11 @@
+ #endif
+ #define VEC(i)			zmm##i
+ #define _dl_runtime_resolve	_dl_runtime_resolve_avx512
++#define _dl_runtime_resolve_opt	_dl_runtime_resolve_avx512_opt
+ #define _dl_runtime_profile	_dl_runtime_profile_avx512
+ #include "dl-trampoline.h"
+ #undef _dl_runtime_resolve
++#undef _dl_runtime_resolve_opt
+ #undef _dl_runtime_profile
+ #undef VEC
+ #undef VMOV
+@@ -104,9 +107,11 @@
+ #endif
+ #define VEC(i)			ymm##i
+ #define _dl_runtime_resolve	_dl_runtime_resolve_avx
++#define _dl_runtime_resolve_opt	_dl_runtime_resolve_avx_opt
+ #define _dl_runtime_profile	_dl_runtime_profile_avx
+ #include "dl-trampoline.h"
+ #undef _dl_runtime_resolve
++#undef _dl_runtime_resolve_opt
+ #undef _dl_runtime_profile
+ #undef VEC
+ #undef VMOV
+@@ -126,3 +131,18 @@
+ #define _dl_runtime_profile	_dl_runtime_profile_sse
+ #undef RESTORE_AVX
+ #include "dl-trampoline.h"
++#undef _dl_runtime_resolve
++#undef _dl_runtime_profile
++#undef VMOV
++#undef VMOVA
++
++/* Used by _dl_runtime_resolve_avx_opt/_dl_runtime_resolve_avx512_opt
++   to preserve the full vector registers with zero upper bits.  */
++#define VMOVA			vmovdqa
++#if DL_RUNTIME_RESOLVE_REALIGN_STACK || VEC_SIZE <= DL_STACK_ALIGNMENT
++# define VMOV			vmovdqa
++#else
++# define VMOV			vmovdqu
++#endif
++#define _dl_runtime_resolve	_dl_runtime_resolve_sse_vex
++#include "dl-trampoline.h"
+diff --git a/sysdeps/x86_64/dl-trampoline.h b/sysdeps/x86_64/dl-trampoline.h
+index b90836a..abe4471 100644
+--- a/sysdeps/x86_64/dl-trampoline.h
++++ b/sysdeps/x86_64/dl-trampoline.h
+@@ -50,6 +50,105 @@
+ #endif
+ 
+ 	.text
++#ifdef _dl_runtime_resolve_opt
++/* Use the smallest vector registers to preserve the full YMM/ZMM
++   registers to avoid SSE transition penalty.  */
++
++# if VEC_SIZE == 32
++/* Check if the upper 128 bits in %ymm0 - %ymm7 registers are non-zero
++   and preserve %xmm0 - %xmm7 registers with the zero upper bits.  Since
++   there is no SSE transition penalty on AVX512 processors which don't
++   support XGETBV with ECX == 1, _dl_runtime_resolve_avx512_slow isn't
++   provided.   */
++	.globl _dl_runtime_resolve_avx_slow
++	.hidden _dl_runtime_resolve_avx_slow
++	.type _dl_runtime_resolve_avx_slow, @function
++	.align 16
++_dl_runtime_resolve_avx_slow:
++	cfi_startproc
++	cfi_adjust_cfa_offset(16) # Incorporate PLT
++	vorpd %ymm0, %ymm1, %ymm8
++	vorpd %ymm2, %ymm3, %ymm9
++	vorpd %ymm4, %ymm5, %ymm10
++	vorpd %ymm6, %ymm7, %ymm11
++	vorpd %ymm8, %ymm9, %ymm9
++	vorpd %ymm10, %ymm11, %ymm10
++	vpcmpeqd %xmm8, %xmm8, %xmm8
++	vorpd %ymm9, %ymm10, %ymm10
++	vptest %ymm10, %ymm8
++	# Preserve %ymm0 - %ymm7 registers if the upper 128 bits of any
++	# %ymm0 - %ymm7 registers aren't zero.
++	PRESERVE_BND_REGS_PREFIX
++	jnc _dl_runtime_resolve_avx
++	# Use vzeroupper to avoid SSE transition penalty.
++	vzeroupper
++	# Preserve %xmm0 - %xmm7 registers with the zero upper 128 bits
++	# when the upper 128 bits of %ymm0 - %ymm7 registers are zero.
++	PRESERVE_BND_REGS_PREFIX
++	jmp _dl_runtime_resolve_sse_vex
++	cfi_adjust_cfa_offset(-16) # Restore PLT adjustment
++	cfi_endproc
++	.size _dl_runtime_resolve_avx_slow, .-_dl_runtime_resolve_avx_slow
++# endif
++
++/* Use XGETBV with ECX == 1 to check which bits in vector registers are
++   non-zero and only preserve the non-zero lower bits with zero upper
++   bits.  */
++	.globl _dl_runtime_resolve_opt
++	.hidden _dl_runtime_resolve_opt
++	.type _dl_runtime_resolve_opt, @function
++	.align 16
++_dl_runtime_resolve_opt:
++	cfi_startproc
++	cfi_adjust_cfa_offset(16) # Incorporate PLT
++	pushq %rax
++	cfi_adjust_cfa_offset(8)
++	cfi_rel_offset(%rax, 0)
++	pushq %rcx
++	cfi_adjust_cfa_offset(8)
++	cfi_rel_offset(%rcx, 0)
++	pushq %rdx
++	cfi_adjust_cfa_offset(8)
++	cfi_rel_offset(%rdx, 0)
++	movl $1, %ecx
++	xgetbv
++	movl %eax, %r11d
++	popq %rdx
++	cfi_adjust_cfa_offset(-8)
++	cfi_restore (%rdx)
++	popq %rcx
++	cfi_adjust_cfa_offset(-8)
++	cfi_restore (%rcx)
++	popq %rax
++	cfi_adjust_cfa_offset(-8)
++	cfi_restore (%rax)
++# if VEC_SIZE == 32
++	# For YMM registers, check if YMM state is in use.
++	andl $bit_YMM_state, %r11d
++	# Preserve %xmm0 - %xmm7 registers with the zero upper 128 bits if
++	# YMM state isn't in use.
++	PRESERVE_BND_REGS_PREFIX
++	jz _dl_runtime_resolve_sse_vex
++# elif VEC_SIZE == 64
++	# For ZMM registers, check if YMM state and ZMM state are in
++	# use.
++	andl $(bit_YMM_state | bit_ZMM0_15_state), %r11d
++	cmpl $bit_YMM_state, %r11d
++	# Preserve %xmm0 - %xmm7 registers with the zero upper 384 bits if
++	# neither YMM state nor ZMM state are in use.
++	PRESERVE_BND_REGS_PREFIX
++	jl _dl_runtime_resolve_sse_vex
++	# Preserve %ymm0 - %ymm7 registers with the zero upper 256 bits if
++	# ZMM state isn't in use.
++	PRESERVE_BND_REGS_PREFIX
++	je _dl_runtime_resolve_avx
++# else
++#  error Unsupported VEC_SIZE!
++# endif
++	cfi_adjust_cfa_offset(-16) # Restore PLT adjustment
++	cfi_endproc
++	.size _dl_runtime_resolve_opt, .-_dl_runtime_resolve_opt
++#endif
+ 	.globl _dl_runtime_resolve
+ 	.hidden _dl_runtime_resolve
+ 	.type _dl_runtime_resolve, @function
+@@ -162,7 +261,10 @@ _dl_runtime_resolve:
+ 	.size _dl_runtime_resolve, .-_dl_runtime_resolve
+ 
+ 
+-#ifndef PROF
++/* To preserve %xmm0 - %xmm7 registers, dl-trampoline.h is included
++   twice, for _dl_runtime_resolve_sse and _dl_runtime_resolve_sse_vex.
++   But we don't need another _dl_runtime_profile for XMM registers.  */
++#if !defined PROF && defined _dl_runtime_profile
+ # if (LR_VECTOR_OFFSET % VEC_SIZE) != 0
+ #  error LR_VECTOR_OFFSET must be multples of VEC_SIZE
+ # endif
+-- 
+1.7.9.5
+

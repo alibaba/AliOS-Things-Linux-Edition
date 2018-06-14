@@ -1,0 +1,252 @@
+From 7f3d421111fce69d73c392b2cacc4a4bc3ff3c24 Mon Sep 17 00:00:00 2001
+From: Lans Zhang <jia.zhang@windriver.com>
+Date: Wed, 12 Jul 2017 15:25:15 +0800
+Subject: [PATCH] efi-chainloader: implemented for 32-bit
+
+Upstream-Status: Pending
+
+For 32-bit build, the 64-bit pointer should be replaced by grub_addr_t
+which is compatible between 32-bit and 64-bit build.
+
+In addition, the functions efi_shim_exit and efi_call_foo should be available
+for 32-bit build.
+
+Signed-off-by: Lans Zhang <jia.zhang@windriver.com>
+---
+ grub-core/Makefile.core.def        |  1 +
+ grub-core/kern/i386/efi/callwrap.S | 50 ++++++++++++++++++++++++++++++++++++++
+ grub-core/loader/efi/chainloader.c | 30 +++++++++++------------
+ include/grub/efi/api.h             |  8 +++---
+ include/grub/efi/shim.h            |  2 +-
+ 5 files changed, 71 insertions(+), 20 deletions(-)
+ create mode 100644 grub-core/kern/i386/efi/callwrap.S
+
+diff --git a/grub-core/Makefile.core.def b/grub-core/Makefile.core.def
+index cc0b337..a82c1f3 100644
+--- a/grub-core/Makefile.core.def
++++ b/grub-core/Makefile.core.def
+@@ -186,6 +186,7 @@ kernel = {
+   i386_coreboot = kern/i386/tsc_pmtimer.c;
+   x86_64_efi = kern/i386/tsc_pmtimer.c;
+ 
++  i386_efi = kern/i386/efi/callwrap.S;
+   i386_efi = kern/i386/efi/init.c;
+   i386_efi = bus/pci.c;
+ 
+diff --git a/grub-core/kern/i386/efi/callwrap.S b/grub-core/kern/i386/efi/callwrap.S
+new file mode 100644
+index 0000000..c683444
+--- /dev/null
++++ b/grub-core/kern/i386/efi/callwrap.S
+@@ -0,0 +1,50 @@
++/* callwrap.S - wrapper for i386 efi calls */
++/*
++ *  GRUB  --  GRand Unified Bootloader
++ *  Copyright (C) 2006,2007,2009  Free Software Foundation, Inc.
++ *
++ *  GRUB is free software: you can redistribute it and/or modify
++ *  it under the terms of the GNU General Public License as published by
++ *  the Free Software Foundation, either version 3 of the License, or
++ *  (at your option) any later version.
++ *
++ *  GRUB is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ *  GNU General Public License for more details.
++ *
++ *  You should have received a copy of the GNU General Public License
++ *  along with GRUB.  If not, see <http://www.gnu.org/licenses/>.
++ */
++
++#include <config.h>
++#include <grub/symbol.h>
++
++        .file   "callwrap.S"
++        .text
++
++FUNCTION(efi_call_foo)
++	movl 12(%esp), %eax
++	movl 8(%esp), %edx
++	movl 4(%esp), %ecx
++	pushl %ebx
++	pushl %esi
++	pushl %edi
++	pushl %ebp
++	movl %esp, saved_sp
++	subl $40, %esp
++	pushl %eax
++	pushl %edx
++	call *%ecx
++
++FUNCTION(efi_shim_exit)
++	addl $48, %esp
++	movl saved_sp, %esp
++	popl %ebp
++	popl %edi
++	popl %esi
++	popl %ebx
++	ret
++
++	.data
++saved_sp:	.long	0
+diff --git a/grub-core/loader/efi/chainloader.c b/grub-core/loader/efi/chainloader.c
+index 0030268..2b5e464 100644
+--- a/grub-core/loader/efi/chainloader.c
++++ b/grub-core/loader/efi/chainloader.c
+@@ -153,7 +153,7 @@ grub_shim_image_is_loadable (union grub_shim_optional_header_union *pe_hdr)
+ /*
+  * Perform basic bounds checking of the intra-image pointers
+  */
+-static grub_efi_uint64_t
++static grub_addr_t
+ grub_shim_image_address (grub_addr_t image, grub_uint32_t size, grub_uint32_t addr)
+ {
+   if (addr > size)
+@@ -212,12 +212,12 @@ grub_shim_relocate_coff (struct grub_shim_pe_coff_loader_image_context *context,
+    * yield the next entry in the array.
+    */
+   reloc_base = (struct grub_image_base_relocation *)
+-               grub_shim_image_address ((grub_efi_uint64_t)orig, size,
++               grub_shim_image_address ((grub_addr_t)orig, size,
+ 					section->raw_data_offset);
+   /* reloc_base_end is the address of the first entry /past/ the
+    * table.  */
+   reloc_base_end = (struct grub_image_base_relocation *)
+-                   grub_shim_image_address ((grub_efi_uint64_t)orig, size,
++                   grub_shim_image_address ((grub_addr_t)orig, size,
+ 					    section->raw_data_offset
+ 					    + section->virtual_size - 1);
+ 
+@@ -258,7 +258,7 @@ grub_shim_relocate_coff (struct grub_shim_pe_coff_loader_image_context *context,
+           }
+ 
+         fixup_base = (grub_uint8_t *)
+-		     grub_shim_image_address ((grub_efi_uint64_t)data,
++		     grub_shim_image_address ((grub_addr_t)data,
+ 					      size,
+ 					      reloc_base->virtual_address);
+         if (!fixup_base)
+@@ -337,12 +337,12 @@ grub_shim_relocate_coff (struct grub_shim_pe_coff_loader_image_context *context,
+  * Read the binary header and grab appropriate information from it
+  */
+ static grub_err_t
+-grub_shim_read_header(grub_efi_physical_address_t data, grub_uint32_t datasize,
++grub_shim_read_header(grub_addr_t data, grub_uint32_t datasize,
+ 		      struct grub_shim_pe_coff_loader_image_context *context)
+ {
+   struct grub_dos_header *dos_hdr = (struct grub_dos_header *)data;
+   union grub_shim_optional_header_union *pe_hdr = (union grub_shim_optional_header_union *)data;
+-  grub_uint64_t header_without_data_dir, section_header_offset, opt_hdr_size;
++  grub_efi_uintn_t header_without_data_dir, section_header_offset, opt_hdr_size;
+ 
+   if (datasize < sizeof (pe_hdr->pe32))
+     {
+@@ -397,7 +397,7 @@ grub_shim_read_header(grub_efi_physical_address_t data, grub_uint32_t datasize,
+                           + sizeof (grub_efi_uint32_t)
+                           + sizeof (struct grub_pe32_coff_header)
+                           + pe_hdr->pe32.file_hdr.optional_header_size;
+-  if (((grub_efi_uint32_t)context->image_size - section_header_offset)
++  if ((context->image_size - section_header_offset)
+       / sizeof (struct grub_pe32_section_table)
+       <= context->num_sections)
+     {
+@@ -534,7 +534,7 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+     }
+ 
+   /* TODO: do we need the double cast? */
+-  grub_memcpy ((void *) ((grub_efi_physical_address_t) shim_buffer),
++  grub_memcpy ((void *) ((grub_addr_t) shim_buffer),
+                (void *) ((grub_addr_t) addr), context->header_size);
+ 
+   reloc_base = (grub_int8_t *) grub_shim_image_address (shim_buffer, size,
+@@ -557,10 +557,10 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+ 	  sect_size = section->raw_data_size;
+ 
+ 	base = (grub_int8_t *)
+-	       grub_shim_image_address (shim_buffer, context->image_size,
++	       grub_shim_image_address ((grub_addr_t) shim_buffer, context->image_size,
+ 					section->virtual_address);
+ 	end = (grub_int8_t *)
+-	      grub_shim_image_address (shim_buffer, context->image_size,
++	      grub_shim_image_address ((grub_addr_t) shim_buffer, context->image_size,
+ 				       section->virtual_address
+ 				       + sect_size - 1);
+ 
+@@ -623,7 +623,7 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+   if (context->reloc_dir->size && reloc_section)
+     {
+       status = grub_shim_relocate_coff (context, reloc_section,
+-					(void *) addr, (void *) shim_buffer);
++					(void *) addr, (void *) ((grub_addr_t) shim_buffer));
+       if (status != GRUB_ERR_NONE)
+ 	{
+ 	  grub_printf("Relocation failed: [%u]\n", status);
+@@ -631,7 +631,7 @@ grub_shim_load_image(grub_addr_t addr, grub_ssize_t size,
+ 	  goto fail;
+ 	}
+     }
+-  shim_entry_point = (void *)grub_shim_image_address (shim_buffer,
++  shim_entry_point = (void *)grub_shim_image_address ((grub_addr_t) shim_buffer,
+ 						      context->image_size,
+ 						      context->entry_point);
+   if (!shim_entry_point)
+@@ -700,8 +700,8 @@ grub_chainloader_boot (void)
+       saved_exit = grub_efi_system_table->boot_services->exit;
+       grub_efi_system_table->boot_services->exit = efi_shim_exit;
+       status = efi_call_foo(shim_entry_point,
+-	                    (grub_efi_uint64_t)grub_efi_image_handle,
+-	                    (grub_efi_uint64_t)grub_efi_system_table);
++	                    grub_efi_image_handle,
++	                    grub_efi_system_table);
+       grub_efi_system_table->boot_services->exit = saved_exit;
+ 
+       loaded_image = grub_efi_get_loaded_image (grub_efi_image_handle);
+@@ -1013,7 +1013,7 @@ grub_cmd_chainloader (grub_command_t cmd __attribute__ ((unused)),
+   if (shim_used)
+     {
+       grub_memcpy(&shim_li_bak, loaded_image, sizeof(shim_li_bak));
+-      loaded_image->image_base = (void *)shim_buffer;
++      loaded_image->image_base = (void *)(grub_addr_t) shim_buffer;
+       loaded_image->image_size = context.image_size;
+     }
+   else
+diff --git a/include/grub/efi/api.h b/include/grub/efi/api.h
+index af1c603..89f0404 100644
+--- a/include/grub/efi/api.h
++++ b/include/grub/efi/api.h
+@@ -1731,10 +1731,6 @@ typedef struct grub_efi_block_io grub_efi_block_io_t;
+ 
+ grub_uint64_t EXPORT_FUNC(efi_wrap_0) (void *func);
+ grub_uint64_t EXPORT_FUNC(efi_wrap_1) (void *func, grub_uint64_t arg1);
+-grub_efi_status_t EXPORT_FUNC(efi_shim_exit) (grub_efi_handle_t handle, grub_efi_status_t exit_status,
+-					      grub_efi_uintn_t exit_data_size, grub_efi_char16_t *exit_data) __attribute__((noreturn));
+-grub_uint64_t EXPORT_FUNC(efi_call_foo) (void *func, grub_uint64_t arg1,
+-					 grub_uint64_t arg2);
+ grub_uint64_t EXPORT_FUNC(efi_wrap_2) (void *func, grub_uint64_t arg1,
+                                        grub_uint64_t arg2);
+ grub_uint64_t EXPORT_FUNC(efi_wrap_3) (void *func, grub_uint64_t arg1,
+@@ -1761,4 +1757,8 @@ grub_uint64_t EXPORT_FUNC(efi_wrap_10) (void *func, grub_uint64_t arg1,
+                                         grub_uint64_t arg10);
+ #endif
+ 
++grub_efi_status_t EXPORT_FUNC(efi_shim_exit) (grub_efi_handle_t handle, grub_efi_status_t exit_status,
++                                              grub_efi_uintn_t exit_data_size, grub_efi_char16_t *exit_data) __attribute__((noreturn));
++grub_efi_status_t EXPORT_FUNC(efi_call_foo) (void *func, void *arg1, void *arg2);
++
+ #endif /* ! GRUB_EFI_API_HEADER */
+diff --git a/include/grub/efi/shim.h b/include/grub/efi/shim.h
+index 4b92a00..9fac90b 100644
+--- a/include/grub/efi/shim.h
++++ b/include/grub/efi/shim.h
+@@ -60,7 +60,7 @@ struct grub_image_base_relocation
+ 
+ struct grub_shim_pe_coff_loader_image_context {
+ 	grub_efi_uint64_t image_address;
+-	grub_efi_uint64_t image_size;
++	grub_efi_uintn_t image_size;
+ 	grub_efi_uint64_t entry_point;
+ 	grub_efi_uintn_t header_size;
+ 	grub_efi_uint16_t image_type;
+-- 
+2.7.5
+
