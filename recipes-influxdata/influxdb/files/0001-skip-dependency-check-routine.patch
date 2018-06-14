@@ -1,0 +1,30 @@
+From b308dca266b9920aa7326ce501fcdc6faeddc369 Mon Sep 17 00:00:00 2001
+From: "Yang, Xiao" <edward.yangx@foxmail.com>
+Date: Mon, 21 May 2018 19:49:28 +0800
+Subject: [PATCH] skip dependency check routine
+
+Signed-off-by: Yang, Xiao <edward.yangx@foxmail.com>
+---
+ build.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/build.py b/build.py
+index 847751e..d38c53f 100755
+--- a/build.py
++++ b/build.py
+@@ -165,10 +165,10 @@ def go_get(branch, update=False, no_uncommitted=False):
+     if not check_path_for("gdm"):
+         logging.info("Downloading `gdm`...")
+         get_command = "go get github.com/sparrc/gdm"
+-        run(get_command)
++        #run(get_command)
+     logging.info("Retrieving dependencies with `gdm`...")
+     sys.stdout.flush()
+-    run("{}/bin/gdm restore -v".format(os.environ.get("GOPATH")))
++    #run("{}/bin/gdm restore -v".format(os.environ.get("GOPATH")))
+     return True
+ 
+ def run_tests(race, parallel, timeout, no_vet, junit=False):
+-- 
+2.7.4
+
