@@ -1,0 +1,46 @@
+diff --git a/board/linuxhost/linuxhost.mk b/board/linuxhost/linuxhost.mk
+index 60e7061..dee9317 100644
+--- a/board/linuxhost/linuxhost.mk
++++ b/board/linuxhost/linuxhost.mk
+@@ -26,9 +26,9 @@ CONFIG_SYSINFO_DEVICE_NAME := LINUXHOST
+ GLOBAL_CFLAGS += -DSYSINFO_PRODUCT_MODEL=\"$(CONFIG_SYSINFO_PRODUCT_MODEL)\"
+ GLOBAL_CFLAGS += -DSYSINFO_DEVICE_NAME=\"$(CONFIG_SYSINFO_DEVICE_NAME)\"
+ 
+-GLOBAL_ASMFLAGS += -m32
+-GLOBAL_CFLAGS += -m32  -std=gnu99
+-GLOBAL_LDFLAGS += -m32
++GLOBAL_ASMFLAGS += -marm
++GLOBAL_CFLAGS += -marm  -std=gnu99 -Wno-error=format-truncation
++GLOBAL_LDFLAGS += -marm
+ 
+ GLOBAL_INCLUDES += .
+ 
+diff --git a/example/linkkitapp/linkkit-example.c b/example/linkkitapp/linkkit-example.c
+index ebefd96..092fd87 100755
+--- a/example/linkkitapp/linkkit-example.c
++++ b/example/linkkitapp/linkkit-example.c
+@@ -83,7 +83,7 @@ static void cloud_service_event(input_event_t *event, void *priv_data) {
+ 
+     if (event->code == CODE_YUNIO_ON_CONNECTED) {
+         LOG("user sub and pub here");
+-        awss_report_cloud();
++        //awss_report_cloud();
+         return;
+     }
+ 
+@@ -103,13 +103,13 @@ void do_awss_active()
+ {
+     LOG("do_awss_active %d\n", awss_running);
+     awss_running = 1;
+-    awss_config_press();
++    //awss_config_press();
+ }
+ 
+ static void do_awss_reset()
+ {
+     if(linkkit_started) {
+-	aos_task_new("reset", awss_report_reset, NULL, 2048);
++	//aos_task_new("reset", awss_report_reset, NULL, 2048);
+     }
+     netmgr_clear_ap_config();
+     LOG("SSID cleared. Please reboot the system.\n");
