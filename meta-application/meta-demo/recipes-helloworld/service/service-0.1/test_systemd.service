@@ -1,0 +1,13 @@
+[Unit]
+Description=helloworld test
+Documentation=none
+
+[Service]
+ExecStart=/home/root/test_systemd.sh
+Type=simple
+KillMode=process
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
