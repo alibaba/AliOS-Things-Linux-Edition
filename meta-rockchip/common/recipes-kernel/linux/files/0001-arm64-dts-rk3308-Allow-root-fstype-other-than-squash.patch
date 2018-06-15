@@ -1,0 +1,27 @@
+From 84dc9e8364fbe9890b7449a28ffb4a35623b3510 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 22 May 2018 10:40:35 +0800
+Subject: [PATCH] arm64: dts: rk3308: Allow root fstype other than squashfs
+
+Change-Id: I8cae270740943a6a9fa54363b67389aec383550e
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi b/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi
+index d54f53907e84..1c7ef0796bb3 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi
+@@ -11,7 +11,7 @@
+ 	compatible = "rockchip,rk3308-evb-v11", "rockchip,rk3308";
+ 
+ 	chosen {
+-		bootargs = "earlycon=uart8250,mmio32,0xff0c0000 swiotlb=1 console=ttyFIQ0 root=PARTUUID=614e0000-0000 rootfstype=squashfs rootwait";
++		bootargs = "earlycon=uart8250,mmio32,0xff0c0000 swiotlb=1 console=ttyFIQ0 root=PARTUUID=614e0000-0000 rootwait";
+ 	};
+ 
+ 	adc-keys {
+-- 
+2.11.0
+

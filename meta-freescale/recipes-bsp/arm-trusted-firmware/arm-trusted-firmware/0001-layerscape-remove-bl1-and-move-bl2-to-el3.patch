@@ -1,0 +1,580 @@
+From 9c6d00f79f2bdfac7064dcf4ae1d0d8dab845162 Mon Sep 17 00:00:00 2001
+From: Jiafei Pan <Jiafei.Pan@nxp.com>
+Date: Wed, 21 Mar 2018 07:57:31 +0000
+Subject: [PATCH 1/8] layerscape: remove bl1 and move bl2 to el3
+
+Remove BL1 and BL2 runs in EL3. Bootrom on chip loads BL2 directly.
+
+Signed-off-by: Jiafei Pan <Jiafei.Pan@nxp.com>
+---
+ docs/plat/ls1043a.rst                              |   10 +-
+ .../layerscape/board/ls1043/include/platform_def.h |   50 ++----------
+ plat/layerscape/board/ls1043/ls1043_bl1_setup.c    |   56 ------------
+ plat/layerscape/board/ls1043/ls1043_bl2_setup.c    |   32 ++++++-
+ plat/layerscape/board/ls1043/platform.mk           |   13 +--
+ plat/layerscape/common/aarch64/ls_helpers.S        |   11 ---
+ plat/layerscape/common/include/plat_ls.h           |    6 +-
+ plat/layerscape/common/ls_bl1_setup.c              |   89 --------------------
+ plat/layerscape/common/ls_bl2_setup.c              |   23 +++--
+ plat/layerscape/common/ls_bl31_setup.c             |    4 +-
+ plat/layerscape/common/ls_common.c                 |   10 --
+ plat/layerscape/common/ls_common.mk                |   11 +--
+ 12 files changed, 61 insertions(+), 254 deletions(-)
+ delete mode 100644 plat/layerscape/board/ls1043/ls1043_bl1_setup.c
+ delete mode 100644 plat/layerscape/common/ls_bl1_setup.c
+
+diff --git a/docs/plat/ls1043a.rst b/docs/plat/ls1043a.rst
+index 0d604aa..5ce2810 100644
+--- a/docs/plat/ls1043a.rst
++++ b/docs/plat/ls1043a.rst
+@@ -39,8 +39,8 @@ Boot Sequence
+ =============
+ 
+ 
+-Bootrom --> TF-A BL1 --> TF-A BL2 --> TF-A BL1 --> TF-A BL31
+---> BL32(Tee OS) --> TF-A BL31 --> BL33(u-boot) --> Linux kernel
++Bootrom --> TF-A BL2 (el3)  --> TF-A BL31 --> BL32(Tee OS)
++	--> TF-A BL31 --> BL33(u-boot) --> Linux kernel
+ 
+ 
+ How to build
+@@ -55,11 +55,11 @@ Build Procedure
+ 
+ -  Build TF-A for Nor boot
+ 
+-   Build bl1:
++   Build bl2:
+ 
+    .. code:: shell
+ 
+-       CROSS_COMPILE=aarch64-linux-gnu- make PLAT=ls1043 bl1
++       CROSS_COMPILE=aarch64-linux-gnu- make PLAT=ls1043 bl2
+ 
+    Build fip:
+ 
+@@ -75,7 +75,7 @@ Deploy TF-A Images
+ 
+    .. code:: shell
+ 
+-       => tftp 82000000  bl1.bin
++       => tftp 82000000  bl2.bin
+        => pro off all;era 64100000 +$filesize;cp.b 82000000 64100000 $filesize
+ 
+        => tftp 82000000  fip.bin
+diff --git a/plat/layerscape/board/ls1043/include/platform_def.h b/plat/layerscape/board/ls1043/include/platform_def.h
+index 0e1cae6..5a3308f 100644
+--- a/plat/layerscape/board/ls1043/include/platform_def.h
++++ b/plat/layerscape/board/ls1043/include/platform_def.h
+@@ -12,7 +12,6 @@
+ #include <utils.h>
+ #include "ls_def.h"
+ 
+-#define FIRMWARE_WELCOME_STR_LS1043	"Welcome to LS1043 BL1 Phase\n"
+ #define FIRMWARE_WELCOME_STR_LS1043_BL2	"Welcome to LS1043 BL2 Phase\n"
+ #define FIRMWARE_WELCOME_STR_LS1043_BL31 "Welcome to LS1043 BL31 Phase\n"
+ #define FIRMWARE_WELCOME_STR_LS1043_BL32 "Welcome to LS1043 BL32 Phase, TSP\n"
+@@ -76,56 +75,25 @@
+ #define PLAT_LS_FIP_MAX_SIZE		0x4000000
+ 
+ /* Memory Layout */
+-
+-#define BL1_RO_BASE			PLAT_LS_TRUSTED_ROM_BASE
+-#define BL1_RO_LIMIT			(PLAT_LS_TRUSTED_ROM_BASE	\
++#define BL2_RO_BASE			PLAT_LS_TRUSTED_ROM_BASE
++#define BL2_RO_LIMIT			(PLAT_LS_TRUSTED_ROM_BASE	\
+ 					 + PLAT_LS_TRUSTED_ROM_SIZE)
+ #define PLAT_LS_FIP_BASE		0x60120000
+ 
+-#ifdef LS_BL2_IN_OCRAM
+-/* BL2 is in OCRAM */
+-#define PLAT_LS_MAX_BL1_RW_SIZE		(52 * 1024)		/* 52K */
+-#define PLAT_LS_MAX_BL31_SIZE		(64 * 1024)		/* 64K */
+-#define PLAT_LS_MAX_BL2_SIZE		(44 * 1024)		/* 44K */
+-/* Reserve memory in OCRAM for BL31 Text and ROData segment */
+-#define BL31_TEXT_RODATA_SIZE		(32 * 1024)		/* 32K */
+-#else /* LS_BL2_IN_OCRAM */
+-/* BL2 in DDR */
+-#define PLAT_LS_MAX_BL1_RW_SIZE		(64 * 1024)		/* 64K */
+ #define PLAT_LS_MAX_BL31_SIZE		(64 * 1024)		/* 64K */
+-#define PLAT_LS_MAX_BL2_SIZE		(1 * 1024 * 1024)	/* 1M */
+-#endif /* LS_BL2_IN_OCRAM */
++#define PLAT_LS_MAX_BL2_SIZE		(64 * 1024)		/* 64K */
++
+ /*
+  * Put BL31 at the start of OCRAM.
+  */
+ #define BL31_BASE			LS_SRAM_BASE
+ #define BL31_LIMIT			(LS_SRAM_BASE + PLAT_LS_MAX_BL31_SIZE)
+ 
+-#ifdef LS_BL2_IN_OCRAM
+ /*
+  * BL2 follow BL31 Text and ROData region.
+  */
+-#define BL2_BASE			(BL31_BASE + BL31_TEXT_RODATA_SIZE)
+-#define BL2_LIMIT			(BL2_BASE + PLAT_LS_MAX_BL2_SIZE)
+-
+-#else
+-/*
+- * BL2 in DDR memory.
+- */
+-#define BL2_BASE			LS_BL2_DDR_BASE
+-#define BL2_LIMIT			(BL2_BASE + PLAT_LS_MAX_BL2_SIZE)
+-
+-#endif
+-
+-/*
+- * Put BL1 RW at the top of the Trusted SRAM.
+- */
+-#ifdef LS_BL2_IN_OCRAM
+-#define BL1_RW_BASE			BL2_LIMIT
+-#else
+-#define BL1_RW_BASE			BL31_LIMIT
+-#endif
+-#define BL1_RW_LIMIT			LS_SRAM_LIMIT
++#define BL2_RW_BASE			BL31_LIMIT
++#define BL2_RW_LIMIT			LS_SRAM_LIMIT
+ 
+ /* Put BL32 in secure memory */
+ #define BL32_BASE		LS_SECURE_DRAM_BASE
+@@ -188,11 +156,7 @@
+ #define CONFIG_SYS_FSL_CSU_ADDR		(CONFIG_SYS_IMMR + 0x00510000)
+ 
+ /* Size of cacheable stacks */
+-#if defined(IMAGE_BL1)
+-#define PLATFORM_STACK_SIZE		0x440
+-#define MAX_MMAP_REGIONS		6
+-#define MAX_XLAT_TABLES			4
+-#elif defined(IMAGE_BL2)
++#if defined(IMAGE_BL2)
+ #define PLATFORM_STACK_SIZE		0x400
+ #define MAX_MMAP_REGIONS		8
+ #define MAX_XLAT_TABLES			6
+diff --git a/plat/layerscape/board/ls1043/ls1043_bl1_setup.c b/plat/layerscape/board/ls1043/ls1043_bl1_setup.c
+deleted file mode 100644
+index e82a1fb..0000000
+--- a/plat/layerscape/board/ls1043/ls1043_bl1_setup.c
++++ /dev/null
+@@ -1,56 +0,0 @@
+-/*
+- * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
+- *
+- * SPDX-License-Identifier: BSD-3-Clause
+- */
+-
+-#include <cci.h>
+-#include <debug.h>
+-#include <mmio.h>
+-#include "plat_ls.h"
+-
+-static const int cci_map[] = {
+-	PLAT_LS1043_CCI_CLUSTER0_SL_IFACE_IX
+-};
+-
+-void bl1_platform_setup(void)
+-{
+-	NOTICE(FIRMWARE_WELCOME_STR_LS1043);
+-
+-	ls_bl1_platform_setup();
+-
+-	/*
+-	 * Initialize system level generic timer for Layerscape Socs.
+-	 */
+-	ls_delay_timer_init();
+-
+-	/* TODO: remove these DDR code */
+-	VERBOSE("CS0_BNDS = %x\n", mmio_read_32(0x1080000 + 0x000));
+-	mmio_write_32(0x1080000 + 0x000, 0x7f000000);
+-	VERBOSE("CS0_BNDS = %x\n", mmio_read_32(0x1080000 + 0x000));
+-}
+-
+-/*******************************************************************************
+- * Perform any BL1 specific platform actions.
+- ******************************************************************************/
+-void bl1_early_platform_setup(void)
+-{
+-	ls_bl1_early_platform_setup();
+-
+-	/*
+-	 * Initialize Interconnect for this cluster during cold boot.
+-	 * No need for locks as no other CPU is active.
+-	 */
+-	cci_init(PLAT_LS1043_CCI_BASE, cci_map, ARRAY_SIZE(cci_map));
+-
+-	/*
+-	 * Enable coherency in Interconnect for the primary CPU's cluster.
+-	 */
+-	cci_enable_snoop_dvm_reqs(MPIDR_AFFLVL1_VAL(read_mpidr()));
+-
+-}
+-
+-unsigned int bl1_plat_get_next_image_id(void)
+-{
+-	return BL2_IMAGE_ID;
+-}
+diff --git a/plat/layerscape/board/ls1043/ls1043_bl2_setup.c b/plat/layerscape/board/ls1043/ls1043_bl2_setup.c
+index b529aa5..fba9f19 100644
+--- a/plat/layerscape/board/ls1043/ls1043_bl2_setup.c
++++ b/plat/layerscape/board/ls1043/ls1043_bl2_setup.c
+@@ -5,21 +5,43 @@
+  */
+ 
+ #include <mmio.h>
++#include <cci.h>
+ #include <debug.h>
+ #include "plat_ls.h"
+ 
+-void bl2_early_platform_setup2(u_register_t arg0, u_register_t arg1,
+-		u_register_t arg2, u_register_t arg3)
++static const int cci_map[] = {
++	PLAT_LS1043_CCI_CLUSTER0_SL_IFACE_IX
++};
++
++void bl2_platform_setup(void)
+ {
+-	ls_bl2_early_platform_setup((meminfo_t *)arg1);
++	NOTICE(FIRMWARE_WELCOME_STR_LS1043_BL2);
+ 
+ 	/*
+ 	 * Initialize system level generic timer for Layerscape Socs.
+ 	 */
+ 	ls_delay_timer_init();
++
++	/* TODO: remove these DDR code */
++	VERBOSE("CS0_BNDS = %llx\n", mmio_read_32(0x1080000 + 0x000));
++	mmio_write_32(0x1080000 + 0x000, 0x7f000000);
++	VERBOSE("CS0_BNDS = %llx\n", mmio_read_32(0x1080000 + 0x000));
+ }
+ 
+-void bl2_platform_setup(void)
++void bl2_el3_early_platform_setup(u_register_t arg1, u_register_t arg2,
++				  u_register_t arg3, u_register_t arg4)
+ {
+-	NOTICE(FIRMWARE_WELCOME_STR_LS1043_BL2);
++	ls_bl2_early_platform_setup();
++
++	/*
++	 * Initialize Interconnect for this cluster during cold boot.
++	 * No need for locks as no other CPU is active.
++	 */
++	cci_init(PLAT_LS1043_CCI_BASE, cci_map, ARRAY_SIZE(cci_map));
++
++	/*
++	 * Enable coherency in Interconnect for the primary CPU's cluster.
++	 */
++	cci_enable_snoop_dvm_reqs(MPIDR_AFFLVL1_VAL(read_mpidr()));
++
+ }
+diff --git a/plat/layerscape/board/ls1043/platform.mk b/plat/layerscape/board/ls1043/platform.mk
+index 163d25e..1008eb6 100644
+--- a/plat/layerscape/board/ls1043/platform.mk
++++ b/plat/layerscape/board/ls1043/platform.mk
+@@ -36,19 +36,12 @@ LS1043_CPU_LIBS			:=	lib/cpus/${ARCH}/aem_generic.S
+ 
+ LS1043_CPU_LIBS			+=	lib/cpus/aarch64/cortex_a53.S
+ 
+-BL1_SOURCES			+= 	plat/layerscape/board/ls1043/ls1043_bl1_setup.c		\
+-					plat/layerscape/board/ls1043/ls1043_err.c			\
+-					drivers/delay_timer/delay_timer.c \
+-
+-BL1_SOURCES     		+=	plat/layerscape/board/ls1043/${ARCH}/ls1043_helpers.S \
+-					${LS1043_CPU_LIBS}					\
+-					${LS1043_INTERCONNECT_SOURCES}		\
+-					$(LS1043_SECURITY_SOURCES)
+-
+-
+ BL2_SOURCES			+=	drivers/delay_timer/delay_timer.c		\
++					plat/layerscape/board/ls1043/${ARCH}/ls1043_helpers.S \
+ 					plat/layerscape/board/ls1043/ls1043_bl2_setup.c		\
+ 					plat/layerscape/board/ls1043/ls1043_err.c			\
++					${LS1043_CPU_LIBS}					\
++					${LS1043_INTERCONNECT_SOURCES}		\
+ 					${LS1043_SECURITY_SOURCES}
+ 
+ 
+diff --git a/plat/layerscape/common/aarch64/ls_helpers.S b/plat/layerscape/common/aarch64/ls_helpers.S
+index 7d71f48..a3cf626 100644
+--- a/plat/layerscape/common/aarch64/ls_helpers.S
++++ b/plat/layerscape/common/aarch64/ls_helpers.S
+@@ -65,22 +65,11 @@ endfunc plat_ls_calc_core_pos
+ 	 * -----------------------------------------------------
+ 	 */
+ func plat_crash_console_init
+-#if defined(IMAGE_BL1)
+-	/*
+-	 * BL1 code can possibly crash so early that the data segment is not yet
+-	 * accessible. Don't risk undefined behavior by trying to run the normal
+-	 * console framework. Platforms that want to debug BL1 will need to
+-	 * override this with custom functions that can run from registers only.
+-	 */
+-	mov	x0, #0
+-	ret
+-#else	/* IMAGE_BL1 */
+ 	mov	x3, x30
+ 	mov	x0, #CONSOLE_FLAG_CRASH
+ 	bl	console_switch_state
+ 	mov	x0, #1
+ 	ret	x3
+-#endif
+ endfunc plat_crash_console_init
+ 
+ 	/* -----------------------------------------------------
+diff --git a/plat/layerscape/common/include/plat_ls.h b/plat/layerscape/common/include/plat_ls.h
+index 9d5ec14..c0ce9d5 100644
+--- a/plat/layerscape/common/include/plat_ls.h
++++ b/plat/layerscape/common/include/plat_ls.h
+@@ -10,12 +10,8 @@
+ #include <sys/types.h>
+ #include <cpu_data.h>
+ 
+-/* BL1 utility functions */
+-void ls_bl1_platform_setup(void);
+-void ls_bl1_early_platform_setup(void);
+-
+ /* BL2 utility functions */
+-void ls_bl2_early_platform_setup(meminfo_t *mem_layout);
++void ls_bl2_early_platform_setup(void);
+ uint32_t ls_get_spsr_for_bl32_entry(void);
+ uint32_t ls_get_spsr_for_bl33_entry(void);
+ 
+diff --git a/plat/layerscape/common/ls_bl1_setup.c b/plat/layerscape/common/ls_bl1_setup.c
+deleted file mode 100644
+index 43f7450..0000000
+--- a/plat/layerscape/common/ls_bl1_setup.c
++++ /dev/null
+@@ -1,89 +0,0 @@
+-/*
+- * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
+- *
+- * SPDX-License-Identifier: BSD-3-Clause
+- */
+-
+-#include <debug.h>
+-#include "ls_16550.h"
+-#include "plat_ls.h"
+-#include "../../../bl1/bl1_private.h"
+-
+-/* Data structure which holds the extents of the trusted SRAM for BL1*/
+-static meminfo_t bl1_tzram_layout;
+-
+-meminfo_t *bl1_plat_sec_mem_layout(void)
+-{
+-	return &bl1_tzram_layout;
+-}
+-
+-/*******************************************************************************
+- * BL1 specific platform actions shared between ARM standard platforms.
+- ******************************************************************************/
+-void ls_bl1_early_platform_setup(void)
+-{
+-	static console_ls_16550_t console;
+-
+-#if !LS1043_DISABLE_TRUSTED_WDOG
+-	/* TODO: Enable watchdog */
+-
+-#endif
+-
+-	/* Initialize the console to provide early debug support */
+-	console_ls_16550_register(LS_TF_UART_BASE, LS_TF_UART_CLOCK,
+-			       LS_TF_UART_BAUDRATE, &console);
+-
+-	/* Allow BL1 to see the whole Trusted RAM */
+-	bl1_tzram_layout.total_base = LS_SRAM_BASE;
+-	bl1_tzram_layout.total_size = LS_SRAM_SIZE;
+-}
+-
+-/******************************************************************************
+- * Perform the very early platform specific architecture setup shared between
+- * ARM standard platforms. This only does basic initialization. Later
+- * architectural setup (bl1_arch_setup()) does not do anything platform
+- * specific.
+- *****************************************************************************/
+-void ls_bl1_plat_arch_setup(void)
+-{
+-	ls_setup_page_tables(bl1_tzram_layout.total_base,
+-			      bl1_tzram_layout.total_size,
+-			      BL_CODE_BASE,
+-			      BL1_CODE_END,
+-			      BL1_RO_DATA_BASE,
+-			      BL1_RO_DATA_END
+-#if USE_COHERENT_MEM
+-			      , BL_COHERENT_RAM_BASE,
+-			      BL_COHERENT_RAM_END
+-#endif
+-			     );
+-	VERBOSE("After setup the page tables\n");
+-#ifdef AARCH32
+-	enable_mmu_secure(0);
+-#else
+-	enable_mmu_el3(0);
+-#endif /* AARCH32 */
+-	VERBOSE("After MMU enabled\n");
+-}
+-
+-void bl1_plat_arch_setup(void)
+-{
+-	ls_bl1_plat_arch_setup();
+-}
+-
+-/*
+- * Perform the platform specific architecture setup shared between
+- * ARM standard platforms.
+- */
+-void ls_bl1_platform_setup(void)
+-{
+-	/* Initialise the IO layer and register platform IO devices */
+-	plat_ls_io_setup();
+-}
+-
+-void bl1_plat_prepare_exit(entry_point_info_t *ep_info)
+-{
+-#if !LS1043_DISABLE_TRUSTED_WDOG
+-	/*TODO: Disable watchdog before leaving BL1 */
+-#endif
+-}
+diff --git a/plat/layerscape/common/ls_bl2_setup.c b/plat/layerscape/common/ls_bl2_setup.c
+index 6e6ad6e..5eff997 100644
+--- a/plat/layerscape/common/ls_bl2_setup.c
++++ b/plat/layerscape/common/ls_bl2_setup.c
+@@ -10,16 +10,12 @@
+ #include "ls_16550.h"
+ #include "plat_ls.h"
+ #include "ls_def.h"
++#include "../../../bl2/bl2_private.h"
+ 
+ /* Data structure which holds the extents of the trusted SRAM for BL2 */
+ static meminfo_t bl2_tzram_layout __aligned(CACHE_WRITEBACK_GRANULE);
+ 
+-/*******************************************************************************
+- * BL1 has passed the extents of the trusted SRAM that should be visible to BL2
+- * in x0. This memory layout is sitting at the base of the free trusted SRAM.
+- * Copy it to a safe location before its reclaimed by later BL2 functionality.
+- ******************************************************************************/
+-void ls_bl2_early_platform_setup(meminfo_t *mem_layout)
++void ls_bl2_early_platform_setup(void)
+ {
+ 	static console_ls_16550_t console;
+ 
+@@ -27,8 +23,9 @@ void ls_bl2_early_platform_setup(meminfo_t *mem_layout)
+ 	console_ls_16550_register(LS_TF_UART_BASE, LS_TF_UART_CLOCK,
+ 			       LS_TF_UART_BAUDRATE, &console);
+ 
+-	/* Setup the BL2 memory layout */
+-	bl2_tzram_layout = *mem_layout;
++	/* Allow BL2 to see the whole Trusted RAM */
++	bl2_tzram_layout.total_base = LS_SRAM_BASE;
++	bl2_tzram_layout.total_size = LS_SRAM_SIZE;
+ 
+ 	/* Initialise the IO layer and register platform IO devices */
+ 	plat_ls_io_setup();
+@@ -43,9 +40,15 @@ void ls_bl2_plat_arch_setup(void)
+ 	ls_setup_page_tables(bl2_tzram_layout.total_base,
+ 			      bl2_tzram_layout.total_size,
+ 			      BL_CODE_BASE,
++#if BL2_IN_XIP_MEM
++			      BL2_CODE_END,
++			      BL2_RO_DATA_BASE,
++			      BL2_RO_DATA_END
++#else
+ 			      BL_CODE_END,
+ 			      BL_RO_DATA_BASE,
+ 			      BL_RO_DATA_END
++#endif
+ #if USE_COHERENT_MEM
+ 			      , BL_COHERENT_RAM_BASE,
+ 			      BL_COHERENT_RAM_END
+@@ -55,11 +58,11 @@ void ls_bl2_plat_arch_setup(void)
+ #ifdef AARCH32
+ 	enable_mmu_secure(0);
+ #else
+-	enable_mmu_el1(0);
++	enable_mmu_el3(0);
+ #endif
+ }
+ 
+-void bl2_plat_arch_setup(void)
++void bl2_el3_plat_arch_setup(void)
+ {
+ 	ls_bl2_plat_arch_setup();
+ }
+diff --git a/plat/layerscape/common/ls_bl31_setup.c b/plat/layerscape/common/ls_bl31_setup.c
+index 3016f58..7f07490 100644
+--- a/plat/layerscape/common/ls_bl31_setup.c
++++ b/plat/layerscape/common/ls_bl31_setup.c
+@@ -55,8 +55,8 @@ entry_point_info_t *bl31_plat_get_next_image_ep_info(uint32_t type)
+ 
+ /*******************************************************************************
+  * Perform any BL31 early platform setup common to Layerscape platforms.
+- * Here is an opportunity to copy parameters passed by the calling EL (S-EL1
+- * in BL2 & S-EL3 in BL1) before they are lost (potentially). This needs to be
++ * Here is an opportunity to copy parameters passed by the calling EL (S-EL3
++ * in BL2) before they are lost (potentially). This needs to be
+  * done before the MMU is initialized so that the memory layout can be used
+  * while creating page tables. BL2 has flushed this information to memory, so
+  * we are guaranteed to pick up good data.
+diff --git a/plat/layerscape/common/ls_common.c b/plat/layerscape/common/ls_common.c
+index abf6525..fedbf0b 100644
+--- a/plat/layerscape/common/ls_common.c
++++ b/plat/layerscape/common/ls_common.c
+@@ -21,14 +21,6 @@ const mmap_region_t *plat_ls_get_mmap(void);
+  * The flash needs to be mapped as writable in order to erase the FIP's Table of
+  * Contents in case of unrecoverable error (see plat_error_handler()).
+  */
+-#ifdef IMAGE_BL1
+-const mmap_region_t plat_ls_mmap[] = {
+-	LS_MAP_FLASH0_RW,
+-	LS_MAP_NS_DRAM,
+-	LS_MAP_CCSR,
+-	{0}
+-};
+-#endif
+ #ifdef IMAGE_BL2
+ const mmap_region_t plat_ls_mmap[] = {
+ 	LS_MAP_FLASH0_RW,
+@@ -41,7 +33,6 @@ const mmap_region_t plat_ls_mmap[] = {
+ #ifdef IMAGE_BL31
+ const mmap_region_t plat_ls_mmap[] = {
+ 	LS_MAP_CCSR,
+-	LS_MAP_FLASH0_RW,
+ 	LS_MAP_NS_DRAM,
+ 	LS_MAP_TSP_SEC_MEM,
+ 	{0}
+@@ -50,7 +41,6 @@ const mmap_region_t plat_ls_mmap[] = {
+ #ifdef IMAGE_BL32
+ const mmap_region_t plat_ls_mmap[] = {
+ 	LS_MAP_CCSR,
+-	LS_MAP_FLASH0_RW,
+ 	LS_MAP_TSP_SEC_MEM,
+ 	{0}
+ };
+diff --git a/plat/layerscape/common/ls_common.mk b/plat/layerscape/common/ls_common.mk
+index 1a80e9f..74a17af 100644
+--- a/plat/layerscape/common/ls_common.mk
++++ b/plat/layerscape/common/ls_common.mk
+@@ -19,6 +19,9 @@ LOAD_IMAGE_V2			:=	1
+ # Use generic OID definition (tbbr_oid.h)
+ USE_TBBR_DEFS			:=	1
+ 
++BL2_AT_EL3			:=	1
++
++BL2_IN_XIP_MEM			:=	1
+ 
+ COLD_BOOT_SINGLE_CPU		:=	1
+ 
+@@ -31,14 +34,6 @@ include lib/xlat_tables_v2/xlat_tables.mk
+ 
+ PLAT_BL_COMMON_SOURCES	+=	${XLAT_TABLES_LIB_SRCS}
+ 
+-BL1_SOURCES		+=			\
+-				drivers/io/io_fip.c				\
+-				drivers/io/io_memmap.c				\
+-				drivers/io/io_storage.c				\
+-				plat/layerscape/common/ls_timer.c			\
+-				plat/layerscape/common/ls_bl1_setup.c			\
+-				plat/layerscape/common/ls_io_storage.c
+-
+ BL2_SOURCES		+=	drivers/io/io_fip.c				\
+ 				drivers/io/io_memmap.c				\
+ 				drivers/io/io_storage.c				\
+-- 
+1.7.1
+

@@ -1,0 +1,18 @@
+Add a missing include causing compilation (missing declaration) problems.
+
+Upstream-Status: Submitted
+
+Signed-off-by: Tom Zanussi <tom.zanussi (a] intel.com>
+
+Index: lms-7.1.20/src/tools/ATVersion.cpp
+===================================================================
+--- lms-7.1.20.orig/src/tools/ATVersion.cpp	2012-05-29 20:34:34.061997035 -0500
++++ lms-7.1.20/src/tools/ATVersion.cpp	2012-05-29 20:35:22.671412948 -0500
+@@ -40,6 +40,7 @@
+ #include <cerrno>
+ #include <fstream>
+ #include <dirent.h>
++#include <unistd.h>
+ 
+ #define AT_VERSION_ARGUMENT "--version"
+ #define AT_VERSION_MAXSIZE 40

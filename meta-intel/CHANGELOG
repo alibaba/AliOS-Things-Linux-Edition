@@ -1,0 +1,87 @@
+This file will only list major changes that occur within a release.
+For a full list of changes, view the git log of the repository.
+
+Rocko Release 11/2017
+=====================
+
+Moved qat support to separate layer
+-----------------------------------
+Quick Assist Technology (QAT) is more middleware and should not be part of the
+core BSP. The new layer can be found here:
+https://git.yoctoproject.org/cgit/cgit.cgi/meta-intel-qat/
+
+Moved dpdk support to separate layer
+------------------------------------
+We had some requests to make DPDK standalone so that it could be included
+without bringing in anything else from meta-intel, as it is not specific to
+Intel(R) hardware. The new layer is located here:
+https://git.yoctoproject.org/cgit/cgit.cgi/meta-dpdk/
+
+Added support for out-of-tree iwlwifi drivers
+---------------------------------------------
+Backport-iwlwifi out-of-tree wifi modules are now available via meta-intel.
+Backport-iwlwifi brings the latest iwlwifi drivers to almost any kernel
+Note that mac80211 and cfg80211 backports are also necessary, which will most
+likely cause incompatibility with other in-tree wifi drivers.
+See https://wireless.wiki.kernel.org/en/users/drivers/iwlwifi for more info.
+
+Added support for out-of-tree ixgbe drivers
+-------------------------------------------
+The out-of-tree ixgbe drivers bring ixgbe support to nearly any kernel. See
+here: http://www.intel.com/network/connectivity/products/server_adapters.htm
+
+Added an implementation of Secure Boot
+--------------------------------------
+meta-intel now supports a simple Secure Boot implementation. This implementation
+consists of a single binary consisting of an EFI stub, the kernel, an
+initrd, and a kernel command line. The binary is then signed via keys defined by
+the variables SECUREBOOT_SIGNING_KEY and SECUREBOOT_SIGNING_CERT. These keys
+should match the keys embedded in your hardware's firmware.
+See documentation/secureboot/README for more information on this feature.
+
+Improved Yocto Project Compatibility status
+-------------------------------------------
+The common layer should now be considered Yocto Project compatible - it should
+no longer modify OE-core values when adding the layer to your bblayers.conf.
+The meta-tlk layer is still not Yocto Project compatible, however.
+
+Pyro Release 5/2017
+===================
+
+Changed default kernel provider from linux-yocto to linux-intel.
+----------------------------------------------------------------
+Linux-intel is an Intel(R)-maintained kernel based on the latest stable
+branch, along with backports from upstream to better support Intel(R)
+hardware. The intel-linux kernel also has a branch with the preempt-rt
+patches applied, providing a preempt-rt kernel with no additional work.
+
+Added QEMU support.
+-------------------
+We now build several virtio drivers into the kernel by default, and
+have qemuboot.conf files for intel-corei7-64 and intel-core2-32
+targets. This allows one to do basic testing on meta-intel images
+without having to use hardware. The virtio drivers are added via
+KERNEL_FEATURES_INTEL_COMMON. This prevents them from being added to
+custom kernels by default. They can be removed by adding the
+following to a conf or kernel bbappend file:
+  KERNEL_FEATURES_INTEL_COMMON_remove = “cfg/virtio.scc”
+OVMF firmware is also built and can be used in order to emulate a UEFI
+environment. A full runqemu command line for intel-corei7-64 could look
+like this:
+  runqemu core-image-minimal intel-corei7-64 wic ovmf
+
+Musl support
+------------
+Meta-intel is now compatible with the musl C library. You can specify musl
+As your C library by adding the following to your local.conf:
+  TCLIBC = “musl”
+Note: there is a known failure with DPDK.
+
+X32 support
+-----------
+The meta-intel layer can now build with the x32 tune settings in a multi-lib
+setting, it will not work in as the primary MACHINE tune as the bootloader needs
+to be built as a 64bit binary. The setup for this would be as follows:
+  require conf/multilib.conf
+  MULTILIBS = "multilib:libx32
+  DEFAULTTUNE_virtclass-multilib-libx32 = "corei7-64-x32"

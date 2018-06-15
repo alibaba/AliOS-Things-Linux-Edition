@@ -1,0 +1,75 @@
+From 7507e52ccff5e6acf165906f7f7b2de9ab235d22 Mon Sep 17 00:00:00 2001
+From: Heiko Stuebner <heiko@sntech.de>
+Date: Tue, 22 Dec 2015 22:27:58 +0100
+Subject: [PATCH 02/27] UPSTREAM: clk: add flag for clocks that need to be
+ enabled on rate changes
+
+Some clocks need to be enabled to accept rate changes. This patch adds a
+new flag CLK_SET_RATE_UNGATE that lets clk_change_rate enable the clock
+before trying to change the rate and disable it again afterwards.
+This of course doesn't effect clocks that are already running at that
+point, as their refcount will only temporarily increase.
+
+Signed-off-by: Heiko Stuebner <heiko@sntech.de>
+Tested-by: Sjoerd Simons <sjoerd.simons@collabora.co.uk>
+Reviewed-by: Sjoerd Simons <sjoerd.simons@collabora.co.uk>
+Signed-off-by: Michael Turquette <mturquette@baylibre.com>
+(cherry picked from commit 2eb8c7104c648ad4bfae1f5333f98c09522149b5)
+
+Change-Id: I4fdabbe7120dd501f350ce2294aa5a6c1827f961
+---
+ drivers/clk/clk.c            | 18 ++++++++++++++++++
+ include/linux/clk-provider.h |  1 +
+ 2 files changed, 19 insertions(+)
+
+diff --git a/drivers/clk/clk.c b/drivers/clk/clk.c
+index f13c3f4228d4..bd64a9414de2 100644
+--- a/drivers/clk/clk.c
++++ b/drivers/clk/clk.c
+@@ -1443,6 +1443,15 @@ static void clk_change_rate(struct clk_core *core)
+ 	else if (core->parent)
+ 		best_parent_rate = core->parent->rate;
+ 
++	if (core->flags & CLK_SET_RATE_UNGATE) {
++		unsigned long flags;
++
++		clk_core_prepare(core);
++		flags = clk_enable_lock();
++		clk_core_enable(core);
++		clk_enable_unlock(flags);
++	}
++
+ 	if (core->new_parent && core->new_parent != core->parent) {
+ 		old_parent = __clk_set_parent_before(core, core->new_parent);
+ 		trace_clk_set_parent(core, core->new_parent);
+@@ -1469,6 +1478,15 @@ static void clk_change_rate(struct clk_core *core)
+ 
+ 	core->rate = clk_recalc(core, best_parent_rate);
+ 
++	if (core->flags & CLK_SET_RATE_UNGATE) {
++		unsigned long flags;
++
++		flags = clk_enable_lock();
++		clk_core_disable(core);
++		clk_enable_unlock(flags);
++		clk_core_unprepare(core);
++	}
++
+ 	if (core->notifier_count && old_rate != core->rate)
+ 		__clk_notify(core, POST_RATE_CHANGE, old_rate, core->rate);
+ 
+diff --git a/include/linux/clk-provider.h b/include/linux/clk-provider.h
+index 1f2d46204b85..673568d90cbc 100644
+--- a/include/linux/clk-provider.h
++++ b/include/linux/clk-provider.h
+@@ -31,6 +31,7 @@
+ #define CLK_SET_RATE_NO_REPARENT BIT(7) /* don't re-parent on rate change */
+ #define CLK_GET_ACCURACY_NOCACHE BIT(8) /* do not use the cached clk accuracy */
+ #define CLK_RECALC_NEW_RATES	BIT(9) /* recalc rates after notifications */
++#define CLK_SET_RATE_UNGATE	BIT(10) /* clock needs to run to set rate */
+ 
+ struct clk;
+ struct clk_hw;
+-- 
+2.11.0
+

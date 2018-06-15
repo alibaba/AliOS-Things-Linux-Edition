@@ -1,0 +1,27 @@
+From 515db3a22bf8cb3eaec7e0c478b6f7915a876da6 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 22 May 2018 10:40:35 +0800
+Subject: [PATCH] arm64: dts: rk3326: Use UUID for rootdev
+
+Change-Id: I10864e254e488eb49e27cf1c173ca0e8a67d7d00
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ arch/arm64/boot/dts/rockchip/rk3326-linux.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3326-linux.dtsi b/arch/arm64/boot/dts/rockchip/rk3326-linux.dtsi
+index bc353e69bd77..c8b12908b1e7 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3326-linux.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3326-linux.dtsi
+@@ -44,7 +44,7 @@
+ 	compatible = "rockchip,linux", "rockchip,rk3326";
+ 
+ 	chosen {
+-		bootargs = "earlycon=uart8250,mmio32,0xff160000 swiotlb=1 console=ttyFIQ0 root=/dev/mmcblk1p8 rootwait";
++		bootargs = "earlycon=uart8250,mmio32,0xff160000 swiotlb=1 console=ttyFIQ0 root=PARTUUID=614e0000-0000 rootwait";
+ 	};
+ 
+ 	fiq-debugger {
+-- 
+2.11.0
+

@@ -1,0 +1,33 @@
+From f1f5c5889cf4b93f34297298000805ac5c9af6ba Mon Sep 17 00:00:00 2001
+From: Thierry Reding <thierry.reding@gmail.com>
+Date: Mon, 2 May 2016 12:07:34 +0200
+Subject: [PATCH 07/27] UPSTREAM: pwm: Use kcalloc() instead of kzalloc()
+
+kcalloc() should be preferred for allocations of arrays over kzalloc()
+with multiplication.
+
+Signed-off-by: Thierry Reding <thierry.reding@gmail.com>
+(cherry picked from commit 2907f8abb7ec3aec85ceaaf03dfbc16cca0018dc)
+
+Change-Id: Ifa4619bcd5c0869e516ae7765bab7515b299c533
+Signed-off-by: David Wu <david.wu@rock-chips.com>
+---
+ drivers/pwm/core.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/pwm/core.c b/drivers/pwm/core.c
+index 5c961c640823..8fbd7c5d34b6 100644
+--- a/drivers/pwm/core.c
++++ b/drivers/pwm/core.c
+@@ -262,7 +262,7 @@ int pwmchip_add_with_polarity(struct pwm_chip *chip,
+ 	if (ret < 0)
+ 		goto out;
+ 
+-	chip->pwms = kzalloc(chip->npwm * sizeof(*pwm), GFP_KERNEL);
++	chip->pwms = kcalloc(chip->npwm, sizeof(*pwm), GFP_KERNEL);
+ 	if (!chip->pwms) {
+ 		ret = -ENOMEM;
+ 		goto out;
+-- 
+2.11.0
+

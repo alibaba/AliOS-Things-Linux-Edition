@@ -1,0 +1,250 @@
+From a3c4fc8c2847fe289a617bcba1d905f580f0e18d Mon Sep 17 00:00:00 2001
+From: Jianxun Zhang <jianxun.zhang@linux.intel.com>
+Date: Wed, 1 Jun 2016 16:32:22 -0700
+Subject: [PATCH 2/3] sd-boot: Load board-specific boot entries from RMC
+ database
+
+RMC provides a centralized database file on ESP. The DB contains
+fingerprints and any file blobs associated to physical boards.
+Callers can fetch board-specific data with fingerprint info
+collected from board at runtime if there is any record matched
+board's fingerprint.
+
+To let bootloader know which file blob in RMC should be queried,
+a special config file BOOTENTRY.CONFIG is defined as:
+
+boot.conf
+install.conf
+
+Bootloader calls RMC APIs and other functions to perform these
+tasks before it shows boot menu to user:
+
+(1) Load RMC database file from ESP
+(2) Collect fingerprint data from board
+(3) Query BOOTENTRY.CONFIG from RMC DB with fingerprint
+(4) Parse BOOTENTRY.CONFIG to know names of boot entry files
+(5) Query boot entry files one by one from RMC DB, and add
+    them into sd-boot config data.
+
+The final effect is that bootloader will show board-specific
+boot entries in boot menu to user. User then can choose one
+of them to boot system with the selected configuration.
+
+If any of these steps fails, bootloader simply skips loading
+RMC configs or any entry file not successfully fetched from
+RMC DB. Once any entry is loaded successfully from RMC DB,
+bootloader skips loading any boot entries from ESP.
+
+Upstream-Status: Pending
+
+Signed-off-by: Jianxun Zhang <jianxun.zhang@linux.intel.com>
+---
+ src/boot/efi/boot.c | 147 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 145 insertions(+), 2 deletions(-)
+
+diff --git a/src/boot/efi/boot.c b/src/boot/efi/boot.c
+index 30c1ead..d1b029b 100644
+--- a/src/boot/efi/boot.c
++++ b/src/boot/efi/boot.c
+@@ -15,6 +15,7 @@
+ 
+ #include <efi.h>
+ #include <efilib.h>
++#include <rmc_api.h>
+ 
+ #include "console.h"
+ #include "disk.h"
+@@ -33,6 +34,9 @@ static const char __attribute__((used)) magic[] = "#### LoaderInfo: systemd-boot
+ 
+ static const EFI_GUID global_guid = EFI_GLOBAL_VARIABLE;
+ 
++static CHAR8* rmc_db;
++static rmc_fingerprint_t *rmc_fp;
++
+ enum loader_type {
+         LOADER_UNDEFINED,
+         LOADER_EFI,
+@@ -1702,6 +1706,136 @@ static VOID config_free(Config *config) {
+         FreePool(config->entry_oneshot);
+ }
+ 
++/* Derived from line_get_key_value(), we could consolidate two functions later */
++static CHAR8 *get_line(CHAR8 *content, UINT64 *pos) {
++        CHAR8 *line;
++        UINT64 linelen;
++
++skip:
++        line = content + *pos;
++        if (*line == '\0')
++                return NULL;
++
++        linelen = 0;
++        while (line[linelen] && !strchra((CHAR8 *)"\n\r", line[linelen]))
++               linelen++;
++
++        /* move pos to next line */
++        *pos += linelen;
++        if (content[*pos])
++                (*pos)++;
++
++        /* empty line */
++        if (linelen == 0)
++                goto skip;
++
++        /* terminate line */
++        line[linelen] = '\0';
++
++        /* remove leading whitespace */
++        while (strchra((CHAR8 *)" \t", *line)) {
++                line++;
++                linelen--;
++        }
++
++        /* remove trailing whitespace */
++        while (linelen > 0 && strchra((CHAR8 *)" \t", line[linelen-1]))
++                linelen--;
++        line[linelen] = '\0';
++
++        if (*line == '#')
++                goto skip;
++
++        return line;
++}
++
++/* load rmc database file from ESP and try to get fingerprint. These
++ * are essential information indicating we could query rmc data for
++ * this board at least
++ * return 0 if both database file and fingerprint can be obtained, otherwise
++ * non-zero value is returned.
++ *
++ * Note: db and fp hold valid values only when this function returns 0.
++ * Caller is responsible to free allocated memory pointed by *db and *fp when
++ * this function returns 0.
++ */
++
++static UINTN rmc_initialize(EFI_FILE *root_dir, EFI_SYSTEM_TABLE *sys_table, CHAR8 **db, rmc_fingerprint_t **fp) {
++        UINTN len;
++        UINTN ret = 1;
++
++        if (!db || !fp)
++                return ret;
++
++        *db = NULL;
++        *fp = NULL;
++
++        /* load rmc database */
++        len = file_read(root_dir, L"\\rmc.db", 0, 0, db);
++
++        if (len <= 0)
++                goto done;
++
++        *fp = AllocateZeroPool(sizeof(rmc_fingerprint_t));
++        /* call rmc to get fingerprint. We will use single-action rmc APIs to query multiple files.
++         * This should bring a better performance than calling double-action rmc API every time.
++         */
++        if (rmc_get_fingerprint(sys_table, *fp))
++                goto done;
++
++        ret = 0;
++done:
++        if (ret) {
++                FreePool(*db);
++                FreePool(*fp);
++        }
++
++        return ret;
++}
++
++/* load RMC entries
++ * return TRUE when at least one entry is loaded, otherwise, return FALSE
++ */
++static BOOLEAN config_load_rmc_entries(Config *config, EFI_HANDLE *device, CHAR16 *loaded_image_path, CHAR8 *db, rmc_fingerprint_t *fp) {
++        CHAR8 *boot_entry = NULL;
++        CHAR8 *boot_config = NULL;
++        rmc_file_t rp;
++        CHAR8 *line;
++        UINT64 pos = 0;
++        BOOLEAN ret = FALSE;
++
++        if (!db || !fp)
++                return ret;
++
++        /* query boot entry config file */
++        if (rmc_query_file_by_fp(fp, db, "BOOTENTRY.CONFIG", &rp))
++                return ret;
++
++        /* file blob read from rmc db is not necessarily null-terminated, and we
++         * should keep mem where rmc db lives from change during parsing
++         */
++        boot_config = AllocatePool(rp.blob_len * sizeof(CHAR8) + 1);
++        CopyMem(boot_config, rp.blob, rp.blob_len);
++        boot_config[rp.blob_len] = '\0';
++        /* parse boot entry config */
++        while ((line = get_line(boot_config, &pos))) {
++                if (rmc_query_file_by_fp(fp, db, (char *)line, &rp))
++                        continue;
++                if (rp.blob_len > 0) {
++                        boot_entry = AllocatePool(rp.blob_len * sizeof(CHAR8) + 1);
++                        CopyMem(boot_entry, rp.blob, rp.blob_len);
++                        boot_entry[rp.blob_len] = '\0';
++                        config_entry_add_from_file(config, device,
++                                        stra_to_str(line), boot_entry,
++                                        loaded_image_path);
++                        /* tell caller success when a RMC entry is loaded */
++                        ret = TRUE;
++                }
++        }
++
++        return ret;
++}
++
+ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *sys_table) {
+         CHAR16 *s;
+         CHAR8 *b;
+@@ -1714,6 +1848,7 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *sys_table) {
+         UINT64 init_usec;
+         BOOLEAN menu = FALSE;
+         CHAR16 uuid[37];
++        BOOLEAN rmc_entry = FALSE;
+ 
+         InitializeLib(image, sys_table);
+         init_usec = time_usec();
+@@ -1745,6 +1880,8 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *sys_table) {
+                 return EFI_LOAD_ERROR;
+         }
+ 
++        /* Initialize rmc before loading any config */
++        rmc_initialize(root_dir, sys_table, &rmc_db, &rmc_fp);
+ 
+         /* the filesystem path to this image, to prevent adding ourselves to the menu */
+         loaded_image_path = DevicePathToStr(loaded_image->FilePath);
+@@ -1753,11 +1890,15 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *sys_table) {
+         ZeroMem(&config, sizeof(Config));
+         config_load_defaults(&config, root_dir);
+ 
++        if (rmc_db && rmc_fp)
++                rmc_entry = config_load_rmc_entries(&config, loaded_image->DeviceHandle, loaded_image_path, rmc_db, rmc_fp);
++
+         /* scan /EFI/Linux/ directory */
+         config_entry_add_linux(&config, loaded_image, root_dir);
+ 
+-        /* scan /loader/entries/\*.conf files */
+-        config_load_entries(&config, loaded_image->DeviceHandle, root_dir, loaded_image_path);
++        /* scan /loader/entries/\*.conf files only when no RMC entry is loaded */
++        if (rmc_entry == FALSE)
++                config_load_entries(&config, loaded_image->DeviceHandle, root_dir, loaded_image_path);
+ 
+         /* sort entries after version number */
+         config_sort_entries(&config);
+@@ -1851,6 +1992,8 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *sys_table) {
+ out:
+         FreePool(loaded_image_path);
+         config_free(&config);
++        FreePool(rmc_db);
++        FreePool(rmc_fp);
+         uefi_call_wrapper(root_dir->Close, 1, root_dir);
+         uefi_call_wrapper(BS->CloseProtocol, 4, image, &LoadedImageProtocol, image, NULL);
+         return err;
+-- 
+2.7.4
+

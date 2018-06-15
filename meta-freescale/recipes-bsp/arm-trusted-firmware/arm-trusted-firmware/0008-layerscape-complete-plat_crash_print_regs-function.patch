@@ -1,0 +1,171 @@
+From eb39d308e1e11c3175f5115760cda9b8a4d52fbb Mon Sep 17 00:00:00 2001
+From: jiaheng.fan <jiaheng.fan@nxp.com>
+Date: Wed, 9 May 2018 14:43:01 +0800
+Subject: [PATCH 8/8] layerscape: complete plat_crash_print_regs function
+
+Signed-off-by: jiaheng.fan <jiaheng.fan@nxp.com>
+---
+ .../board/ls1043/aarch64/ls1043_helpers.S          |   39 +++++++++
+ plat/layerscape/common/include/plat_macros.S       |   84 +++++++++++++++++---
+ 2 files changed, 112 insertions(+), 11 deletions(-)
+
+diff --git a/plat/layerscape/board/ls1043/aarch64/ls1043_helpers.S b/plat/layerscape/board/ls1043/aarch64/ls1043_helpers.S
+index 80524fc..494be20 100644
+--- a/plat/layerscape/board/ls1043/aarch64/ls1043_helpers.S
++++ b/plat/layerscape/board/ls1043/aarch64/ls1043_helpers.S
+@@ -7,10 +7,16 @@
+ #include <arch.h>
+ #include <asm_macros.S>
+ #include <platform_def.h>
++#include <lsch2_soc.h>
+ 
+ 	.globl	plat_reset_handler
+ 	.globl  plat_my_core_pos
+ 	.globl  platform_mem_init
++	.globl	plat_get_gicc_addrs
++
++#define SVR_WO_E                0xFFFFFE
++#define SVR_LS1043A             0x879204
++#define SVR_LS1043AE            0x879200
+ 
+ func plat_my_core_pos
+ 	mrs x0, mpidr_el1
+@@ -145,3 +151,36 @@ func plat_reset_handler
+ 	mov x30, x29
+ 	ret
+ endfunc plat_reset_handler
++
++func plat_get_gicc_addrs
++	ldr	x2, =DCFG_CCSR_SVR
++	ldr	w2, [x2]
++	rev32	x3, x2  // val = w3
++	and 	w4, w3, #0xff
++	cmp	w4, #REV1_1
++	b.ne	2f
++	ldr	w2, =SVR_WO_E
++	lsl	w2, w2, #8
++	and	w5, w3, w2 // soc_dev_id = w5
++	ldr	w6, =SVR_LS1043A
++	lsl	w6, w6, #8
++	cmp	w5, w6
++	b.eq	1f
++	ldr	w6, =SVR_LS1043AE
++	lsl	w6, w6, #8
++	cmp	w5, w6
++	b.ne	2f
++1:
++	ldr	x2, =SCFG_GIC400_ALIGN
++	ldr     w2, [x2]
++	rev32   x3, x2
++	tbz     w3, #GIC_ADDR_BIT, 3f
++2:
++	ldr	x0, =GICC_BASE
++	ldr	x1, =GICD_BASE
++	ret
++3:
++	ldr	x0, =GICC_BASE_64K
++	ldr	x1, =GICD_BASE_64K
++	ret
++endfunc plat_get_gicc_addrs
+diff --git a/plat/layerscape/common/include/plat_macros.S b/plat/layerscape/common/include/plat_macros.S
+index 8163dc1..de6d5ef 100644
+--- a/plat/layerscape/common/include/plat_macros.S
++++ b/plat/layerscape/common/include/plat_macros.S
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ * Copyright (c) 2017, ARM Limited and Contributors. All rights reserved.
+  *
+  * SPDX-License-Identifier: BSD-3-Clause
+  */
+@@ -7,15 +7,77 @@
+ #ifndef __PLAT_MACROS_S__
+ #define __PLAT_MACROS_S__
+ 
+-	/* ---------------------------------------------
+-	 * The below required platform porting macro
+-	 * prints out relevant GIC and CCI registers
+-	 * whenever an unhandled exception is taken in
+-	 * BL31.
+-	 * Clobbers: x0 - x10, x16, x17, sp
+-	 * ---------------------------------------------
+-	 */
+-	.macro plat_crash_print_regs
+-	.endm
++#include <cci.h>
++#include <gic_v2.h>
++#include <platform_def.h>
++
++#define	CCI400_SL_IFACE0_CLUSTER_IX	0
++#define	CCI400_SL_IFACE1_CLUSTER_IX	1
++
++.section .rodata.gic_reg_name, "aS"
++gicc_regs:
++	.asciz "gicc_hppir", "gicc_ahppir", "gicc_ctlr", ""
++gicd_pend_reg:
++	.asciz "gicd_ispendr regs (Offsets 0x200 - 0x278)\n"    \
++                " Offset:\t\t\tvalue\n"
++newline:
++	.asciz "\n"
++spacer:
++	.asciz ":\t\t0x"
++
++.section .rodata.cci_reg_name, "aS"
++cci_iface_regs:
++	.asciz "cci_snoop_ctrl_cluster0", "cci_snoop_ctrl_cluster1" , ""
++
++/* ---------------------------------------------
++ * The below macro prints out relevant GIC
++ * registers whenever an unhandled exception is
++ * taken in BL31.
++ * ---------------------------------------------
++ */
++
++.macro plat_crash_print_regs
++	bl	plat_get_gicc_addrs
++	mov	x16, x1
++	mov	x17, x0
++
++	/* Load the gicc reg list to x6 */
++	adr	x6, gicc_regs
++	/* Load the gicc regs to gp regs used by str_in_crash_buf_print */
++	ldr	w8, [x17, #GICC_HPPIR]
++	ldr	w9, [x17, #GICC_AHPPIR]
++	ldr	w10, [x17, #GICC_CTLR]
++	/* Store to the crash buf and print to cosole */
++	bl	str_in_crash_buf_print
++
++	/* Print the GICD_ISPENDR regs */
++	add	x7, x16, #GICD_ISPENDR
++	adr	x4, gicd_pend_reg
++	bl	asm_print_str
++2:
++	sub	x4, x7, x16
++	cmp	x4, #0x280
++	b.eq	1f
++	bl	asm_print_hex
++	adr	x4, spacer
++	bl	asm_print_str
++	ldr	x4, [x7], #8
++	bl	asm_print_hex
++	adr	x4, newline
++	bl	asm_print_str
++	b	2b
++1:
++	adr	x6, cci_iface_regs
++	/* Store in x7 the base address of the first interface */
++	mov_imm	x7, (PLAT_LS_CCI_BASE + SLAVE_IFACE_OFFSET(	\
++	                CCI400_SL_IFACE0_CLUSTER_IX))
++	ldr	w8, [x7, #SNOOP_CTRL_REG]
++	/* Store in x7 the base address of the second interface */
++	mov_imm	x7, (PLAT_LS_CCI_BASE + SLAVE_IFACE_OFFSET(	\
++	                CCI400_SL_IFACE1_CLUSTER_IX))
++	ldr	w9, [x7, #SNOOP_CTRL_REG]
++	/* Store to the crash buf and print to console */
++	bl	str_in_crash_buf_print
++.endm
+ 
+ #endif /* __PLAT_MACROS_S__ */
+-- 
+1.7.1
+

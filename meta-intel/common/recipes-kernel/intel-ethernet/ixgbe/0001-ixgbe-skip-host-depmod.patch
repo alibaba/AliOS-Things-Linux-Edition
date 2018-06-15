@@ -1,0 +1,31 @@
+From e32eab62e3f79ddd40946ca698d9e650bd7d9b2d Mon Sep 17 00:00:00 2001
+From: sweeaun <swee.aun.khor@intel.com>
+Date: Sat, 7 Oct 2017 20:49:36 -0700
+Subject: [PATCH] ixgbe: skip host depmod
+
+Upstream-Status: Inappropriate [Cross-Compile]
+
+Depmod during do_install is irrelevant when cross-compiling.
+Remove the depmod steps during do_install.
+
+Signed-off-by: sweeaun <swee.aun.khor@intel.com>
+---
+ Makefile | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index fa92f81..b39283a 100644
+--- a/Makefile
++++ b/Makefile
+@@ -141,8 +141,6 @@ modules_install: default manfile
+ 	@install -D -m 644 ${DRIVER}.${MANSECTION}.gz ${INSTALL_MOD_PATH}${MANDIR}/man${MANSECTION}/${DRIVER}.${MANSECTION}.gz
+ 	@echo "Installing modules..."
+ 	@+$(call devkernelbuild,modules_install)
+-	@echo "Running depmod..."
+-	@$(call cmd_depmod)
+ 
+ uninstall:
+ 	rm -f ${INSTALL_MOD_PATH}/lib/modules/${KVER}/${INSTALL_MOD_DIR}/${DRIVER}.ko;
+-- 
+2.7.4
+

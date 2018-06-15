@@ -1,0 +1,39 @@
+# Note: superuser permission is required to run usbhid-dump
+# successfully.
+
+# HEX keys are according to the USB HID spec and USB HID usage table
+# We can add more keys as needed in the future.
+
+# This test may not be very accurate, as we only look for the first
+# two lines of a descriptor section.  Example:
+#
+# 001:003:000:DESCRIPTOR         1460501386.337809
+#  05 01 09 02 A1 01 09 01 A1 00 05 09 19 01 29 03
+#  15 00 25 01 95 03 75 01 81 02 .. .. .. .. .. ..
+#  .. .. .. .. .. .. .. .. .. .. .. .. .. .. .. ..
+#
+# By doing so we eliminate false matches when HEX keys are in the lines
+# in the middle of the whole descriptor section.
+
+if type usbhid-dump &>/dev/null; then
+    if USBHID_DUMP_OUTPUT=$(usbhid-dump -e descriptor 2>/dev/null|grep -A1 DESCRIPTOR); then
+        # checker for generic USB HID keyboard
+        USBHID_KBD_CMD="grep -E '^ 05 01 09 06'"
+
+        # checker for touch screen
+        USBHID_TS_CMD="grep -E '^ 05 0D 09 04'"
+
+        if echo "$USBHID_DUMP_OUTPUT"|eval $USBHID_TS_CMD &>/dev/null; then
+            HAVE_TOUCHSCREEN=1
+        fi
+
+        if echo "$USBHID_DUMP_OUTPUT"|eval $USBHID_KBD_CMD &>/dev/null; then
+            HAVE_KEYBOARD=1
+        else
+            # config script in OE will set HAVE_KEYBOARD=1
+            # if we don't set any value. We have to explicitly
+            # tell it when keyboard is not detected.
+            HAVE_KEYBOARD=0
+        fi
+    fi
+fi

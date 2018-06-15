@@ -1,0 +1,33 @@
+From 49053e4ff0f3550d019cdad8a93677c18fc69791 Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Sat, 12 Aug 2017 10:35:09 -0700
+Subject: [PATCH 2/2] initialize char pointers
+
+Clang complains about using them without initializing
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+Upstream-Status: Pending
+
+ entry.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/entry.c b/entry.c
+index 0aa6cdd..23ba51e 100644
+--- a/entry.c
++++ b/entry.c
+@@ -402,9 +402,9 @@ efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *_table)
+ 	WCHAR *error_buf;
+ 	EFI_STATUS err;
+ 	EFI_LOADED_IMAGE *info;
+-	CHAR16 *name, *options;
++	CHAR16 *name = NULL, *options;
+ 	UINT32 options_size;
+-	char *cmdline;
++	char *cmdline = NULL;
+ 
+ 	InitializeLib(image, _table);
+ 	sys_table = _table;
+-- 
+2.14.1
+

@@ -1,0 +1,352 @@
+From a8b5f30c8eb631d517b3cfcf26b93058ed155238 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 30 May 2018 18:56:12 +0800
+Subject: [PATCH 03/14] Sync BSP kernel's grf & rk_vendor_storage
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ drivers/soc/rockchip/Kconfig                   |  10 ++
+ drivers/soc/rockchip/Makefile                  |   2 +
+ drivers/soc/rockchip/grf.c                     | 208 +++++++++++++++++++++++++
+ drivers/soc/rockchip/rk_vendor_storage.c       |  49 ++++++
+ include/linux/soc/rockchip/rk_vendor_storage.h |  25 +++
+ 5 files changed, 294 insertions(+)
+ create mode 100644 drivers/soc/rockchip/grf.c
+ create mode 100644 drivers/soc/rockchip/rk_vendor_storage.c
+ create mode 100644 include/linux/soc/rockchip/rk_vendor_storage.h
+
+diff --git a/drivers/soc/rockchip/Kconfig b/drivers/soc/rockchip/Kconfig
+index 7140ff825598..20da55d9cbb1 100644
+--- a/drivers/soc/rockchip/Kconfig
++++ b/drivers/soc/rockchip/Kconfig
+@@ -3,6 +3,16 @@ if ARCH_ROCKCHIP || COMPILE_TEST
+ #
+ # Rockchip Soc drivers
+ #
++
++config ROCKCHIP_GRF
++	bool
++	default y
++	help
++	  The General Register Files are a central component providing
++	  special additional settings registers for a lot of soc-components.
++	  In a lot of cases there also need to be default settings initialized
++	  to make some of them conform to expectations of the kernel.
++
+ config ROCKCHIP_PM_DOMAINS
+         bool "Rockchip generic power domain"
+         depends on PM
+diff --git a/drivers/soc/rockchip/Makefile b/drivers/soc/rockchip/Makefile
+index 3d73d0672d22..5bfd73ee71f4 100644
+--- a/drivers/soc/rockchip/Makefile
++++ b/drivers/soc/rockchip/Makefile
+@@ -1,4 +1,6 @@
+ #
+ # Rockchip Soc drivers
+ #
++obj-$(CONFIG_ROCKCHIP_GRF) += grf.o
+ obj-$(CONFIG_ROCKCHIP_PM_DOMAINS) += pm_domains.o
++obj-y += rk_vendor_storage.o
+diff --git a/drivers/soc/rockchip/grf.c b/drivers/soc/rockchip/grf.c
+new file mode 100644
+index 000000000000..a7f1321706d5
+--- /dev/null
++++ b/drivers/soc/rockchip/grf.c
+@@ -0,0 +1,208 @@
++/*
++ * Rockchip Generic Register Files setup
++ *
++ * Copyright (c) 2016 Heiko Stuebner <heiko@sntech.de>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++#include <linux/err.h>
++#include <linux/mfd/syscon.h>
++#include <linux/of_device.h>
++#include <linux/platform_device.h>
++#include <linux/regmap.h>
++
++#define HIWORD_UPDATE(val, mask, shift) \
++		((val) << (shift) | (mask) << ((shift) + 16))
++
++struct rockchip_grf_value {
++	const char *desc;
++	u32 reg;
++	u32 val;
++};
++
++struct rockchip_grf_info {
++	const struct rockchip_grf_value *values;
++	int num_values;
++};
++
++#define PX30_GRF_SOC_CON5		0x414
++
++static const struct rockchip_grf_value px30_defaults[] __initconst = {
++	/*
++	 * Postponing auto jtag/sdmmc switching by 5 seconds.
++	 * The counter value is calculated based on 24MHz clock.
++	 */
++	{ "jtag switching delay", PX30_GRF_SOC_CON5, 0x7270E00},
++};
++
++static const struct rockchip_grf_info px30_grf __initconst = {
++	.values = px30_defaults,
++	.num_values = ARRAY_SIZE(px30_defaults),
++};
++
++#define RK3036_GRF_SOC_CON0		0x140
++
++static const struct rockchip_grf_value rk3036_defaults[] __initconst = {
++	/*
++	 * Disable auto jtag/sdmmc switching that causes issues with the
++	 * clock-framework and the mmc controllers making them unreliable.
++	 */
++	{ "jtag switching", RK3036_GRF_SOC_CON0, HIWORD_UPDATE(0, 1, 11) },
++};
++
++static const struct rockchip_grf_info rk3036_grf __initconst = {
++	.values = rk3036_defaults,
++	.num_values = ARRAY_SIZE(rk3036_defaults),
++};
++
++#define RK3128_GRF_SOC_CON0		0x140
++
++static const struct rockchip_grf_value rk3128_defaults[] __initconst = {
++	{ "jtag switching", RK3128_GRF_SOC_CON0, HIWORD_UPDATE(0, 1, 8) },
++};
++
++static const struct rockchip_grf_info rk3128_grf __initconst = {
++	.values = rk3128_defaults,
++	.num_values = ARRAY_SIZE(rk3128_defaults),
++};
++
++#define RK3228_GRF_SOC_CON6		0x418
++
++static const struct rockchip_grf_value rk3228_defaults[] __initconst = {
++	{ "jtag switching", RK3228_GRF_SOC_CON6, HIWORD_UPDATE(0, 1, 8) },
++};
++
++static const struct rockchip_grf_info rk3228_grf __initconst = {
++	.values = rk3228_defaults,
++	.num_values = ARRAY_SIZE(rk3228_defaults),
++};
++
++#define RK3288_GRF_SOC_CON0		0x244
++
++static const struct rockchip_grf_value rk3288_defaults[] __initconst = {
++	{ "jtag switching", RK3288_GRF_SOC_CON0, HIWORD_UPDATE(0, 1, 12) },
++};
++
++static const struct rockchip_grf_info rk3288_grf __initconst = {
++	.values = rk3288_defaults,
++	.num_values = ARRAY_SIZE(rk3288_defaults),
++};
++
++#define RK3328_GRF_SOC_CON4		0x410
++
++static const struct rockchip_grf_value rk3328_defaults[] __initconst = {
++	{ "jtag switching", RK3328_GRF_SOC_CON4, HIWORD_UPDATE(0, 1, 12) },
++};
++
++static const struct rockchip_grf_info rk3328_grf __initconst = {
++	.values = rk3328_defaults,
++	.num_values = ARRAY_SIZE(rk3328_defaults),
++};
++
++#define RK3308_GRF_SOC_CON3		0x30c
++
++static const struct rockchip_grf_value rk3308_defaults[] __initconst = {
++	{ "uart dma mask", RK3308_GRF_SOC_CON3, HIWORD_UPDATE(0, 0x1f, 10) },
++};
++
++static const struct rockchip_grf_info rk3308_grf __initconst = {
++	.values = rk3308_defaults,
++	.num_values = ARRAY_SIZE(rk3308_defaults),
++};
++
++#define RK3368_GRF_SOC_CON15		0x43c
++
++static const struct rockchip_grf_value rk3368_defaults[] __initconst = {
++	{ "jtag switching", RK3368_GRF_SOC_CON15, HIWORD_UPDATE(0, 1, 13) },
++};
++
++static const struct rockchip_grf_info rk3368_grf __initconst = {
++	.values = rk3368_defaults,
++	.num_values = ARRAY_SIZE(rk3368_defaults),
++};
++
++#define RK3399_GRF_SOC_CON7		0xe21c
++
++static const struct rockchip_grf_value rk3399_defaults[] __initconst = {
++	{ "jtag switching", RK3399_GRF_SOC_CON7, HIWORD_UPDATE(0, 1, 12) },
++};
++
++static const struct rockchip_grf_info rk3399_grf __initconst = {
++	.values = rk3399_defaults,
++	.num_values = ARRAY_SIZE(rk3399_defaults),
++};
++
++static const struct of_device_id rockchip_grf_dt_match[] __initconst = {
++	{
++		.compatible = "rockchip,px30-grf",
++		.data = (void *)&px30_grf,
++	}, {
++		.compatible = "rockchip,rk3036-grf",
++		.data = (void *)&rk3036_grf,
++	}, {
++		.compatible = "rockchip,rk3128-grf",
++		.data = (void *)&rk3128_grf,
++	}, {
++		.compatible = "rockchip,rk3228-grf",
++		.data = (void *)&rk3228_grf,
++	}, {
++		.compatible = "rockchip,rk3288-grf",
++		.data = (void *)&rk3288_grf,
++	}, {
++		.compatible = "rockchip,rk3308-grf",
++		.data = (void *)&rk3308_grf,
++	}, {
++		.compatible = "rockchip,rk3328-grf",
++		.data = (void *)&rk3328_grf,
++	}, {
++		.compatible = "rockchip,rk3368-grf",
++		.data = (void *)&rk3368_grf,
++	}, {
++		.compatible = "rockchip,rk3399-grf",
++		.data = (void *)&rk3399_grf,
++	},
++	{ /* sentinel */ },
++};
++
++static int __init rockchip_grf_init(void)
++{
++	const struct rockchip_grf_info *grf_info;
++	const struct of_device_id *match;
++	struct device_node *np;
++	struct regmap *grf;
++	int ret, i;
++
++	np = of_find_matching_node_and_match(NULL, rockchip_grf_dt_match,
++					     &match);
++	if (!np)
++		return -ENODEV;
++	if (!match || !match->data) {
++		pr_err("%s: missing grf data\n", __func__);
++		return -EINVAL;
++	}
++
++	grf_info = match->data;
++
++	grf = syscon_node_to_regmap(np);
++	if (IS_ERR(grf)) {
++		pr_err("%s: could not get grf syscon\n", __func__);
++		return PTR_ERR(grf);
++	}
++
++	for (i = 0; i < grf_info->num_values; i++) {
++		const struct rockchip_grf_value *val = &grf_info->values[i];
++
++		pr_debug("%s: adjusting %s in %#6x to %#10x\n", __func__,
++			val->desc, val->reg, val->val);
++		ret = regmap_write(grf, val->reg, val->val);
++		if (ret < 0)
++			pr_err("%s: write to %#6x failed with %d\n",
++			       __func__, val->reg, ret);
++	}
++
++	return 0;
++}
++postcore_initcall(rockchip_grf_init);
+diff --git a/drivers/soc/rockchip/rk_vendor_storage.c b/drivers/soc/rockchip/rk_vendor_storage.c
+new file mode 100644
+index 000000000000..0d1dc5241a40
+--- /dev/null
++++ b/drivers/soc/rockchip/rk_vendor_storage.c
+@@ -0,0 +1,49 @@
++/*
++ * Copyright (c) 2016, Fuzhou Rockchip Electronics Co., Ltd
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or (at
++ * your option) any later version.
++ */
++
++#include <linux/kernel.h>
++#include <linux/soc/rockchip/rk_vendor_storage.h>
++
++int (*_vendor_read)(u32 id, void *pbuf, u32 size) = NULL;
++int (*_vendor_write)(u32 id, void *pbuf, u32 size) = NULL;
++
++int rk_vendor_read(u32 id, void *pbuf, u32 size)
++{
++	if (_vendor_read)
++		return _vendor_read(id, pbuf, size);
++	return -1;
++}
++EXPORT_SYMBOL(rk_vendor_read);
++
++int rk_vendor_write(u32 id, void *pbuf, u32 size)
++{
++	if (_vendor_write)
++		return _vendor_write(id, pbuf, size);
++	return -1;
++}
++EXPORT_SYMBOL(rk_vendor_write);
++
++int rk_vendor_register(void *read, void *write)
++{
++	if (!_vendor_read) {
++		_vendor_read = read;
++		_vendor_write =  write;
++		return 0;
++	}
++	return -1;
++}
++EXPORT_SYMBOL(rk_vendor_register);
++
++bool is_rk_vendor_ready(void)
++{
++	if (_vendor_read && _vendor_write)
++		return true;
++	return false;
++}
++EXPORT_SYMBOL(is_rk_vendor_ready);
+diff --git a/include/linux/soc/rockchip/rk_vendor_storage.h b/include/linux/soc/rockchip/rk_vendor_storage.h
+new file mode 100644
+index 000000000000..afe7a5473275
+--- /dev/null
++++ b/include/linux/soc/rockchip/rk_vendor_storage.h
+@@ -0,0 +1,25 @@
++/*
++ * Copyright (c) 2016, Fuzhou Rockchip Electronics Co., Ltd
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or (at
++ * your option) any later version.
++ */
++
++#ifndef __PLAT_RK_VENDOR_STORAGE_H
++#define __PLAT_RK_VENDOR_STORAGE_H
++
++#define RSV_ID		0
++#define SN_ID		1
++#define WIFI_MAC_ID	2
++#define LAN_MAC_ID	3
++#define BT_MAC_ID	4
++#define SENSOR_CALIBRATION_ID 7
++
++int rk_vendor_read(u32 id, void *pbuf, u32 size);
++int rk_vendor_write(u32 id, void *pbuf, u32 size);
++int rk_vendor_register(void *read, void *write);
++bool is_rk_vendor_ready(void);
++
++#endif
+-- 
+2.11.0
+

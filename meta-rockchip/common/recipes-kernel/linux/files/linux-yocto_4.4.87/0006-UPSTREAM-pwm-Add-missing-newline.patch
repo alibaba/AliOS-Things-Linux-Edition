@@ -1,0 +1,32 @@
+From cb3f263c2f0907beb82544a804a15d1fbb5471f0 Mon Sep 17 00:00:00 2001
+From: Thierry Reding <thierry.reding@gmail.com>
+Date: Mon, 2 May 2016 12:05:55 +0200
+Subject: [PATCH 06/27] UPSTREAM: pwm: Add missing newline
+
+checkpatch requires that declarations be separated from code by a blank
+line. Add one for readability and to silence the warning.
+
+Signed-off-by: Thierry Reding <thierry.reding@gmail.com>
+(cherry picked from commit 83a98864ff62b23dfa93baeaaf340741e263c02b)
+
+Change-Id: I1e59599b099fe6b4d29e0f39225f8e18ce7c139e
+Signed-off-by: David Wu <david.wu@rock-chips.com>
+---
+ drivers/pwm/core.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/pwm/core.c b/drivers/pwm/core.c
+index cac3a05277c9..5c961c640823 100644
+--- a/drivers/pwm/core.c
++++ b/drivers/pwm/core.c
+@@ -75,6 +75,7 @@ static void free_pwms(struct pwm_chip *chip)
+ 
+ 	for (i = 0; i < chip->npwm; i++) {
+ 		struct pwm_device *pwm = &chip->pwms[i];
++
+ 		radix_tree_delete(&pwm_tree, pwm->pwm);
+ 	}
+ 
+-- 
+2.11.0
+

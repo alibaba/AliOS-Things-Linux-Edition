@@ -1,0 +1,14 @@
+commit 4b13f74d9a986d58735107dc889a0e57bf1295b0
+Author: Francesco Giancane <francescogiancane8@gmail.com>
+Date:   Sat Oct 28 01:10:32 2017 +0200
+
+    userland: RPROVIDES is missing libegl
+    
+    userland package is the Raspberry Pi provider for the openGL stack.
+    If selected, it shall provide the gles2 and egl stacks in conjunction
+    with mesa-gl.
+    
+    libegl was missing in the RPROVIDES variable, thus some run-time
+    dependencies were not met when using userland as provider.
+    
+    Signed-off-by: Francesco Giancane <francescogiancane8@gmail.com>

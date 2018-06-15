@@ -1,0 +1,71 @@
+From e4cffd9d13617226d904472b877af7cd96fd9dd2 Mon Sep 17 00:00:00 2001
+From: OpenEmbedded <oe.patch@oe>
+Date: Wed, 9 May 2018 18:06:00 +0800
+Subject: [PATCH 2/9] update deconfig
+
+---
+ arch/arm64/configs/raspberrypi3_64_config | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/configs/raspberrypi3_64_config b/arch/arm64/configs/raspberrypi3_64_config
+index 87497e3..9b8dac8 100644
+--- a/arch/arm64/configs/raspberrypi3_64_config
++++ b/arch/arm64/configs/raspberrypi3_64_config
+@@ -1,6 +1,6 @@
+ #
+ # Automatically generated file; DO NOT EDIT.
+-# Linux/arm64 4.9.50 Kernel Configuration
++# Linux/arm64 4.9.49 Kernel Configuration
+ #
+ CONFIG_ARM64=y
+ CONFIG_64BIT=y
+@@ -164,6 +164,7 @@ CONFIG_HAVE_UID16=y
+ CONFIG_SYSCTL_EXCEPTION_TRACE=y
+ CONFIG_BPF=y
+ CONFIG_EXPERT=y
++# CONFIG_UPTIME_LIMITED_KERNEL is not set
+ CONFIG_UID16=y
+ CONFIG_MULTIUSER=y
+ # CONFIG_SGETMASK_SYSCALL is not set
+@@ -5074,8 +5075,10 @@ CONFIG_UDF_NLS=y
+ CONFIG_FAT_FS=y
+ CONFIG_MSDOS_FS=y
+ CONFIG_VFAT_FS=y
++# CONFIG_VFAT_FS_NO_DUALNAMES is not set
+ CONFIG_FAT_DEFAULT_CODEPAGE=437
+ CONFIG_FAT_DEFAULT_IOCHARSET="ascii"
++# CONFIG_VFAT_NO_CREATE_WITH_LONGNAMES is not set
+ # CONFIG_FAT_DEFAULT_UTF8 is not set
+ CONFIG_NTFS_FS=m
+ # CONFIG_NTFS_DEBUG is not set
+@@ -5111,6 +5114,7 @@ CONFIG_HFSPLUS_FS=m
+ # CONFIG_BEFS_FS is not set
+ # CONFIG_BFS_FS is not set
+ # CONFIG_EFS_FS is not set
++# CONFIG_YAFFS_FS is not set
+ CONFIG_JFFS2_FS=m
+ CONFIG_JFFS2_FS_DEBUG=0
+ CONFIG_JFFS2_FS_WRITEBUFFER=y
+@@ -5153,9 +5157,11 @@ CONFIG_SQUASHFS_FRAGMENT_CACHE_SIZE=3
+ # CONFIG_PSTORE is not set
+ # CONFIG_SYSV_FS is not set
+ # CONFIG_UFS_FS is not set
++# CONFIG_AUFS_FS is not set
+ CONFIG_NETWORK_FILESYSTEMS=y
+ CONFIG_NFS_FS=y
+ CONFIG_NFS_V2=y
++CONFIG_NFS_DEF_FILE_IO_SIZE=4096
+ CONFIG_NFS_V3=y
+ CONFIG_NFS_V3_ACL=y
+ CONFIG_NFS_V4=y
+@@ -5494,6 +5500,7 @@ CONFIG_CRYPTO=y
+ #
+ # Crypto core or helper
+ #
++# CONFIG_CRYPTODEV is not set
+ CONFIG_CRYPTO_ALGAPI=y
+ CONFIG_CRYPTO_ALGAPI2=y
+ CONFIG_CRYPTO_AEAD=m
+-- 
+2.7.4
+

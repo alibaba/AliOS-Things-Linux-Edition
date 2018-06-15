@@ -1,0 +1,62 @@
+From b90a18a43d3eca61015eecaeca5da15104fccef6 Mon Sep 17 00:00:00 2001
+From: OpenEmbedded <oe.patch@oe>
+Date: Wed, 9 May 2018 21:11:51 +0800
+Subject: [PATCH 6/9] fix build error
+
+---
+ include/linux/serial_8250.h | 4 ++--
+ include/linux/w1-gpio.h     | 1 +
+ include/video/uvesafb.h     | 4 +---
+ 3 files changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/include/linux/serial_8250.h b/include/linux/serial_8250.h
+index 48ec765..04185e03 100644
+--- a/include/linux/serial_8250.h
++++ b/include/linux/serial_8250.h
+@@ -94,7 +94,7 @@ struct uart_8250_port {
+ 	struct uart_port	port;
+ 	struct timer_list	timer;		/* "no irq" timer */
+ 	struct list_head	list;		/* ports on this IRQ */
+-	unsigned short		capabilities;	/* port capabilities */
++	u32			capabilities;	/* port capabilities */
+ 	unsigned short		bugs;		/* port bugs */
+ 	bool			fifo_bug;	/* min RX trigger if enabled */
+ 	unsigned int		tx_loadsz;	/* transmit fifo load size */
+@@ -168,6 +168,6 @@ int serial8250_console_setup(struct uart_port *port, char *options, bool probe);
+ 
+ extern void serial8250_set_isa_configurator(void (*v)
+ 					(int port, struct uart_port *up,
+-						unsigned short *capabilities));
++						u32 *capabilities));
+ 
+ #endif
+diff --git a/include/linux/w1-gpio.h b/include/linux/w1-gpio.h
+index d58594a..feae942 100644
+--- a/include/linux/w1-gpio.h
++++ b/include/linux/w1-gpio.h
+@@ -18,6 +18,7 @@
+ struct w1_gpio_platform_data {
+ 	unsigned int pin;
+ 	unsigned int is_open_drain:1;
++	unsigned int parasitic_power:1;
+ 	void (*enable_external_pullup)(int enable);
+ 	unsigned int ext_pullup_enable_pin;
+ 	unsigned int pullup_duration;
+diff --git a/include/video/uvesafb.h b/include/video/uvesafb.h
+index bfd1982..30f5362 100644
+--- a/include/video/uvesafb.h
++++ b/include/video/uvesafb.h
+@@ -88,9 +88,7 @@ struct vbe_mode_ib {
+ 
+ #define UVESAFB_DEFAULT_MODE "640x480-16"
+ 
+-/* How long to wait for a reply from userspace [ms]
+- * This is the default value of module param task_timeout
+- */
++/* How long to wait for a reply from userspace [ms] */
+ #define UVESAFB_TIMEOUT 5000
+ 
+ /* Max number of concurrent tasks */
+-- 
+2.7.4
+

@@ -1,0 +1,36 @@
+From 1d6e18d57602b33c01fcd4dfb5b97c2f81471226 Mon Sep 17 00:00:00 2001
+From: Chenyin.Ha <Chenyin.Ha@nxp.com>
+Date: Wed, 25 Apr 2018 00:36:43 +0800
+Subject: [PATCH 5/8] layerscape: Fix compiling errors when enabling TSP as BL32
+
+Signed-off-by: Chenyin.Ha <Chenyin.Ha@nxp.com>
+---
+ plat/layerscape/common/tsp/ls_tsp_setup.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/plat/layerscape/common/tsp/ls_tsp_setup.c b/plat/layerscape/common/tsp/ls_tsp_setup.c
+index 534d2ae..7aed84c 100644
+--- a/plat/layerscape/common/tsp/ls_tsp_setup.c
++++ b/plat/layerscape/common/tsp/ls_tsp_setup.c
+@@ -6,6 +6,7 @@
+ 
+ #include <gicv2.h>
+ #include <debug.h>
++#include <lsch2_soc.h>
+ #include "ls_16550.h"
+ #include "plat_ls.h"
+ 
+@@ -32,8 +33,8 @@ void ls_tsp_early_platform_setup(void)
+ 	 * Initialize a different console than already in use to display
+ 	 * messages from TSP
+ 	 */
+-	console_ls_16550_register(PLAT_LS1043_UART2_BASE, PLAT_LS1043_UART_CLOCK,
+-			PLAT_LS1043_UART_BAUDRATE, &console);
++	console_ls_16550_register(PLAT_LS_UART2_BASE, LS_TF_UART_CLOCK,
++			PLAT_LS_UART_BAUDRATE, &console);
+ 	NOTICE(FIRMWARE_WELCOME_STR_LS_BL32);
+ }
+ 
+-- 
+1.7.1
+

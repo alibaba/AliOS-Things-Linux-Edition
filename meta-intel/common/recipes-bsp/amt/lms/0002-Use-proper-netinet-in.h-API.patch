@@ -1,0 +1,31 @@
+From 0adc925ca9e005f93d77f373ccda2a6c6cc3ff2f Mon Sep 17 00:00:00 2001
+From: Jussi Kukkonen <jussi.kukkonen@intel.com>
+Date: Mon, 23 Jan 2017 20:46:50 +0200
+Subject: [PATCH 2/2] Use proper netinet/in.h API
+
+in6addr is only guaranteed to contain this member:
+    uint8_t s6_addr[16]
+Use that instead of the glibc implementation detail __in6_u.
+
+Upstream-Status: Pending
+Signed-off-by: Jussi Kukkonen <jussi.kukkonen@intel.com>
+---
+ src/tools/ATNetworkTool.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/tools/ATNetworkTool.cpp b/src/tools/ATNetworkTool.cpp
+index 66e27df..0789c79 100755
+--- a/src/tools/ATNetworkTool.cpp
++++ b/src/tools/ATNetworkTool.cpp
+@@ -207,7 +207,7 @@ int ATNetworkTool::GetSockPeerIP(int sock, ATAddressList & peerAddresses, int &e
+ 	if(sa->sa_family == AF_INET6 && IN6_IS_ADDR_V4MAPPED(&addr)) //if(IN6_IS_ADDR_V4COMPAT(&addr))
+ 	{
+ 		struct in_addr demapped_addr;
+-		memcpy(&demapped_addr.s_addr, &addr.__in6_u.__u6_addr8[12], 4);
++		memcpy(&demapped_addr.s_addr, &addr.s6_addr[12], 4);
+ 
+ 		struct sockaddr_in sa_in;
+ 		sa_in.sin_family = AF_INET;
+-- 
+2.1.4
+

@@ -1,0 +1,481 @@
+meta-intel
+==========
+
+This README file contains information on building and booting
+meta-intel BSP layers.  Please see the corresponding sections below
+for details.
+
+
+Yocto Project Compatible
+========================
+
+The BSPs contained in this layer are compatible with the Yocto Project
+as per the requirements listed here:
+
+  https://www.yoctoproject.org/webform/yocto-project-compatible-registration
+
+
+Dependencies
+============
+
+This layer depends on:
+
+  URI: git://git.openembedded.org/bitbake
+  branch: 1.34
+
+  URI: git://git.openembedded.org/openembedded-core
+  layers: meta
+  branch: rocko
+
+
+Table of Contents
+=================
+
+  I. Overview
+  II. Building and booting meta-intel BSP layers
+     a. Building the intel-common and quark BSP layers
+     b. Booting the intel-common BSP images
+     c. Booting the intel-quark BSP image on a Galileo board
+  III. Technical Miscellany
+     Benefits of using meta-intel
+     The intel-common kernel package architecture
+     Intel-specific machine features
+  IV. Tested Hardware
+  V.  Guidelines for submitting patches
+
+
+I. Overview
+===========
+
+This is the location for Intel-maintained BSPs.
+
+For details on the intel-common and intel-quark BSPs, see the
+information below.
+
+For all others, please see the README files contained in the
+individual BSP layers for BSP-specific information.
+
+If you have problems with or questions about a particular BSP, please
+contact the maintainer listed in the MAINTAINERS file directly (cc:ing
+the Yocto mailing list puts it in the archive and helps other people
+who might have the same questions in the future), but please try to do
+the following first:
+
+  - look in the Yocto Project Bugzilla
+    (http://bugzilla.yoctoproject.org/) to see if a problem has
+    already been reported
+
+  - look through recent entries of the meta-intel
+    (https://lists.yoctoproject.org/pipermail/meta-intel/) and Yocto
+    (https://lists.yoctoproject.org/pipermail/yocto/) mailing list
+    archives to see if other people have run into similar problems or
+    had similar questions answered.
+
+If you believe you have encountered a bug, you can open a new bug and
+enter the details in the Yocto Project Bugzilla
+(http://bugzilla.yoctoproject.org/).  If you're relatively certain
+that it's a bug against the BSP itself, please use the 'Yocto Project
+Components: BSPs | meta-intel' category for the bug; otherwise, please
+submit the bug against the most likely category for the problem - if
+you're wrong, it's not a big deal and the bug will be recategorized
+upon triage.
+
+
+II. Building and booting meta-intel BSP layers
+==============================================
+
+The following sections contain information on building and booting the
+BSPs contained in the meta-intel layer.
+
+Note that these instructions specifically cover the intel-common and
+quark BSPs, which may or may not be applicable to other BSPs contained
+in this layer - if a given BSP contains its own README, that version
+should be used instead, and these instructions can be ignored.
+
+a. Building the intel-common and quark BSP layers
+-------------------------------------------------
+
+In order to build an image with BSP support for a given release, you
+need to download the corresponding BSP tarball from the 'Board Support
+Package (BSP) Downloads' page of the Yocto Project website (or
+equivalently, check out the appropriate branch from the meta-intel git
+repository, see below).  For the intel-common and quark BSPs, those
+tarballs would correspond to the following choices in the BSP
+downloads section:
+
+ - Intel-core2-32 Intel® Common Core BSP (Intel-core2-32)
+ - Intel-core2-32 Intel® Common Core BSP (Intel-quark)
+ - Intel-corei7-64 Intel® Common Core BSP (Intel-corei7-64)
+
+The intel-* BSPs, also known as the intel-common BSPs, provide a few
+carefully selected tune options and generic hardware support to cover
+the majority of current Intel CPUs and devices. The naming follows the
+convention of intel-<TUNE>-<BITS>, where TUNE is the gcc cpu-type
+(used with mtune and march typically) and BITS is either 32 bit or 64
+bit.
+
+Having done that, and assuming you extracted the BSP tarball contents
+at the top-level of your yocto build tree, you can build a BSP image
+by adding the location of the meta-intel layer to bblayers.conf e.g.:
+
+  yocto/meta-intel \
+
+To enable a particular machine, you need to add a MACHINE line naming
+the BSP to the local.conf file:
+
+  MACHINE ?= "xxx"
+
+where 'xxx' is replaced by one of the following BSP names:
+
+ - intel-core2-32
+
+   This BSP is optimized for the Core2 family of CPUs as well as all
+   Atom CPUs prior to the Silvermont core.
+
+ - intel-corei7-64
+
+   This BSP is optimized for Nehalem and later Core and Xeon CPUs as
+   well as Silvermont and later Atom CPUs, such as the Baytrail SoCs.
+
+ - intel-quark
+
+   This BSP is optimized for Quark-based systems.
+
+You should then be able to build an image as such:
+
+  $ source oe-init-build-env
+  $ bitbake core-image-sato
+
+At the end of a successful build, you should have an image that
+you can boot from a USB flash drive (see instructions on how to do
+that below, in the section 'Booting the intel-common BSP images').
+
+As an alternative to downloading the BSP tarball, you can also work
+directly from the meta-intel git repository.  For each BSP in the
+'meta-intel' repository, there are multiple branches, one
+corresponding to each major release starting with 'laverne' (0.90), in
+addition to the latest code which tracks the current master (note that
+not all BSPs are present in every release).  Instead of extracting
+a BSP tarball at the top level of your yocto build tree, you can
+equivalently check out the appropriate branch from the meta-intel
+repository at the same location.
+
+b. Booting the intel-common BSP images
+--------------------------------------
+
+If you downloaded the BSP tarball, you will find bootable images in
+the /binary directory.  If you've built your own image, either from
+the downloaded BSP layer or from the meta-intel git repository, you'll
+find the bootable image in the build/tmp/deploy/images/xxx directory,
+where again 'xxx' refers to the machine name used in the build.
+
+The BSP /binary directory or build contains bootable live images,
+which can be used to directly boot Yocto off of a USB flash drive.
+
+Under Linux, insert a USB flash drive.  Assuming the USB flash drive
+takes device /dev/sdf, use dd to copy the image to it. For example:
+
+    $ dd if=core-image-sato-intel-corei7-64.wic of=/dev/sdf
+    $ sync
+    $ eject /dev/sdf
+
+This should give you a bootable USB flash device.  Insert the device
+into a bootable USB socket on the target, and power on.  This should
+result in a system booted to the Sato graphical desktop.
+
+If you want a terminal, use the arrows at the top of the UI to move to
+different pages of available applications, one of which is named
+'Terminal'.  Clicking that should give you a root terminal.
+
+If you want to ssh into the system, you can use the root terminal to
+ifconfig the IP address and use that to ssh in.  The root password is
+empty, so to log in type 'root' for the user name and hit 'Enter' at
+the Password prompt: and you should be in.
+
+If you find you're getting corrupt images on the USB (it doesn't show
+the syslinux boot: prompt, or the boot: prompt contains strange
+characters), try doing this first:
+
+    $ dd if=/dev/zero of=/dev/sdf bs=1M count=512
+
+c. Booting the intel-quark BSP image on a Galileo board
+-------------------------------------------------------
+
+If you downloaded the BSP tarball, you will find bootable images in
+the /binary directory.  If you've built your own image, either from
+the downloaded BSP layer or from the meta-intel git repository, you'll
+find the bootable image in the build/tmp/deploy/images/xxx directory,
+where again 'xxx' refers to the machine name used in the build.
+
+The Galileo board can boot off of either an SD card or USB storage
+media that has a special disk layout. The 'wic' tool can be used to
+create directly bootable images for either of the two formats via the
+following steps. As of meta-intel 6.0-morty-2.2 or newer, wic images are
+created automatically during build time, and the manual use of wic is
+not necessary. By default, the galileodisk-sd wic kickstart file is used,
+which targets SD cards. This can be changed by setting the WKS_FILE to
+something else in local.conf, such as the following:
+
+WKS_FILE = “galileodisk-usb”
+
+If your build is successful, a .wic image will be created in the usual
+deploy directory. Write this image to an SD card:
+
+    $ sudo dd if=/path/to/image/image-name.wic of=/dev/your_sd_dev
+    $ sync
+    $ sudo eject /dev/your_sd_dev
+
+Insert the SD card into the Galileo and power on.
+
+The Galileo board can boot from an hddimg formatted USB drive as well,
+but currently only live-boot, and not installation, is supported.
+An image in hddimg format is generated when you build the quark BSP.
+You can follow the procedure in II.b to use dd command to prepare your USB
+drive, then press F7 key during startup to bring up the boot option menu.
+Choose the UEFI USB boot option for the drive to boot the system. If the board
+already passes this stage and show a grub boot menu, you can press 'c'
+key and then type "quit" in grub shell. The board should come back to
+the UEFI boot menu.
+
+III. Technical Miscellany
+=========================
+
+Benefits of using meta-intel
+----------------------------
+
+Using meta-intel has the following benefits over a generic BSP:
+
+tune flags
+++++++++++
+intel-* MACHINEs each have different compilation flags appropriate for their
+targeted hardware sets. intel-corei7-64 has tune flags appropriate for modern
+64-bit Intel Core i microarchitecture, and includes instruction sets up to
+SSE4.2. intel-core2-32 has tune flags appropriate for legacy 32-bit Intel Core2
+microarchitecture, and includes instruction sets up to SSE3. intel-quark
+contains a subset of the intel-core2-32 instruction set, as quark does not
+support prefix locking instructions.
+
+linux-intel kernel
+++++++++++++++++++
+The linux-intel kernel is an initiative to bring better Intel(R) hardware
+support to the current LTS linux kernel. It contains a base LTS kernel with
+additional backports from upstream Intel drivers. In addition, a default kernel
+config containing most features found on Intel boards is supplied via the
+yocto-kernel-cache.
+
+graphics stack
+++++++++++++++
+Meta-intel provides the latest Intel Graphics Linux Stack drivers to support
+Intel hardware as defined by the https://01.org/linuxgraphics.
+
+Other software
+++++++++++++++
+  * intel ucode - provides the latest microcode updates for Intel processors
+
+  * thermald - which proactively controls thermal, using P-states, T-states, and
+the Intel power clamp driver.
+(https://01.org/linux-thermal-daemon/documentation/introduction-thermal-daemon)
+
+  * RMC - Runtime Machine Configuration, which allows the bootload to determine
+board and CPU information in order to set specific kernel command line
+information at startup.
+
+The intel-common kernel package architecture
+--------------------------------------------
+
+These BSPs use what we call the intel-common Linux kernel package
+architecture. This includes core2-32-intel-common and
+corei7-64-intel-common. These kernel packages can also be used by any
+of the BSPs in meta-intel that choose to include the
+intel-common-pkgarch.inc file.
+
+To minimize the proliferation of vendor trees, reduce the sources we
+must support, and consolidate QA efforts, all BSP maintainers are
+encouraged to make use of the intel-common Linux kernel package
+architecture.
+
+Intel-specific machine features
+-------------------------------
+
+The meta-intel layer makes some additional machine features available
+to BSPs.  These machine features can be used in a BSP layer in the
+same way that machine features are used in other layers based on
+oe-core, via the MACHINE_FEATURES variable.
+
+Requirements
+++++++++++++
+
+The meta-intel-specific machine features are only available to a BSP
+when the meta-intel layer is included in the build configuration, and
+the meta-intel.inc file is included in the machine configuration of
+that BSP.
+
+To make these features available for your machine, you will need to:
+
+  1. include a configuration line such as the below in bblayers.conf
+       BBLAYERS += "<local path>/meta-intel"
+  2. include the following line in the machine configuration file
+       require conf/machine/include/meta-intel.inc
+
+Once the above requirements are met, the machine features provided by
+the meta-intel layer will be available for the BSP to use.
+
+Available machine features
+++++++++++++++++++++++++++
+
+Currently, the meta-intel layer makes the following set of
+Intel-specific machine features available:
+
+  * intel-ucode
+
+These machine features can be included by listing them in the
+MACHINE_FEATURES variable in the machine configuration file.  For
+example:
+
+    MACHINE_FEATURES += "intel-ucode"
+
+Machine feature details
++++++++++++++++++++++++
+
+ * intel-ucode
+
+    This feature provides support for microcode updates to Intel
+    processors.  The intel-ucode feature runs at early boot and uses
+    the microcode data file added by the feature into the BSP's
+    initrd.  It also puts the userland microcode-updating tool,
+    iucode_tool, into the target images along with the microcode data
+    file.
+
+    Q. Why might a user want to enable the intel-ucode feature?
+
+    A. Intel releases microcode updates to correct processor behavior
+       as documented in the respective processor specification
+       updates.  While the normal approach to getting such microcode
+       updates is via a BIOS upgrade, this can be an administrative
+       hassle and not always possible in the field.  The intel-ucode
+       feature enables the microcode update capability present in the
+       Linux kernel.  It provides an easy path for upgrading processor
+       microcode without the need to change the BIOS.  If the feature
+       is enabled, it is also possible to update the existing target
+       images with a newer microcode update in the future.
+
+    Q. How would a user bundle only target-specific microcode in the
+       target image?
+
+    A. The Intel microcode data file released by Intel contains
+       microcode updates for multiple processors.  If the BSP image is
+       meant to run on only a certain subset of processor types, a
+       processor-specific subset of microcode can be bundled into the
+       target image via the UCODE_FILTER_PARAMETERS variable.  This
+       works by listing a sequence of iucode-tool parameters in the
+       UCODE_FILTER_PARAMETERS variable, which in this case will
+       select only the specific microcode relevant to the BSP.  For
+       more information on the underlying parameters refer to the
+       iucode-tool manual page at http://manned.org/iucode-tool
+
+       To define a set of parameters for microcode-filtering via the
+       UCODE_FILTER_PARAMETERS variable, one needs to identify the
+       cpuid signatures of all the processors the BSP is meant to run
+       on.  One way to determine the cpuid signature for a specific
+       processor is to build and run an intel-ucode-feature-enabled
+       image on the target hardware, without first assigning any value
+       to the UCODE_FILTER_PARAMETERS variable, and then once the
+       image is booted, run the "ucode_tool -S" command to have the
+       ucode tool scan the system for processor signatures.  These
+       signatures can then be used in the UCODE_FILTER_PARAMETERS
+       variable in conjunction with -s parameter.  For example, for
+       the fri2 BSP, the cpuid can be determined as such:
+
+         [root@fri2 ~]# iucode_tool -S
+         iucode_tool: system has processor(s) with signature 0x00020661
+
+       Given that output, a suitable UCODE_FILTER_PARAMETERS variable
+       definition could be specified in the machine configuration as
+       such:
+
+         UCODE_FILTER_PARAMETERS = "-s 0x00020661"
+
+    Q. Are there any reasons a user might want to disable the
+       intel-ucode feature?
+
+    A. The microcode data file and associated tools occupy a small
+       amount of space (a few KB) on the target image.  BSPs which are
+       highly sensitive to target image size and which are not
+       experiencing microcode-related issues might consider not
+       enabling this feature.
+
+
+IV. Tested Hardware
+===================
+
+The following undergo regular basic testing with their respective MACHINE types.
+Note that both 64-bit and 32-bit firmware is available for the MinnowBoard
+Turbot, so it is tested against both intel-corei7-64 and intel-core2-32.
+
+intel-corei7-64:
+    NUC6i5SYH
+    MinnowBoard Turbot
+    Braswell RVP
+
+intel-core2-32:
+    MinnowBoard Turbot
+
+Intel-quark:
+    Galileo 2
+
+
+V. Guidelines for submitting patches
+====================================
+
+Please submit any patches against meta-intel BSPs to the meta-intel
+mailing list (meta-intel@yoctoproject.org).  Also, if your patches are
+available via a public git repository, please also include a URL to
+the repo and branch containing your patches as that makes it easier
+for maintainers to grab and test your patches.
+
+There are patch submission scripts available that will, among other
+things, automatically include the repo URL and branch as mentioned.
+Please see the Yocto Project Development Manual sections entitled
+'Using Scripts to Push a Change Upstream and Request a Pull' and
+'Using Email to Submit a Patch' for details.
+
+Regardless of how you submit a patch or patchset, the patches should
+at minimum follow the suggestions outlined in the 'Submitting a Change
+to the Yocto Project' section in the Yocto Project Development Manual.
+Specifically, they should:
+
+  - Include a 'Signed-off-by:' line.  A commit can't legally be pulled
+    in without this.
+
+  - Provide a single-line, short summary of the change.  This short
+    description should be prefixed by the BSP or recipe name, as
+    appropriate, followed by a colon.  Capitalize the first character
+    of the summary (following the colon).
+
+  - For the body of the commit message, provide detailed information
+    that describes what you changed, why you made the change, and the
+    approach you used.
+
+  - If the change addresses a specific bug or issue that is associated
+    with a bug-tracking ID, include a reference to that ID in your
+    detailed description in the following format: [YOCTO #<bug-id>].
+
+  - Pay attention to line length - please don't allow any particular
+    line in the commit message to stretch past 72 characters.
+
+  - For any non-trivial patch, provide information about how you
+    tested the patch, and for any non-trivial or non-obvious testing
+    setup, provide details of that setup.
+
+Doing a quick 'git log' in meta-intel will provide you with many
+examples of good example commits if you have questions about any
+aspect of the preferred format.
+
+The meta-intel maintainers will do their best to review and/or pull in
+a patch or patchset within 24 hours of the time it was posted.  For
+larger and/or more involved patches and patchsets, the review process
+may take longer.
+
+Please see the meta-intel/MAINTAINERS file for the list of maintainers
+and their specific areas; it's also a good idea to cc: the specific
+maintainer, if applicable.

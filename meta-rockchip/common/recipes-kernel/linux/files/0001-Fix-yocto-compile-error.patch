@@ -1,0 +1,43 @@
+From ddc059a3c12a022364cac24da662e57f6ab6604c Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 18 May 2018 20:54:11 +0800
+Subject: [PATCH] Fix yocto compile error
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ arch/arm64/Makefile                          | 3 ---
+ drivers/gpu/arm/bifrost_for_linux/ipa/Kbuild | 5 +----
+ 2 files changed, 1 insertion(+), 7 deletions(-)
+
+diff --git a/arch/arm64/Makefile b/arch/arm64/Makefile
+index 53cde97203a2..b5fac79bf0ca 100644
+--- a/arch/arm64/Makefile
++++ b/arch/arm64/Makefile
+@@ -166,9 +166,6 @@ endef
+ kernel.img: Image
+ 	$(Q)$(srctree)/scripts/mkkrnlimg $(objtree)/arch/arm64/boot/Image $(objtree)/kernel.img >/dev/null
+ 	@echo '  Image:  kernel.img is ready'
+-ifdef CONFIG_MODULES
+-	$(Q)$(MAKE) modules
+-endif
+ 
+ LOGO := $(notdir $(wildcard $(srctree)/logo.bmp))
+ LOGO_KERNEL := $(notdir $(wildcard $(srctree)/logo_kernel.bmp))
+diff --git a/drivers/gpu/arm/bifrost_for_linux/ipa/Kbuild b/drivers/gpu/arm/bifrost_for_linux/ipa/Kbuild
+index 831fa83c6a8e..3cf7087d8965 100644
+--- a/drivers/gpu/arm/bifrost_for_linux/ipa/Kbuild
++++ b/drivers/gpu/arm/bifrost_for_linux/ipa/Kbuild
+@@ -19,9 +19,6 @@ bifrost_kbase-y += \
+ 
+ bifrost_kbase-$(CONFIG_DEBUG_FS) += ipa/mali_kbase_ipa_debugfs.o
+ 
+-ifneq ($(wildcard $(src)/ipa/mali_kbase_ipa_vinstr_g71.c),)
+-  bifrost_kbase-y += \
++bifrost_kbase-y += \
+ 	ipa/mali_kbase_ipa_vinstr_g71.o \
+ 	ipa/mali_kbase_ipa_vinstr_common.o
+-
+-endif
+-- 
+2.11.0
+

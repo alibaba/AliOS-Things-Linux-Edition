@@ -1,0 +1,325 @@
+From 0acb14abb4ddccee7afd025df5d362a58a6ccf36 Mon Sep 17 00:00:00 2001
+From: Pan Jiafei <Jiafei.Pan@nxp.com>
+Date: Fri, 24 Nov 2017 12:40:59 +0800
+Subject: [PATCH 2/4] layerscpae: atf: add ATF support for ls1043ardb
+
+This patch add ATF(trusted firmware-A) support for ls1043ardb.
+currently, ATF load u-boot as bl33, so u-boot runs in el2 of
+non-secure world.
+
+Signed-off-by: Pan Jiafei <Jiafei.Pan@nxp.com>
+---
+ arch/arm/cpu/armv8/cpu-dt.c                    |  5 +++-
+ arch/arm/cpu/armv8/fsl-layerscape/Kconfig      |  7 +++++
+ arch/arm/cpu/armv8/fsl-layerscape/cpu.c        |  2 ++
+ arch/arm/cpu/armv8/fsl-layerscape/fdt.c        |  3 +-
+ arch/arm/cpu/armv8/fsl-layerscape/lowlevel.S   |  4 +--
+ arch/arm/include/asm/arch-fsl-layerscape/soc.h |  1 +
+ arch/arm/lib/bootm-fdt.c                       |  2 +-
+ arch/arm/lib/psci-dt.c                         |  4 +--
+ board/freescale/ls1043ardb/ddr.c               |  2 +-
+ configs/ls1043ardb_atf_defconfig               | 40 +++++++++++++++++++++++++
+ configs/ls1043ardb_atf_sd_defconfig            | 41 ++++++++++++++++++++++++++
+ drivers/net/fm/fdt.c                           |  1 +
+ include/configs/ls1043a_common.h               |  4 +++
+ include/configs/ls1043ardb.h                   |  2 +-
+ 14 files changed, 109 insertions(+), 9 deletions(-)
+ create mode 100644 configs/ls1043ardb_atf_defconfig
+ create mode 100644 configs/ls1043ardb_atf_sd_defconfig
+
+diff --git a/arch/arm/cpu/armv8/cpu-dt.c b/arch/arm/cpu/armv8/cpu-dt.c
+index e3c8aa2..263933c 100644
+--- a/arch/arm/cpu/armv8/cpu-dt.c
++++ b/arch/arm/cpu/armv8/cpu-dt.c
+@@ -9,7 +9,7 @@
+ #include <asm/system.h>
+ #include <asm/armv8/sec_firmware.h>
+ 
+-#ifdef CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT
++#if defined(CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT) || defined(CONFIG_ATF)
+ int psci_update_dt(void *fdt)
+ {
+ 	/*
+@@ -18,8 +18,11 @@ int psci_update_dt(void *fdt)
+ 	 * number to support detecting PSCI dynamically and then switching
+ 	 * the SMP boot method between PSCI and spin-table.
+ 	 */
++#ifndef CONFIG_ATF
+ 	if (sec_firmware_support_psci_version() == PSCI_INVALID_VER)
+ 		return 0;
++#endif
++
+ 	fdt_psci(fdt);
+ 
+ #if defined(CONFIG_ARMV8_PSCI) && !defined(CONFIG_ARMV8_SECURE_BASE)
+diff --git a/arch/arm/cpu/armv8/fsl-layerscape/Kconfig b/arch/arm/cpu/armv8/fsl-layerscape/Kconfig
+index 4c8d55b..2192c21 100644
+--- a/arch/arm/cpu/armv8/fsl-layerscape/Kconfig
++++ b/arch/arm/cpu/armv8/fsl-layerscape/Kconfig
+@@ -176,6 +176,13 @@ config HAS_FEATURE_ENHANCED_MSI
+ 	bool
+ 	default y if ARCH_LS1043A
+ 
++config ATF
++	bool "Enable TF-A support"
++	default n
++	help
++	  Trusted Firmware-A(TF-A) provides a reference implementation of
++	  secure world software for Armv7-A and Armv8-A.
++
+ menu "Layerscape PPA"
+ config FSL_LS_PPA
+ 	bool "FSL Layerscape PPA firmware support"
+diff --git a/arch/arm/cpu/armv8/fsl-layerscape/cpu.c b/arch/arm/cpu/armv8/fsl-layerscape/cpu.c
+index c906a32..04c4736 100644
+--- a/arch/arm/cpu/armv8/fsl-layerscape/cpu.c
++++ b/arch/arm/cpu/armv8/fsl-layerscape/cpu.c
+@@ -519,6 +519,7 @@ int arch_early_init_r(void)
+ #if defined(CONFIG_SYS_FSL_ERRATUM_A009942) && defined(CONFIG_SYS_FSL_DDR)
+ 	erratum_a009942_check_cpo();
+ #endif
++#if !defined(CONFIG_ATF)
+ 	if (check_psci()) {
+ 		debug("PSCI: PSCI does not exist.\n");
+ 
+@@ -526,6 +527,7 @@ int arch_early_init_r(void)
+ 		if (fsl_layerscape_wake_seconday_cores())
+ 			printf("Did not wake secondary cores\n");
+ 	}
++#endif
+ 
+ #ifdef CONFIG_SYS_FSL_HAS_RGMII
+ 	fsl_rgmii_init();
+diff --git a/arch/arm/cpu/armv8/fsl-layerscape/fdt.c b/arch/arm/cpu/armv8/fsl-layerscape/fdt.c
+index d679470..0dd885e 100644
+--- a/arch/arm/cpu/armv8/fsl-layerscape/fdt.c
++++ b/arch/arm/cpu/armv8/fsl-layerscape/fdt.c
+@@ -147,7 +147,8 @@ static void fdt_fixup_gic(void *blob)
+ 
+ 	val = gur_in32(&gur->svr);
+ 
+-	if (SVR_SOC_VER(val) != SVR_LS1043A) {
++	if (SVR_SOC_VER(val) != SVR_LS1043A && SVR_SOC_VER(val)
++			!= SVR_LS1043AE) {
+ 		align_64k = 1;
+ 	} else if (SVR_REV(val) != REV1_0) {
+ 		val = scfg_in32(&scfg->gic_align) & (0x01 << GIC_ADDR_BIT);
+diff --git a/arch/arm/cpu/armv8/fsl-layerscape/lowlevel.S b/arch/arm/cpu/armv8/fsl-layerscape/lowlevel.S
+index 28a31b2..10060e6 100644
+--- a/arch/arm/cpu/armv8/fsl-layerscape/lowlevel.S
++++ b/arch/arm/cpu/armv8/fsl-layerscape/lowlevel.S
+@@ -291,7 +291,7 @@ ENTRY(lowlevel_init)
+ 100:
+ #endif
+ 
+-#if defined(CONFIG_FSL_LSCH2) && !defined(CONFIG_SPL_BUILD)
++#if defined(CONFIG_FSL_LSCH2) && !defined(CONFIG_SPL_BUILD) && !defined(CONFIG_ATF)
+ 	bl	fsl_ocram_init
+ #endif
+ 
+@@ -299,7 +299,7 @@ ENTRY(lowlevel_init)
+ 	ret
+ ENDPROC(lowlevel_init)
+ 
+-#if defined(CONFIG_FSL_LSCH2) && !defined(CONFIG_SPL_BUILD)
++#if defined(CONFIG_FSL_LSCH2) && !defined(CONFIG_SPL_BUILD) && !defined(CONFIG_ATF)
+ ENTRY(fsl_ocram_init)
+ 	mov	x28, lr			/* Save LR */
+ 	bl	fsl_clear_ocram
+diff --git a/arch/arm/include/asm/arch-fsl-layerscape/soc.h b/arch/arm/include/asm/arch-fsl-layerscape/soc.h
+index 08a42b9..174819e 100644
+--- a/arch/arm/include/asm/arch-fsl-layerscape/soc.h
++++ b/arch/arm/include/asm/arch-fsl-layerscape/soc.h
+@@ -54,6 +54,7 @@ struct cpu_type {
+ #define SVR_WO_E		0xFFFFFE
+ #define SVR_LS1012A		0x870400
+ #define SVR_LS1043A		0x879200
++#define SVR_LS1043AE		0x879204
+ #define SVR_LS1023A		0x879208
+ #define SVR_LS1046A		0x870700
+ #define SVR_LS1026A		0x870708
+diff --git a/arch/arm/lib/bootm-fdt.c b/arch/arm/lib/bootm-fdt.c
+index eaa817b..f737fe6 100644
+--- a/arch/arm/lib/bootm-fdt.c
++++ b/arch/arm/lib/bootm-fdt.c
+@@ -57,7 +57,7 @@ int arch_fixup_fdt(void *blob)
+ #endif
+ 
+ #if defined(CONFIG_ARMV7_NONSEC) || defined(CONFIG_ARMV8_PSCI) || \
+-	defined(CONFIG_SEC_FIRMWARE_ARMV8_PSCI)
++	defined(CONFIG_SEC_FIRMWARE_ARMV8_PSCI) || defined(CONFIG_ATF)
+ 	ret = psci_update_dt(blob);
+ 	if (ret)
+ 		return ret;
+diff --git a/arch/arm/lib/psci-dt.c b/arch/arm/lib/psci-dt.c
+index 05e0ad6..6e3af4a 100644
+--- a/arch/arm/lib/psci-dt.c
++++ b/arch/arm/lib/psci-dt.c
+@@ -17,7 +17,7 @@
+ int fdt_psci(void *fdt)
+ {
+ #if defined(CONFIG_ARMV7_PSCI) || defined(CONFIG_ARMV8_PSCI) || \
+-	defined(CONFIG_SEC_FIRMWARE_ARMV8_PSCI)
++	defined(CONFIG_SEC_FIRMWARE_ARMV8_PSCI) || defined(CONFIG_ATF)
+ 	int nodeoff;
+ 	unsigned int psci_ver = 0;
+ 	int tmp;
+@@ -66,7 +66,7 @@ int fdt_psci(void *fdt)
+ init_psci_node:
+ #ifdef CONFIG_ARMV8_SEC_FIRMWARE_SUPPORT
+ 	psci_ver = sec_firmware_support_psci_version();
+-#elif defined(CONFIG_ARMV7_PSCI_1_0) || defined(CONFIG_ARMV8_PSCI)
++#elif defined(CONFIG_ARMV7_PSCI_1_0) || defined(CONFIG_ARMV8_PSCI) || defined(CONFIG_ATF)
+ 	psci_ver = ARM_PSCI_VER_1_0;
+ #endif
+ 	switch (psci_ver) {
+diff --git a/board/freescale/ls1043ardb/ddr.c b/board/freescale/ls1043ardb/ddr.c
+index 354b864..54088d5 100644
+--- a/board/freescale/ls1043ardb/ddr.c
++++ b/board/freescale/ls1043ardb/ddr.c
+@@ -175,7 +175,7 @@ int fsl_initdram(void)
+ {
+ 	phys_size_t dram_size;
+ 
+-#if defined(CONFIG_SPL_BUILD) || !defined(CONFIG_SPL)
++#if (defined(CONFIG_SPL_BUILD) || !defined(CONFIG_SPL)) && !defined(CONFIG_ATF)
+ 	puts("Initializing DDR....\n");
+ 	dram_size = fsl_ddr_sdram();
+ #else
+diff --git a/configs/ls1043ardb_atf_defconfig b/configs/ls1043ardb_atf_defconfig
+new file mode 100644
+index 0000000..c470b9b
+--- /dev/null
++++ b/configs/ls1043ardb_atf_defconfig
+@@ -0,0 +1,40 @@
++CONFIG_ARM=y
++CONFIG_TARGET_LS1043ARDB=y
++CONFIG_DEFAULT_DEVICE_TREE="fsl-ls1043a-rdb"
++CONFIG_ATF=y
++CONFIG_FIT=y
++CONFIG_FIT_VERBOSE=y
++CONFIG_OF_BOARD_SETUP=y
++CONFIG_BOOTDELAY=10
++CONFIG_HUSH_PARSER=y
++CONFIG_CMD_GPT=y
++CONFIG_CMD_MMC=y
++CONFIG_CMD_SF=y
++CONFIG_CMD_I2C=y
++CONFIG_CMD_USB=y
++CONFIG_CMD_DHCP=y
++CONFIG_CMD_PXE=y
++CONFIG_CMD_MII=y
++CONFIG_CMD_PING=y
++CONFIG_CMD_CACHE=y
++CONFIG_CMD_EXT2=y
++CONFIG_CMD_FAT=y
++CONFIG_OF_CONTROL=y
++CONFIG_DM=y
++CONFIG_FSL_CAAM=y
++CONFIG_MTD_NOR_FLASH=y
++CONFIG_SPI_FLASH=y
++CONFIG_NETDEVICES=y
++CONFIG_E1000=y
++CONFIG_PCI=y
++CONFIG_DM_PCI=y
++CONFIG_DM_PCI_COMPAT=y
++CONFIG_PCIE_LAYERSCAPE=y
++CONFIG_SYS_NS16550=y
++CONFIG_DM_SPI=y
++CONFIG_USB=y
++CONFIG_DM_USB=y
++CONFIG_USB_XHCI_HCD=y
++CONFIG_USB_XHCI_DWC3=y
++CONFIG_USB_STORAGE=y
++CONFIG_DISTRO_DEFAULTS=y
+diff --git a/configs/ls1043ardb_atf_sd_defconfig b/configs/ls1043ardb_atf_sd_defconfig
+new file mode 100644
+index 0000000..35e4aa9
+--- /dev/null
++++ b/configs/ls1043ardb_atf_sd_defconfig
+@@ -0,0 +1,41 @@
++CONFIG_ARM=y
++CONFIG_TARGET_LS1043ARDB=y
++CONFIG_DEFAULT_DEVICE_TREE="fsl-ls1043a-rdb"
++CONFIG_ATF=y
++CONFIG_SD_BOOT=y
++CONFIG_FIT=y
++CONFIG_FIT_VERBOSE=y
++CONFIG_OF_BOARD_SETUP=y
++CONFIG_BOOTDELAY=10
++CONFIG_HUSH_PARSER=y
++CONFIG_CMD_GPT=y
++CONFIG_CMD_MMC=y
++CONFIG_CMD_SF=y
++CONFIG_CMD_I2C=y
++CONFIG_CMD_USB=y
++CONFIG_CMD_DHCP=y
++CONFIG_CMD_PXE=y
++CONFIG_CMD_MII=y
++CONFIG_CMD_PING=y
++CONFIG_CMD_CACHE=y
++CONFIG_CMD_EXT2=y
++CONFIG_CMD_FAT=y
++CONFIG_OF_CONTROL=y
++CONFIG_DM=y
++CONFIG_FSL_CAAM=y
++CONFIG_MTD_NOR_FLASH=y
++CONFIG_SPI_FLASH=y
++CONFIG_NETDEVICES=y
++CONFIG_E1000=y
++CONFIG_PCI=y
++CONFIG_DM_PCI=y
++CONFIG_DM_PCI_COMPAT=y
++CONFIG_PCIE_LAYERSCAPE=y
++CONFIG_SYS_NS16550=y
++CONFIG_DM_SPI=y
++CONFIG_USB=y
++CONFIG_DM_USB=y
++CONFIG_USB_XHCI_HCD=y
++CONFIG_USB_XHCI_DWC3=y
++CONFIG_USB_STORAGE=y
++CONFIG_DISTRO_DEFAULTS=y
+diff --git a/drivers/net/fm/fdt.c b/drivers/net/fm/fdt.c
+index 9918d80..cec0927 100644
+--- a/drivers/net/fm/fdt.c
++++ b/drivers/net/fm/fdt.c
+@@ -5,6 +5,7 @@
+  */
+ #include <asm/io.h>
+ #include <fsl_qe.h>	/* For struct qe_firmware */
++#include <libfdt.h>
+ 
+ #ifdef CONFIG_SYS_DPAA_FMAN
+ /**
+diff --git a/include/configs/ls1043a_common.h b/include/configs/ls1043a_common.h
+index 0b3fb4e..9cf6005 100644
+--- a/include/configs/ls1043a_common.h
++++ b/include/configs/ls1043a_common.h
+@@ -35,7 +35,11 @@
+ #include <asm/arch/config.h>
+ 
+ /* Link Definitions */
++#ifdef CONFIG_ATF
++#define CONFIG_SYS_INIT_SP_ADDR		0x83000000
++#else
+ #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_FSL_OCRAM_BASE + 0xfff0)
++#endif
+ 
+ #define CONFIG_SUPPORT_RAW_INITRD
+ 
+diff --git a/include/configs/ls1043ardb.h b/include/configs/ls1043ardb.h
+index f87fce6..f2722ca 100644
+--- a/include/configs/ls1043ardb.h
++++ b/include/configs/ls1043ardb.h
+@@ -9,7 +9,7 @@
+ 
+ #include "ls1043a_common.h"
+ 
+-#if defined(CONFIG_NAND_BOOT) || defined(CONFIG_SD_BOOT)
++#if defined(CONFIG_NAND_BOOT) || defined(CONFIG_SD_BOOT) || defined(CONFIG_ATF)
+ #define CONFIG_SYS_TEXT_BASE		0x82000000
+ #else
+ #define CONFIG_SYS_TEXT_BASE		0x60100000
+-- 
+1.8.3.1
+

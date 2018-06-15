@@ -1,0 +1,42 @@
+From 88fa048e22ad00b04054b8a64df53bd440e01537 Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Fri, 11 Aug 2017 17:29:02 -0700
+Subject: [PATCH 2/9] typecast index from size_t to int
+
+size_t is not consistent across architectures e.g. on arm its unsigned int
+
+Fixes
+error: comparison of unsigned expression < 0 is always false [-Werror,-Wtautological-compare]
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+Upstream-Status: Pending
+
+ codecparsers/jpegParser.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/codecparsers/jpegParser.cpp b/codecparsers/jpegParser.cpp
+index 2217028..6da5c36 100644
+--- a/codecparsers/jpegParser.cpp
++++ b/codecparsers/jpegParser.cpp
+@@ -639,7 +639,7 @@ bool Parser::parseDAC()
+ 
+         length -= 2;
+ 
+-        if (index < 0 || index >= (2 * NUM_ARITH_TBLS)) {
++        if ((int)index < 0 || index >= (2 * NUM_ARITH_TBLS)) {
+             ERROR("Invalid DAC Index");
+             return false;
+         }
+@@ -747,7 +747,7 @@ bool Parser::parseDHT()
+             huffTables = &m_dcHuffTables;
+         }
+ 
+-        if (index < 0 || index >= NUM_HUFF_TBLS) {
++        if ((int)index < 0 || index >= NUM_HUFF_TBLS) {
+             ERROR("Bad Huff Table Index");
+             return false;
+         }
+-- 
+2.14.1
+

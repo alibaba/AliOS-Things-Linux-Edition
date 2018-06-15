@@ -1,0 +1,200 @@
+From d93062d6af7e27a9ff9aa7e3dd26ce28cd2c5712 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 30 May 2018 18:57:21 +0800
+Subject: [PATCH 19/27] Sync BSP kernel's rockchip-timer
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ arch/arm64/Kconfig.platforms         |  1 +
+ drivers/clocksource/rockchip_timer.c | 80 ++++++++++++++++++++++++------------
+ 2 files changed, 55 insertions(+), 26 deletions(-)
+
+diff --git a/arch/arm64/Kconfig.platforms b/arch/arm64/Kconfig.platforms
+index 4043c35962cc..9d74f5c515ab 100644
+--- a/arch/arm64/Kconfig.platforms
++++ b/arch/arm64/Kconfig.platforms
+@@ -58,6 +58,7 @@ config ARCH_ROCKCHIP
+ 	select ARCH_REQUIRE_GPIOLIB
+ 	select PINCTRL
+ 	select PINCTRL_ROCKCHIP
++	select ROCKCHIP_TIMER
+ 	help
+ 	  This enables support for the ARMv8 based Rockchip chipsets,
+ 	  like the RK3368.
+diff --git a/drivers/clocksource/rockchip_timer.c b/drivers/clocksource/rockchip_timer.c
+index d3c1742ded1a..a3f22b03f94f 100644
+--- a/drivers/clocksource/rockchip_timer.c
++++ b/drivers/clocksource/rockchip_timer.c
+@@ -17,20 +17,22 @@
+ 
+ #define TIMER_NAME "rk_timer"
+ 
+-#define TIMER_LOAD_COUNT0 0x00
+-#define TIMER_LOAD_COUNT1 0x04
+-#define TIMER_CONTROL_REG 0x10
+-#define TIMER_INT_STATUS 0x18
+-
+-#define TIMER_DISABLE 0x0
+-#define TIMER_ENABLE 0x1
+-#define TIMER_MODE_FREE_RUNNING (0 << 1)
+-#define TIMER_MODE_USER_DEFINED_COUNT (1 << 1)
+-#define TIMER_INT_UNMASK (1 << 2)
++#define TIMER_LOAD_COUNT0	0x00
++#define TIMER_LOAD_COUNT1	0x04
++#define TIMER_CONTROL_REG3288	0x10
++#define TIMER_CONTROL_REG3399	0x1c
++#define TIMER_INT_STATUS	0x18
++
++#define TIMER_DISABLE		0x0
++#define TIMER_ENABLE		0x1
++#define TIMER_MODE_FREE_RUNNING			(0 << 1)
++#define TIMER_MODE_USER_DEFINED_COUNT		(1 << 1)
++#define TIMER_INT_UNMASK			(1 << 2)
+ 
+ struct bc_timer {
+ 	struct clock_event_device ce;
+ 	void __iomem *base;
++	void __iomem *ctrl;
+ 	u32 freq;
+ };
+ 
+@@ -46,17 +48,20 @@ static inline void __iomem *rk_base(struct clock_event_device *ce)
+ 	return rk_timer(ce)->base;
+ }
+ 
++static inline void __iomem *rk_ctrl(struct clock_event_device *ce)
++{
++	return rk_timer(ce)->ctrl;
++}
++
+ static inline void rk_timer_disable(struct clock_event_device *ce)
+ {
+-	writel_relaxed(TIMER_DISABLE, rk_base(ce) + TIMER_CONTROL_REG);
+-	dsb();
++	writel_relaxed(TIMER_DISABLE, rk_ctrl(ce));
+ }
+ 
+ static inline void rk_timer_enable(struct clock_event_device *ce, u32 flags)
+ {
+ 	writel_relaxed(TIMER_ENABLE | TIMER_INT_UNMASK | flags,
+-		       rk_base(ce) + TIMER_CONTROL_REG);
+-	dsb();
++		       rk_ctrl(ce));
+ }
+ 
+ static void rk_timer_update_counter(unsigned long cycles,
+@@ -64,13 +69,11 @@ static void rk_timer_update_counter(unsigned long cycles,
+ {
+ 	writel_relaxed(cycles, rk_base(ce) + TIMER_LOAD_COUNT0);
+ 	writel_relaxed(0, rk_base(ce) + TIMER_LOAD_COUNT1);
+-	dsb();
+ }
+ 
+ static void rk_timer_interrupt_clear(struct clock_event_device *ce)
+ {
+ 	writel_relaxed(1, rk_base(ce) + TIMER_INT_STATUS);
+-	dsb();
+ }
+ 
+ static inline int rk_timer_set_next_event(unsigned long cycles,
+@@ -110,7 +113,7 @@ static irqreturn_t rk_timer_interrupt(int irq, void *dev_id)
+ 	return IRQ_HANDLED;
+ }
+ 
+-static void __init rk_timer_init(struct device_node *np)
++static void __init rk_timer_init(struct device_node *np, u32 ctrl_reg)
+ {
+ 	struct clock_event_device *ce = &bc_timer.ce;
+ 	struct clk *timer_clk;
+@@ -122,27 +125,28 @@ static void __init rk_timer_init(struct device_node *np)
+ 		pr_err("Failed to get base address for '%s'\n", TIMER_NAME);
+ 		return;
+ 	}
++	bc_timer.ctrl = bc_timer.base + ctrl_reg;
+ 
+ 	pclk = of_clk_get_by_name(np, "pclk");
+ 	if (IS_ERR(pclk)) {
+ 		pr_err("Failed to get pclk for '%s'\n", TIMER_NAME);
+-		return;
++		goto out_unmap;
+ 	}
+ 
+ 	if (clk_prepare_enable(pclk)) {
+ 		pr_err("Failed to enable pclk for '%s'\n", TIMER_NAME);
+-		return;
++		goto out_unmap;
+ 	}
+ 
+ 	timer_clk = of_clk_get_by_name(np, "timer");
+ 	if (IS_ERR(timer_clk)) {
+ 		pr_err("Failed to get timer clock for '%s'\n", TIMER_NAME);
+-		return;
++		goto out_timer_clk;
+ 	}
+ 
+ 	if (clk_prepare_enable(timer_clk)) {
+ 		pr_err("Failed to enable timer clock\n");
+-		return;
++		goto out_timer_clk;
+ 	}
+ 
+ 	bc_timer.freq = clk_get_rate(timer_clk);
+@@ -150,16 +154,17 @@ static void __init rk_timer_init(struct device_node *np)
+ 	irq = irq_of_parse_and_map(np, 0);
+ 	if (!irq) {
+ 		pr_err("Failed to map interrupts for '%s'\n", TIMER_NAME);
+-		return;
++		goto out_irq;
+ 	}
+ 
+ 	ce->name = TIMER_NAME;
+-	ce->features = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT;
++	ce->features = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT |
++		       CLOCK_EVT_FEAT_DYNIRQ;
+ 	ce->set_next_event = rk_timer_set_next_event;
+ 	ce->set_state_shutdown = rk_timer_shutdown;
+ 	ce->set_state_periodic = rk_timer_set_periodic;
+ 	ce->irq = irq;
+-	ce->cpumask = cpumask_of(0);
++	ce->cpumask = cpu_possible_mask;
+ 	ce->rating = 250;
+ 
+ 	rk_timer_interrupt_clear(ce);
+@@ -168,9 +173,32 @@ static void __init rk_timer_init(struct device_node *np)
+ 	ret = request_irq(irq, rk_timer_interrupt, IRQF_TIMER, TIMER_NAME, ce);
+ 	if (ret) {
+ 		pr_err("Failed to initialize '%s': %d\n", TIMER_NAME, ret);
+-		return;
++		goto out_irq;
+ 	}
+ 
+ 	clockevents_config_and_register(ce, bc_timer.freq, 1, UINT_MAX);
++
++	return;
++
++out_irq:
++	clk_disable_unprepare(timer_clk);
++out_timer_clk:
++	clk_disable_unprepare(pclk);
++out_unmap:
++	iounmap(bc_timer.base);
++}
++
++static void __init rk3288_timer_init(struct device_node *np)
++{
++	rk_timer_init(np, TIMER_CONTROL_REG3288);
+ }
+-CLOCKSOURCE_OF_DECLARE(rk_timer, "rockchip,rk3288-timer", rk_timer_init);
++
++static void __init rk3399_timer_init(struct device_node *np)
++{
++	rk_timer_init(np, TIMER_CONTROL_REG3399);
++}
++
++CLOCKSOURCE_OF_DECLARE(rk3288_timer, "rockchip,rk3288-timer",
++		       rk3288_timer_init);
++CLOCKSOURCE_OF_DECLARE(rk3399_timer, "rockchip,rk3399-timer",
++		       rk3399_timer_init);
+-- 
+2.11.0
+

@@ -1,0 +1,10 @@
+Building images
+===============
+Take ls1043ardb as an example:
+$: . ./oe-init-build-env
+$: cp ../meta-bsp/meta-freescale/local_ls1043ardb.conf  conf/local.conf
+$: cp ../meta-bsp/meta-freescale/bblayers_ls1043ardb.conf conf/bblayers.conf
+$: bitbake core-image-minimal
+
+Note: set INITRAMFS_IMAGE to build itbimage include root filesystem.
+Images will be found under build/tmp/deploy/images/ls1043ardb.

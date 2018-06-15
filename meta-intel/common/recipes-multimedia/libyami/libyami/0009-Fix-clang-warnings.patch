@@ -1,0 +1,37 @@
+From a54dc7b6a777882f55a3f31bd97748a261db03d2 Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Fri, 11 Aug 2017 18:53:06 -0700
+Subject: [PATCH 9/9] Fix clang warnings
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+Upstream-Status: Pending
+
+ encoder/vaapiencoder_h264.cpp | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/encoder/vaapiencoder_h264.cpp b/encoder/vaapiencoder_h264.cpp
+index 98bc2ed..94015cb 100644
+--- a/encoder/vaapiencoder_h264.cpp
++++ b/encoder/vaapiencoder_h264.cpp
+@@ -509,7 +509,7 @@ bit_writer_write_sps(BitWriter* bitwriter,
+         }
+         /* vcl_hrd_parameters_present_flag */
+         bitwriter->writeBits(0, 1);
+-        if (nal_hrd_parameters_present_flag || 0/*vcl_hrd_parameters_present_flag*/) {
++        if (nal_hrd_parameters_present_flag || !!(0)/*vcl_hrd_parameters_present_flag*/) {
+             /* low_delay_hrd_flag */
+             bitwriter->writeBits(0, 1);
+         }
+@@ -1889,7 +1889,7 @@ bool VaapiEncoderH264::addSliceHeaders (const PicturePtr& picture) const
+         sliceParam->num_macroblocks = curSliceMbs;
+         sliceParam->macroblock_info = VA_INVALID_ID;
+         sliceParam->slice_type = h264_get_slice_type (picture->m_type);
+-        assert (sliceParam->slice_type != -1);
++        assert ((int)sliceParam->slice_type != -1);
+         sliceParam->idr_pic_id = m_idrNum;
+         sliceParam->pic_order_cnt_lsb = picture->m_poc % m_maxPicOrderCnt;
+ 
+-- 
+2.14.1
+

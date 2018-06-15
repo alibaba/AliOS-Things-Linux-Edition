@@ -1,0 +1,87 @@
+From ecb29b78ce946c802058be0c46a0d20432f412e5 Mon Sep 17 00:00:00 2001
+From: Saul Wold <sgw@linux.intel.com>
+Date: Thu, 28 Sep 2017 10:51:15 -0700
+Subject: [PATCH] hrtimer: fix version numbers because production kernel has
+ update
+
+Decrease the version check because the OTC production kernel which is
+4.9 includes the HRTimer code that this is using.
+
+Upstream-Status: [Backport] It's been backported into the older kernel
+Signed-off-by: Saul Wold <sgw@linux.intel.com>
+---
+ backport-include/linux/hrtimer.h                        | 2 +-
+ drivers/net/wireless/intel/iwlwifi/mvm/tx.c             | 2 +-
+ drivers/net/wireless/intel/iwlwifi/pcie/tx.c            | 2 +-
+ drivers/net/wireless/intel/iwlwifi/trans_slave/shared.c | 2 +-
+ net/mac80211/tx.c                                       | 2 +-
+ 5 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/backport-include/linux/hrtimer.h b/backport-include/linux/hrtimer.h
+index bdcf106e1..ae128852d 100644
+--- a/backport-include/linux/hrtimer.h
++++ b/backport-include/linux/hrtimer.h
+@@ -4,7 +4,7 @@
+ #include_next <linux/hrtimer.h>
+ #include <linux/interrupt.h>
+ 
+-#if LINUX_VERSION_IS_LESS(4,10,0)
++#if LINUX_VERSION_IS_LESS(4,9,0)
+ static inline void backport_hrtimer_start(struct hrtimer *timer, s64 time,
+ 					  const enum hrtimer_mode mode)
+ {
+diff --git a/drivers/net/wireless/intel/iwlwifi/mvm/tx.c b/drivers/net/wireless/intel/iwlwifi/mvm/tx.c
+index cf1f95a01..e6f1ff294 100644
+--- a/drivers/net/wireless/intel/iwlwifi/mvm/tx.c
++++ b/drivers/net/wireless/intel/iwlwifi/mvm/tx.c
+@@ -1310,7 +1310,7 @@ static void iwl_mvm_tx_lat_add_ts_ack(struct sk_buff *skb)
+ 	s64 ts_1 = ktime_to_ns(skb->tstamp) >> 32;
+ 	s64 diff = temp - ts_1;
+ 
+-#if LINUX_VERSION_IS_LESS(4,10,0)
++#if LINUX_VERSION_IS_LESS(4,9,0)
+ 	skb->tstamp.tv64 += diff;
+ #else
+ 	skb->tstamp += diff;
+diff --git a/drivers/net/wireless/intel/iwlwifi/pcie/tx.c b/drivers/net/wireless/intel/iwlwifi/pcie/tx.c
+index df81bce25..ad664bacd 100644
+--- a/drivers/net/wireless/intel/iwlwifi/pcie/tx.c
++++ b/drivers/net/wireless/intel/iwlwifi/pcie/tx.c
+@@ -1955,7 +1955,7 @@ static void iwl_trans_pci_tx_lat_add_ts_write(struct sk_buff *skb)
+ 	s64 ts_1 = ktime_to_ns(skb->tstamp) >> 32;
+ 	s64 diff = temp - ts_1;
+ 
+-#if LINUX_VERSION_IS_LESS(4,10,0)
++#if LINUX_VERSION_IS_LESS(4,9,0)
+ 	skb->tstamp.tv64 += diff << 16;
+ #else
+ 	skb->tstamp += diff << 16;
+diff --git a/drivers/net/wireless/intel/iwlwifi/trans_slave/shared.c b/drivers/net/wireless/intel/iwlwifi/trans_slave/shared.c
+index e4d45bcf7..cdd0ba9a2 100644
+--- a/drivers/net/wireless/intel/iwlwifi/trans_slave/shared.c
++++ b/drivers/net/wireless/intel/iwlwifi/trans_slave/shared.c
+@@ -796,7 +796,7 @@ void iwl_slv_tx_lat_add_ts_write(struct iwl_trans_slv *trans_slv,
+ 
+ 	ts_1 = ktime_to_ns(data_entry->skb->tstamp) >> 32;
+ 	diff = temp - ts_1;
+-#if LINUX_VERSION_IS_LESS(4,10,0)
++#if LINUX_VERSION_IS_LESS(4,9,0)
+ 	data_entry->skb->tstamp.tv64 += diff << 16;
+ #else
+ 	data_entry->skb->tstamp += diff << 16;
+diff --git a/net/mac80211/tx.c b/net/mac80211/tx.c
+index 94a348688..0f226c413 100644
+--- a/net/mac80211/tx.c
++++ b/net/mac80211/tx.c
+@@ -2278,7 +2278,7 @@ static void ieee80211_tx_latency_start_msrmnt(struct ieee80211_local *local,
+ 	if (!tx_latency && !tx_consec && !tx_thrshld)
+ 		return;
+ 	temp = ktime_to_ms(ktime_get());
+-#if LINUX_VERSION_IS_LESS(4,10,0)
++#if LINUX_VERSION_IS_LESS(4,9,0)
+ 	skb->tstamp.tv64 += temp << 32;
+ #else
+ 	skb->tstamp += temp << 32;
+-- 
+2.13.5
+

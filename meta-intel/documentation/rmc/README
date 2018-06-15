@@ -1,0 +1,382 @@
+Runtime Machine Configuration (RMC)
+--------------------------------------------------------------------------------
+Table of Contents
+
+Introduction
+Usage
+Enable RMC Feature
+Examples
+Troubleshooting
+When you (don't) need RMC feature
+
+
+Introduction:
+--------------------------------------------------------------------------------
+RMC Project - a light-weight project provide developers a mechanism to keep
+their software implementation board-type agnostic, yet still able to customize
+software behavior according to the type of a running board at runtime. Recipes
+and bbclasses are available for other components to reuse to construct their own
+RMC database.
+
+RMC Feature - An end-to-end solution based on RMC project to have a generic
+image capable to apply board-type-specific quirks and configurations for a board
+at runtime. It consists of a modified bootloader (systemd-boot), an updated EFI
+installer, recipes, bbclass and RMC project.
+
+RMC feature supports special customizations cannot be covered by conventional
+auto-detection features based on probing a hardware module because they happen
+at a board or a product level. For example:
+ - tty console for kernel log output in kernel cmdline
+ - default audio route configuration
+ - network configuration
+ - UI layout
+ - requirement to software driven by a mechanical design
+ - or static configuration bits for a physical bus that doesn't support to
+   identify devices or their presence at runtime
+
+An image with the feature has ability to configure supported boards with data
+associated only to a type of board to get full functionality of the target at
+runtime, yet still with a single image.
+
+Effect after installation is identical to what a conventional image specially
+customized for a type of board (depending on the way to deploy image).
+
+Main functions of RMC Feature:
+
+Show board-specific boot entries in boot menu and boot system with configuration
+(boot title, boot options, etc) in a selected boot entry.
+
+Support a "global" kernel boot command line fragment which is effective for all
+boot entries.
+
+Deploy file blobs and create directories specific to the type of running board.
+
+Beside from this document, you can also find several built-in examples in
+common/recipes-bsp/rmc/boards/. Refer to "Examples" section.
+
+You can also add new board types in your layer via a simple variable.
+
+
+
+Usage
+--------------------------------------------------------------------------------
+Developers are suggested to organize all board-specific files in their own layer
+following this example, so that RMC recipes can pick up them correctly in build.
+
+- my_top_dir/                    Top directory of your board (Note 0)
+  |- rmc-db.bbappend         bbappend file to rmc-db recipe at a lower level
+  |- rmc/
+      |- target_board_1/         subdirectory of a board.
+      |   |- board1.fp           fingerprint file must be provided (NOTE 1)
+      |   |- BOOTENTRY.CONFIG    optional config file for boot entries. (NOTE 2)
+      |   |- INSTALLER.CONFIG    optional config file for installer. (NOTE 3)
+      |   |- POSTINSTALL.sh      optional script hook for installer (NOTE 4)
+      |   |- board_file_1        A file blob specific to the type of board
+      |   |- board_file_2        An another file specific to the type of board
+      |   |- ...more files
+      |- target_board_2/         subdirectory of another board.
+          |- board_2_v2.fp       fingerprint file for board 2.
+          |- BOOTENTRY.CONFIG
+          |- INSTALLER.CONFIG
+          |- board_file_1
+          |- ...more files
+
+Note 0:
+Developers are expected to use variable RMC_BOARD_DATA_DIRS to specify data of
+boards packed into RMC database file generated in a build. The default value of
+the variable in meta-intel specifies a group of boards. They work as examples
+and necessary quirks for these boards to function properly. Developers can
+override, append to the default boards with data of their own boards in the
+database file, or even disable the generation of the database file.
+
+For example, in your local.conf file:
+
+This line adds your boards along with the default boards into RMC database file,
+assuming you have a directory named "rmc" which has a subdirectory for each
+board:
+
+RMC_BOARD_DATA_DIRS_append = " /path_of/rmc"
+
+This line directs RMC to pack data of your boards only, without data of the
+default boards in meta-intel:
+
+RMC_BOARD_DATA_DIRS = "/path_of/rmc"
+
+And this line disables database generation:
+
+RMC_BOARD_DATA_DIRS = ""
+
+Please also refer to the "Example 1" in this document.
+
+Subdirectory is not supported in a board's directory.
+
+Note 1:
+Fingerprint files must be provided and with ".fp" at the end of their names.
+Fingerprint can be obtained by running RMC tool on your board. An easy way is to
+live-boot USB stick flashed with any image enabled this feature on your board,
+then run this command:
+
+# rmc -F -o my_board.fp
+
+Or you will need to build RMC tool for the architecture of your board, 32 or
+64 bit x86, from RMC project.
+
+You can run RMC tool without any argument to get usage and examples.
+
+DO NOT NAME ANY FILE ENDING WITH '.fp' IF IT IS NOT A RMC FINGERPRINT FILE.
+
+If you do need a .fp file deployed onto target, please rename it in source and
+specify the real name of file on target in INSTALLER.CONFIG.
+
+Note 2:
+At runtime, RMC bootloader tries to fetch this file specific to the board at run
+time, then tries to fetch each boot entry file specified in BOOTENTRY.CONFIG and
+show them in boot menu options. The format of this file is very simple. Each
+line is the name of a boot entry file:
+
+boot.conf
+Install.conf
+myrmcboot.conf
+
+Name of a boot entry file is defined by developer so it can be anything. But the
+name of config file is what RMC bootloader looks up in RMC database, so it must
+be named BOOTENTRY.CONFIG.
+
+Bootloader skips loading entry conf files from disk once any entry is loaded
+from RMC database.
+
+Note 3:
+At runtime, RMC installer tries to fetch INSTALLER.CONFIG file specific to the
+board, then tries to fetch each file specified in this config file, and then
+deploy the file onto target with its permissions, UID, GID and other attributes
+also specified in this config file if file for the board can be retrieved from
+RMC database. The format of this file is (# is for comment line)
+
+# name:uid:gid:mode:path_on_target
+# to create a directory, add a “/” at the end of path_on_target:
+audio_policy:0:0:600:/etc/audio/
+audio_def_policy:0:0:600:/etc/audio/audio_policy
+
+The above example creates /etc/audio directory first, then fetch a file named
+“audio_def_policy” from RMC database for the board, then copy it to /etc/audio/
+with a new name “audio_policy”.
+
+If this config file is not provided, No data in RMC database is deployed to the
+target.
+
+Some steps defined by developers could not be supported on a filesystem.
+Installer simply ignores any errors in RMC deployment stage.
+
+The name of this config file is what installer looks up first, so it must be
+INSTALLER.CONFIG.
+
+Note 4:
+At the end of RMC deployment during installation, RMC installer queries a script
+file POSTINSTALL.sh from RMC database file, and execute it when query is
+successful on the running board. This hook provides developers almost ultimate
+flexibility to retouch what have been deployed on the target. There are some
+steps still can override results from this hook for boot entries and KBOOTPARAM.
+
+
+
+Enable RMC Feature
+--------------------------------------------------------------------------------
+To enable the RMC feature please add the following variables to your local.conf.
+
+DISTRO_FEATURES_append = " rmc"
+EFI_PROVIDER = "rmc-boot"
+
+The default EFI bootloader used with RMC is systemd-boot. To change the default
+bootloader please overwrite the RMC_BOOTLOADER variable in your local.conf
+
+Note:
+Image could be still bootable if you only have either of two lines, but RMC
+feature could not be fully functional, depending on the availability of the
+database file, installer and the rmc tool.
+
+Examples
+--------------------------------------------------------------------------------
+We checked in configuration data in common/recipes-bsp/rmc/boards/ for several
+boards, to help users to understand the RMC feature. These examples are also for
+validation. For any example you find not working as what this section depicts,
+it should be treated as a bug to be fixed.
+
+To test this feature with examples, enable it and build an image first, then
+boot the built image on supported boards. Examples are always built in when the
+feature is enabled, except for the EXAMPLE 1.
+
+EXAMPLE 1: Support a new board type:
+(1) enable the feature and do a build to get a live-boot image by adding these
+    lines in conf/local.conf:
+    DISTRO_FEATURES_append = " rmc"
+    EFI_PROVIDER = "rmc-boot"
+
+(2) flash the image to a USB stick and boot it on your board
+
+(3) in super user mode, run "rmc -F -o my_board.fp"
+
+(4) create directories in your host "mkdir -p my_top_dir/my_rmc/my_board"
+
+(5) copy my_board.fp from target to my_top_dir/my_rmc/my_board/ on host
+
+(6) create a file my_top_dir/my_rmc/my_board/KBOOTPARAM, put some fake
+    and harmless options in a single line, say, "loglevel=7"
+
+(7) create a file my_top_dir/rmc-db.bbappend, put this single line in it:
+    RMC_BOARD_DATA_DIRS_append := " ${THISDIR}/my_rmc"
+    From parent directory of my_top_dir, the tree should look like:
+    my_top_dir/
+        my_rmc/
+            my_board/
+                KBOOTPARAM
+                my_board.fp
+        rmc-db.bbappend
+    Later, you can add more board directories in my_rmc directory.
+
+(8) modify build configuration to add my_top_dir into build, for example, put
+    this line in a bblayers.conf:
+    BBFILES += "/full/path/of/my_top_dir/rmc-db.bbappend"
+
+(9) build image again then boot it on your board
+
+(10) Once you login to shell, new options should be effective, run this command
+     "cat /proc/cmdline" to verify the result.
+
+EXAMPLE 2: Board-specific boot entry
+MinnowBoard MAX and B3 version:
+common/recipes-bsp/rmc/boards/minnowmax
+common/recipes-bsp/rmc/boards/minnowmaxB3
+
+We have found two identities (type of board) exist for the "same" Minnow Max
+hardware, so they have to be treated as two different types of hardware. The two
+examples show you a boot entry specific to a type of board. Titles shown in boot
+menu have different names according to the type of running board, "Minnow Max
+boot" or "Minnow Max B3 boot". in /proc/cmdline, "console=ttyS0,115200n8" shall
+be there. Kernel prints logs from 6-pin FTDI serial port on Minnow Max(s). This
+console setting is in board-specific entries, so you won't see it effective if
+you select default "boot" entry to boot the device.
+
+EXAMPLE	3: Board-specific boot entry, global kernel cmdline and installer
+NUC Gen 6:
+common/recipes-bsp/rmc/boards/nucgen6
+This is a combo example with all supported configuration data for NUC Gen 6
+product. It shows two boot entries in bootloader menu when you boot image on NUC
+Gen 6 product, with "NUC Gen6" in entry titles. There shall no any "console=" in
+/proc/cmdline when you boot with either of two "NUC Gen6"entries. We designed it
+this way because there is no accessible tty port on NUC Gen 6 with housing. The
+post-install hook is also provided in this example.
+
+This example also includes a global kernel cmdline fragment KBOOTPARAM. Content
+of KBOOTPARAM shall be at the end of /proc/cmdline no matter which boot entry
+you selected to boot NUC Gen6.
+
+INSTALLER.CONFIG directs installer to create a directory and deploy a file in it
+when install the image on NUC Gen6.
+
+Choose "NUC Gen6 install" boot entry to boot shall start installation. Once
+the device reboots after installation, we can verify the configurations.
+
+The boot entry "NUC Gen6 boot" shall be shown in boot menu.
+
+The content of KBOOTPARAM shall be in /proc/cmdline too.
+
+A directory /etc/mylib/ is created and a file "mylib.conf" is there. The content
+of that file shall be what we put in mylib.conf in
+common/recipes-bsp/rmc/boards/nucgen6
+
+POSTINSTALL.sh shows how we get rid of an error message caused by no serial
+console available on NUC Gen 6, without creating another static board
+configuration.
+
+EXAMPLE 4: For validation only
+T100 (32bit):
+common/recipes-bsp/rmc/boards/T100-32bit
+This example is provided for validation on 32 bit X86 architecture. It doesn't
+provide any new function not mentioned in above examples.
+
+EXAMPLE 5: RMC for quark
+Galileo Gen 2
+common/recipes-bsp/rmc/boards/Galileo2
+This example doesn't show any feature not covered in the above examples. Note
+RMC only supports hddimg image format so far. Please refer to the section II.c
+in README in meta-intel for how to boot Galileo with images in hddimg format.
+Bootloader should show a board-specific boot option "Galileo Gen 2 boot" when
+the board boots off.
+
+Troubleshooting
+--------------------------------------------------------------------------------
+Issue: Cannot obtain RMC fingerprint for a board
+
+RMC tool requires UEFI BIOS and SMBIOS support in firmware. It doesn't support
+other type of firmware, e.g. legacy BIOS. It also requires EFI driver enabled
+in Linux kernel.
+
+Issue: Configuration for a board seems not effective at runtime.
+
+Check if board is booted from the storage where the image or installation lives
+when you have multiple boot options in BIOS. On some old hardwares it is not
+that obvious as you assume. A build image can support boot from both of legacy
+and UEFI mode, but RMC only works with UEFI boot so far.
+
+Make sure configuration files (BOOTENTRY.CONFIG, INSTALLER.CONFIG and,
+KBOOTPARAM ...) are properly named in the board directory.
+
+Make sure configuration files have correct contents.
+
+Some file attributes could not be supported by targeted file system. Installer
+cannot setup file blobs as you wish. It simply move to the next step if a step
+fails.
+
+Kernel command line can be customized globally with KBOOTPARAM or just in a boot
+entry for the type of board. They have different effective scopes.
+
+If no any board-specific configuration becomes effective on your board but it
+works on other boards of same product, you can run rmc tool to obtain
+fingerprint file on your board and compare it with fingerprint of a working
+board. It is possible they have different firmware versions and unluckily, some
+information for fingerprint changes between two versions. You can update BIOS
+on every board to the same BIOS version if it is feasible. Otherwise you have
+to treat them as two different type of boards. We could extend rmc design to
+allow multiple fingerprints in a board directory as a workaround.
+
+Issue: RMC reports error because it cannot find fingerprint when building image.
+
+Make sure you have a fingerprint file. Its name must be ended with '.fp'. You
+can put a fingerprint file in a board directory and provide data later.
+
+Issue: Any problems the above troubleshooting cannot help
+
+Please report it to us. Extra information like the type of your board or a dump
+file from dmidecode tool is helpful. We will investigate the problem and keep
+improving this feature.
+
+
+
+
+When you (don't) need RMC feature
+--------------------------------------------------------------------------------
+RMC feature is designed to as generic as possible, in order to support a large
+number of types of boards. And it shall be designed not to break things when it
+is disabled. These considerations help users to decide if they really need or
+enable it.
+
+If you are satisfied with a dedicated build target and image for each board in
+your development cycle (source, build, validation, release, etc), you don't need
+this feature.
+
+If you have a generic build for multiple type of boards and features supported
+by that build meet your needs to functionality on all of boards, you don't need
+to have this feature or you can disable it until you need to check in the first
+board's data, in order to apply a quirk or customization only for that board.
+
+If you want this feature but have concerns to see more and more boards' finger-
+prints and data in a generic project, you can have another layer to hold all of
+board-specific data to split them from a generic layer at source level. Another
+suggestion is always seeking chances not to clone or copy a common configuration
+to each board's directory.
+
+
+
+Thanks
+
+Jianxun Zhang <jianxun.zhang@linux.intel.com>

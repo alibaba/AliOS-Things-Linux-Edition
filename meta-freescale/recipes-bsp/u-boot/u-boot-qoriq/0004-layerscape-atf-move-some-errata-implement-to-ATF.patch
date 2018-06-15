@@ -1,0 +1,56 @@
+From 25f7b005726ea79ff8891ae2d7c036bd417982aa Mon Sep 17 00:00:00 2001
+From: Wen He <wen.he_1@nxp.com>
+Date: Thu, 10 May 2018 16:08:38 +0800
+Subject: [PATCH 4/4] layerscape: atf: move some errata implement to ATF
+
+This patch move errata ERR009660 and ERR008850 workaround to
+trusted firmware.
+
+Signed-off-by: Wen He <wen.he_1@nxp.com>
+---
+ arch/arm/cpu/armv8/fsl-layerscape/soc.c | 5 ++++-
+ board/freescale/ls1043ardb/ddr.c        | 3 ++-
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/cpu/armv8/fsl-layerscape/soc.c b/arch/arm/cpu/armv8/fsl-layerscape/soc.c
+index 0c8f5e0..5ff8cb3 100644
+--- a/arch/arm/cpu/armv8/fsl-layerscape/soc.c
++++ b/arch/arm/cpu/armv8/fsl-layerscape/soc.c
+@@ -618,6 +618,7 @@ void fsl_lsch2_early_init_f(void)
+ 		     SCFG_SNPCNFGCR_SATARDSNP |
+ 		     SCFG_SNPCNFGCR_SATAWRSNP);
+ 
++#if !defined(CONFIG_ATF)
+ 	/*
+ 	 * Enable snoop requests and DVM message requests for
+ 	 * Slave insterface S4 (A53 core cluster)
+@@ -629,8 +630,10 @@ void fsl_lsch2_early_init_f(void)
+ 
+ 	/* Erratum */
+ 	erratum_a008850_early(); /* part 1 of 2 */
+-	erratum_a009929();
+ 	erratum_a009660();
++#endif
++	/* Erratum */
++	erratum_a009929();
+ 	erratum_a010539();
+ 	erratum_a009008();
+ 	erratum_a009798();
+diff --git a/board/freescale/ls1043ardb/ddr.c b/board/freescale/ls1043ardb/ddr.c
+index 54088d5..4a49e8c 100644
+--- a/board/freescale/ls1043ardb/ddr.c
++++ b/board/freescale/ls1043ardb/ddr.c
+@@ -181,8 +181,9 @@ int fsl_initdram(void)
+ #else
+ 	dram_size =  fsl_ddr_sdram_size();
+ #endif
++#if !defined(CONFIG_ATF)
+ 	erratum_a008850_post();
+-
++#endif
+ #ifdef CONFIG_FSL_DEEP_SLEEP
+ 	fsl_dp_ddr_restore();
+ #endif
+-- 
+1.8.3.1
+

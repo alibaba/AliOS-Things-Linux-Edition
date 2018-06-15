@@ -1,0 +1,36 @@
+From f69ff2fd27903ee052309179271f708d720a2f94 Mon Sep 17 00:00:00 2001
+From: Mikko Ylinen <mikko.ylinen@linux.intel.com>
+Date: Thu, 10 Aug 2017 21:12:51 +0300
+Subject: [PATCH] Makefile.real: skip host install scripts
+
+The scripts run in install target are relevant (and working)
+only if the driver installation is run on the build host.
+
+Skip the scripts when cross-compiling.
+
+Upstream-Status: Inappropriate [Cross-Compile]
+
+Signed-off-by: Mikko Ylinen <mikko.ylinen@linux.intel.com>
+---
+ Makefile.real | 5 -----
+ 1 file changed, 5 deletions(-)
+
+diff --git a/Makefile.real b/Makefile.real
+index ba09f99..f5075de 100644
+--- a/Makefile.real
++++ b/Makefile.real
+@@ -104,11 +104,6 @@ install: modules
+ 	@$(MAKE) -C $(KLIB_BUILD) M=$(BACKPORT_DIR)			\
+ 		INSTALL_MOD_DIR=$(KMODDIR) $(KMODPATH_ARG)		\
+ 		modules_install
+-	@./scripts/blacklist.sh $(KLIB)/ $(KLIB)/$(KMODDIR)
+-	@./scripts/compress_modules.sh $(KLIB)/$(KMODDIR)
+-	@./scripts/check_depmod.sh
+-	@/sbin/depmod -a
+-	@./scripts/update-initramfs.sh $(KLIB)
+ 	@echo
+ 	@echo Your backported driver modules should be installed now.
+ 	@echo Reboot.
+-- 
+2.1.4
+

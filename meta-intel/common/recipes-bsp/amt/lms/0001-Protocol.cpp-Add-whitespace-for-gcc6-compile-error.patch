@@ -1,0 +1,31 @@
+From 8d737ba9745bef223c3d3b96899f11c26102ea04 Mon Sep 17 00:00:00 2001
+From: Saul Wold <sgw@linux.intel.com>
+Date: Mon, 16 May 2016 09:01:05 -0700
+Subject: [PATCH] Protocol.cpp: Add whitespace for gcc6 compile error
+
+When moving from C++-3 -> C++11 additiona white space is required between
+User-defined literals.
+
+Upstream-Status: Pending
+
+Signed-off-by: Saul Wold <sgw@linux.intel.com>
+---
+ src/Protocol.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/Protocol.cpp b/src/Protocol.cpp
+index 1c21a0f..3a4a9bb 100755
+--- a/src/Protocol.cpp
++++ b/src/Protocol.cpp
+@@ -1428,7 +1428,7 @@ int Protocol::_handleFQDNChange(const char *fqdn)
+ 	char host[FQDN_MAX_SIZE + 1];
+ #define LMS_MAX_LINE_LEN 1023
+ 	char line[LMS_MAX_LINE_LEN + 1];
+-#define LMS_LINE_SIG_FIRST_WORDS(a) "# LMS GENERATED "a" "
++#define LMS_LINE_SIG_FIRST_WORDS(a) "# LMS GENERATED " a " "
+ #define LMS_LINE_SIG_LAST_WORD "LINE"
+ #define LMS_LINE_SIG_LAST_WORD_LEN 4
+ #define LMS_LINE_SIG(a) LMS_LINE_SIG_FIRST_WORDS(a) LMS_LINE_SIG_LAST_WORD
+-- 
+2.5.0
+
