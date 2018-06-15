@@ -1,0 +1,91 @@
+Fix device file referance to /dev/mei0, remove select post write.
+
+LMS uses /dev/mei character device which is absent on current kernel versions causing LMS fail to initialize. LMS sends messages to MEI with a post select timeout. Select timeout causes SendMessage to fail causing LMS to not to communicate properly with MEI.
+
+Adding /dev/mei0 device file reference to check first and then /dev/mei sucessfully initializes LMS. Rely on write return length and remove select with timeout to fix communication with MEI.
+
+Upstream-Status: Pending
+
+Signed-off-by: Anand Vastrad <anand.vastrad@intel.com>
+---
+ src/mei/MEILinux.cpp | 43 +++++++------------------------------------
+ 1 file changed, 7 insertions(+), 36 deletions(-)
+
+diff --git a/src/mei/MEILinux.cpp b/src/mei/MEILinux.cpp
+index 1e9d28f..6d23f54 100755
+--- a/src/mei/MEILinux.cpp
++++ b/src/mei/MEILinux.cpp
+@@ -94,13 +94,17 @@ bool MEILinux::Init(unsigned char reqProtocolVersion)
+ 		Deinit();
+ 	}
+ 
+-	_fd = open("/dev/mei", O_RDWR);
++	_fd = open("/dev/mei0", O_RDWR);
+ 
+ 	if (_fd == -1 ) {
+ 		if (_verbose) {
+-			fprintf(stderr, "Error: Cannot establish a handle to the MEI driver\n");
++			fprintf(stderr, "Warning: Cannot establish a handle to the MEI driver mei0, retrying with mei \n");
++		}
++		_fd = open("/dev/mei", O_RDWR);
++		if (_fd == -1 ) {
++			fprintf(stderr, "Error: Cannot establish a handle to the MEI driver mei\n");
++			return false;
+ 		}
+-		return false;
+ 	}
+ 	_initialized = true;
+ 
+@@ -181,13 +185,7 @@ int MEILinux::ReceiveMessage(unsigned char *buffer, int len, unsigned long timeo
+ int MEILinux::SendMessage(const unsigned char *buffer, int len, unsigned long timeout)
+ {
+ 	int rv = 0;
+-	int return_length =0;
+ 	int error = 0;
+-	fd_set set;
+-	struct timeval tv;
+-
+-	tv.tv_sec =  timeout / 1000;
+-	tv.tv_usec =(timeout % 1000) * 1000000;
+ 
+ 	if (_verbose) {
+ 		fprintf(stdout, "call write length = %d\n", len);
+@@ -198,35 +196,8 @@ int MEILinux::SendMessage(const unsigned char *buffer, int len, unsigned long ti
+ 		if (_verbose) {
+ 			fprintf(stderr,"write failed with status %d %d\n", rv, error);
+ 		}
+-		goto out;
+-	}
+-
+-	return_length = rv;
+-
+-	FD_ZERO(&set);
+-	FD_SET(_fd, &set);
+-	rv = select(_fd+1 ,&set, NULL, NULL, &tv);
+-	if (rv > 0 && FD_ISSET(_fd, &set)) {
+-		if (_verbose) {
+-			fprintf(stderr, "write success\n");
+-		}
+ 	}
+-	else if (rv == 0) {
+-		if (_verbose) {
+-			fprintf(stderr, "write failed on timeout with status\n");
+-		}
+-		goto out;
+-	}
+-	else { //rv<0
+-		if (_verbose) {
+-			fprintf(stderr, "write failed on select with status %d\n", rv);
+-		}
+-		goto out;
+-	}
+-
+-	rv = return_length;
+ 
+-out:
+ 	if (rv < 0) {
+ 		Deinit();
+ 	}
+-- 
+2.7.4
+

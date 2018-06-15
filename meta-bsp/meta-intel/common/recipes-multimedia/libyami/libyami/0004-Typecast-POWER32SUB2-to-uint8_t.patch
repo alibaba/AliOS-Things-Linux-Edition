@@ -1,0 +1,33 @@
+From d9c831ee38da4551396fad5cd53c3dfc0e5e0cf8 Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Fri, 11 Aug 2017 17:57:34 -0700
+Subject: [PATCH 4/9] Typecast POWER32SUB2 to uint8_t
+
+Fixes
+
+h265Parser.cpp:1064:5: error: comparison of constant 4294967294 with expression
+of type 'uint8_t' (aka 'unsigned char') is always false [-Werror,-Wtautological-constant-out-of-range-compare]
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+Upstream-Status: Pending
+
+ codecparsers/h265Parser.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/codecparsers/h265Parser.cpp b/codecparsers/h265Parser.cpp
+index 0dea3a6..c6cded2 100644
+--- a/codecparsers/h265Parser.cpp
++++ b/codecparsers/h265Parser.cpp
+@@ -125,7 +125,7 @@ namespace H265 {
+                                                                                                                  \
+             CHECK_READ_UE(var->var##_max_num_reorder_pics[i], 0, var->var##_max_dec_pic_buffering_minus1[i]);    \
+                                                                                                                  \
+-            CHECK_READ_UE(var->var##_max_latency_increase_plus1[i], 0, POWER32SUB2);                             \
++            CHECK_READ_UE(var->var##_max_latency_increase_plus1[i], 0, (uint8_t)POWER32SUB2);                             \
+         }                                                                                                        \
+     }
+ 
+-- 
+2.14.1
+

@@ -1,0 +1,1097 @@
+From 8f14cfe0cc3bb7fb10b0977badaa2d6329f19990 Mon Sep 17 00:00:00 2001
+From: Wen He <wen.he_1@nxp.com>
+Date: Tue, 17 Apr 2018 09:58:37 +0800
+Subject: [PATCH 4/8] layerscape: Initial TF-A suppoprt for LS1046ardb
+
+This patch introduce TF-A support for NXP's ls1046 platform.
+more details information of ls1046a chip and ls1046ardb board
+can be found at docs/plat/ls1046.rst.
+
+Boot sequence on ls1046a is: bootrom loads bl2 firstly, then
+bl2 load bl31, bl32 and bl33, bl31 will boot bl32(trusted os) and
+bl33(u-boot or uefi), bl33 boot Linux kernel.
+
+Now TF-A on ls1046ardb platform has the following features in this
+patch:
+    * Support boot from sd.
+    * TF-A can be found bl33 which runs in el2 of non-secure world.
+    * TF-A boot OPTee OS.
+
+Signed-off-by: Jiafei Pan <Jiafei.Pan@nxp.com>
+Signed-off-by: Jiaheng fan <jiaheng.fan@nxp.com>
+Signed-off-by: Wen He <wen.he_1@nxp.com>
+---
+ .../board/ls1046/aarch64/ls1046_helpers.S          |  231 ++++++++++++++++++++
+ .../layerscape/board/ls1046/include/platform_def.h |  147 +++++++++++++
+ plat/layerscape/board/ls1046/ls1046_bl2_setup.c    |   51 +++++
+ plat/layerscape/board/ls1046/ls1046_bl31_setup.c   |   55 +++++
+ plat/layerscape/board/ls1046/ls1046_err.c          |   30 +++
+ plat/layerscape/board/ls1046/ls1046_psci.c         |  168 ++++++++++++++
+ plat/layerscape/board/ls1046/ls1046_security.c     |   15 ++
+ .../board/ls1046/ls1046_stack_protector.c          |   21 ++
+ plat/layerscape/board/ls1046/ls1046_topology.c     |   56 +++++
+ plat/layerscape/board/ls1046/ls1046ardb_pbi.cfg    |   22 ++
+ plat/layerscape/board/ls1046/ls1046ardb_rcw_sd.cfg |    7 +
+ plat/layerscape/board/ls1046/ls_gic.c              |   47 ++++
+ plat/layerscape/board/ls1046/platform.mk           |   73 ++++++
+ .../layerscape/board/ls1046/tsp/ls1046_tsp_setup.c |   14 ++
+ plat/layerscape/board/ls1046/tsp/tsp-ls1046.mk     |   12 +
+ 15 files changed, 949 insertions(+), 0 deletions(-)
+ create mode 100644 plat/layerscape/board/ls1046/aarch64/ls1046_helpers.S
+ create mode 100644 plat/layerscape/board/ls1046/include/platform_def.h
+ create mode 100644 plat/layerscape/board/ls1046/ls1046_bl2_setup.c
+ create mode 100644 plat/layerscape/board/ls1046/ls1046_bl31_setup.c
+ create mode 100644 plat/layerscape/board/ls1046/ls1046_err.c
+ create mode 100644 plat/layerscape/board/ls1046/ls1046_psci.c
+ create mode 100644 plat/layerscape/board/ls1046/ls1046_security.c
+ create mode 100644 plat/layerscape/board/ls1046/ls1046_stack_protector.c
+ create mode 100644 plat/layerscape/board/ls1046/ls1046_topology.c
+ create mode 100644 plat/layerscape/board/ls1046/ls1046ardb_pbi.cfg
+ create mode 100644 plat/layerscape/board/ls1046/ls1046ardb_rcw_sd.cfg
+ create mode 100644 plat/layerscape/board/ls1046/ls_gic.c
+ create mode 100644 plat/layerscape/board/ls1046/platform.mk
+ create mode 100644 plat/layerscape/board/ls1046/tsp/ls1046_tsp_setup.c
+ create mode 100644 plat/layerscape/board/ls1046/tsp/tsp-ls1046.mk
+
+diff --git a/plat/layerscape/board/ls1046/aarch64/ls1046_helpers.S b/plat/layerscape/board/ls1046/aarch64/ls1046_helpers.S
+new file mode 100644
+index 0000000..1d1a2c5
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/aarch64/ls1046_helpers.S
+@@ -0,0 +1,231 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include <arch.h>
++#include <asm_macros.S>
++#include <platform_def.h>
++
++	.globl	plat_reset_handler
++	.globl  plat_my_core_pos
++	.globl  platform_mem_init
++
++func plat_my_core_pos
++	mrs x0, mpidr_el1
++	and x1, x0, #MPIDR_CPU_MASK   //reserve the last 8 bits
++	and x0, x0, #MPIDR_CLUSTER_MASK
++	add x0, x1, x0, LSR #4  //4 cores
++	ret
++endfunc plat_my_core_pos
++
++func platform_mem_init
++	mov x29, x30
++	bl  inv_dcache_range
++	ldr w0, =0x1080000
++
++# CS0_BNDS
++	ldr w1, = 0xff010000
++	str w1, [x0, #0x000]
++# CS0_CONFIG
++	ldr w1, = 0x22030480
++	str w1, [x0, #0x080]
++# CS0_CONFIG_2
++	ldr w1, = 0x0
++	str w1, [x0, #0x0c0]
++# CS1_BNDS
++	ldr w1, = 0xff010000
++	str w1, [x0, #0x008]
++# CS1_CONFIG
++	ldr w1, = 0x22030080
++	str w1, [x0, #0x084]
++# CS1_CONFIG_2
++	ldr w1, = 0x0
++	str w1, [x0, #0x0c4]
++# CS2_BNDS
++	ldr w1, = 0x0
++	str w1, [x0, #0x010]
++# CS1_CONFIG
++	ldr w1, = 0x0
++	str w1, [x0, #0x088]
++# CS1_CONFIG_2
++	ldr w1, = 0x0
++	str w1, [x0, #0x0c8]
++# CS2_BNDS
++	ldr w1, = 0x0
++	str w1, [x0, #0x018]
++# CS1_CONFIG
++	ldr w1, = 0x0
++	str w1, [x0, #0x08c]
++# CS1_CONFIG_2
++	ldr w1, = 0x0
++	str w1, [x0, #0x0cc]
++# TIMING_CFG_0
++	ldr w1, = 0x180077d1
++	str w1, [x0, #0x104]
++# TIMING_CFG_1
++	ldr w1, = 0x00111002
++	str w1, [x0, #0x100]
++# TIMING_CFG_2
++	ldr w1, = 0x4390fcf2
++	str w1, [x0, #0x108]
++# TIMING_CFG_3
++	ldr w1, = 0x97015900
++	str w1, [x0, #0x10c]
++# DDR_CDR1
++	ldr w1, = 0x00000480
++	str w1, [x0, #0xB28]
++# DDR_CDR2
++	ldr w1, = 0xc1000000
++	str w1, [x0, #0xB2C]
++# SDRAM_CFG
++	ldr w1, = 0x00400465  //0x004004e5
++	str w1, [x0, #0x110]
++# DDR_DATA_INIT
++	ldr w1, = 0xefbeadde
++	str w1, [x0, #0x128]
++# SDRAM_CFG_2
++	ldr w1, = 0x11114000  //0x01114000
++	str w1, [x0, #0x114]
++# SDRAM_MODE
++	ldr w1, = 0x30060103  //0x30060103
++	str w1, [x0, #0x118]
++# SDRAM_MODE_3
++	ldr w1, = 0x30060100
++	str w1, [x0, #0x200]
++# SDRAM_MODE_5
++	ldr w1, = 0x30060100
++	str w1, [x0, #0x208]
++# SDRAM_MODE_7
++	ldr w1, = 0x30060100
++	str w1, [x0, #0x210]
++# SDRAM_MODE_2
++	ldr w1, = 0x00021000
++	str w1, [x0, #0x11c]
++# SDRAM_MODE_4
++	ldr w1, = 0x00021000
++	str w1, [x0, #0x204]
++# SDRAM_MODE_6
++	ldr w1, = 0x00021000
++	str w1, [x0, #0x20c]
++# SDRAM_MODE_8
++	ldr w1, = 0x00021000
++	str w1, [x0, #0x214]
++# SDRAM_MODE_9
++	ldr w1, = 0x00050000
++	str w1, [x0, #0x220]
++# SDRAM_MODE_11
++	ldr w1, = 0x00040000
++	str w1, [x0, #0x228]
++# SDRAM_MODE_13
++	ldr w1, = 0x00040000
++	str w1, [x0, #0x230]
++# SDRAM_MODE_15
++	ldr w1, = 0x00040000
++	str w1, [x0, #0x238]
++# SDRAM_MODE_10
++	ldr w1, = 0x00004008
++	str w1, [x0, #0x224]
++# SDRAM_MODE_12
++	ldr w1, = 0x00004008
++	str w1, [x0, #0x22c]
++# SDRAM_MODE_14
++	ldr w1, = 0x00004008
++	str w1, [x0, #0x234]
++# SDRAM_MODE_16
++	ldr w1, = 0x00004008
++	str w1, [x0, #0x23c]
++# SDRAM_INTERVAL
++	ldr w1, = 0x0000fe1f
++	str w1, [x0, #0x124]
++# DDR_SDRAM_CLK_CNTL
++	ldr w1, = 0x00000002
++	str w1, [x0, #0x130]
++# TIMING_CFG_4
++	ldr w1, = 0x02000000
++	str w1, [x0, #0x160]
++# TIMING_CFG_5
++	ldr w1, = 0x00144005
++	str w1, [x0, #0x164]
++# DDR_SDRAM_CFG_3
++	ldr w1, = 0x0
++	str w1, [x0, #0x260]
++# TIMING_CFG_6
++	ldr w1, = 0x0
++	str w1, [x0, #0x168]
++# TIMING_CFG_7
++	ldr w1, = 0x00006026
++	str w1, [x0, #0x16c]
++# TIMING_CFG_8
++	ldr w1, = 0x00682205
++	str w1, [x0, #0x250]
++#DDR_DQ_MAP0
++	ldr w1, = 0x5475c532
++	str w1, [x0, #0x400]
++#DDR_DQ_MAP1
++	ldr w1, = 0xd40bbbd4
++	str w1, [x0, #0x404]
++#DDR_DQ_MAP2
++	ldr w1, = 0x54f5c22e
++	str w1, [x0, #0x408]
++#DDR_DQ_MAP3
++	ldr w1, = 0x01405dd9
++	str w1, [x0, #0x40c]
++#DDR_ZQ_CNTL
++	ldr w1, = 0x0507098a
++	str w1, [x0, #0x170]
++# DDR_WRLVL_CNTL
++	ldr w1, = 0x09f67586 //0x09f675c6
++	str w1, [x0, #0x174]
++# DDR_WRLVL_CNTL_2
++	ldr w1, = 0x110d0c0a//0x100c0b0a
++	str w1, [x0, #0x190]
++# DDR_WRLVL_CNTL_3
++	ldr w1, = 0x0e151412//0x0e141312
++	str w1, [x0, #0x194]
++# DEBUG_38
++	ldr w1, = 0x00000080
++	str w1, [x0, #0xf94]
++# SDRAM_CFG
++	ldr w1, = 0x004004e5
++	str w1, [x0, #0x110]
++
++	mov w3,#0
++	ldr w4,=0xffffff01
++z_loop:
++delay_loop1:
++	sub w4, w4, #1
++	cmp w4, #0
++	b.gt    delay_loop1
++
++	ldr w1, [x0, #0x114]
++	add w3, w3, #1
++	cmp       w1, #0 //'\n'
++	b.eq       1f
++	cmp w3, #20
++	b.gt    1f
++	b z_loop
++
++1:
++	ldr w4,=0xffffff02
++delay_loop2:
++	sub w4, w4, #1
++	cmp w4, #0
++	b.gt        delay_loop2
++
++	ret x29
++endfunc	platform_mem_init
++
++func apply_platform_errata
++	/*TODO if needed*/
++	ret
++endfunc apply_platform_errata
++
++func plat_reset_handler
++	mov x29, x30
++	bl  apply_platform_errata
++
++	mov x30, x29
++	ret
++endfunc plat_reset_handler
+diff --git a/plat/layerscape/board/ls1046/include/platform_def.h b/plat/layerscape/board/ls1046/include/platform_def.h
+new file mode 100644
+index 0000000..1df9ad8
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/include/platform_def.h
+@@ -0,0 +1,147 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#ifndef __PLATFORM_DEF_H__
++#define __PLATFORM_DEF_H__
++
++#include <common_def.h>
++#include <tzc400.h>
++#include <utils.h>
++#include "ls_def.h"
++#include "lsch2_soc.h"
++
++#define FIRMWARE_WELCOME_STR_LS_BL2	"Welcome to LS1046 BL2 Phase\n"
++#define FIRMWARE_WELCOME_STR_LS_BL31	"Welcome to LS1046 BL31 Phase\n"
++#define FIRMWARE_WELCOME_STR_LS_BL32	"Welcome to LS1046 BL32 Phase, TSP\n"
++
++/* Required platform porting definitions */
++#define PLAT_PRIMARY_CPU		0x0
++#define PLAT_MAX_PWR_LVL		LS_PWR_LVL1
++#define PLATFORM_CORE_COUNT		4
++#define COUNTER_FREQUENCY		25000000	/* 25MHz */
++
++/*
++ * Required LS standard platform porting definitions
++ */
++#define PLAT_LS_CLUSTER_COUNT			1
++#define PLAT_LS1046_CCI_CLUSTER0_SL_IFACE_IX	4
++#define LS1046_CLUSTER_COUNT			1
++#define LS1046_MAX_CPUS_PER_CLUSTER		4
++
++#define LS_DRAM1_BASE			0x80000000
++#define LS_DRAM2_BASE			0x880000000
++#define LS_DRAM2_SIZE			0x780000000	/* 30G */
++#define LS_DRAM1_SIZE			0x80000000	/* 2G */
++#define LS_NS_DRAM_BASE			LS_DRAM1_BASE
++
++/* 64M Secure Memory, in fact there a 2M non-secure hole on top of it */
++#define LS_SECURE_DRAM_SIZE		(64 * 1024 * 1024)
++#define LS_SECURE_DRAM_BASE		(LS_NS_DRAM_BASE + LS_DRAM1_SIZE - \
++						LS_SECURE_DRAM_SIZE)
++#define LS_NS_DRAM_SIZE			(LS_DRAM1_SIZE - LS_SECURE_DRAM_SIZE)
++
++/*
++ * By default, BL2 is in DDR memory.
++ * If LS_BL2_IN_OCRAM is defined, BL2 will in OCRAM
++ */
++/* #define LS_BL2_IN_OCRAM */
++
++#ifndef LS_BL2_IN_OCRAM
++/*
++ * on top of SECURE memory is 2M non-secure hole for OPTee,
++ *  1M secure memory below this hole will be used for BL2.
++ */
++#define LS_BL2_DDR_BASE			(LS_SECURE_DRAM_BASE + \
++						LS_SECURE_DRAM_SIZE \
++						- 3 * 1024 * 1024)
++#endif
++
++#define LS_SRAM_BASE			0x10000000
++#define LS_SRAM_LIMIT			0x10020000	/* 128K */
++#define LS_SRAM_SHARED_SIZE		0x1000		/* 4K */
++#define LS_SRAM_SIZE			(LS_SRAM_LIMIT - LS_SRAM_BASE)
++#define LS_BL_RAM_BASE			(LS_SRAM_BASE + LS_SRAM_SHARED_SIZE)
++
++#define PLAT_LS_FIP_MAX_SIZE		0x4000000
++
++/* Memory Layout */
++#ifdef NOR_BOOT		/* QSPI Nor boot */
++
++/* TODO: Waiting Implement */
++
++#elif defined(SD_BOOT)	/* SD boot memory layout */
++
++#define LOAD_FIP_IN_DDR_BASE		0x83000000
++#define PLAT_LS_FIP_BASE		LOAD_FIP_IN_DDR_BASE
++
++#define LS_FIP_SD_START_BLOCK		0x800
++#define LS_FIP_SD_BLOCK_NUMS		4096	/* 2M Byte */
++
++#define PLAT_LS_MAX_BL31_SIZE		(64 * 1024)		/* 64K */
++#define PLAT_LS_MAX_BL2_SIZE		(64 * 1024)		/* 64K */
++
++/*
++ * Put BL2 at the start of the Trusted SRAM.
++ */
++#define BL2_BASE			LS_SRAM_BASE
++#define BL2_LIMIT			(BL2_BASE + PLAT_LS_MAX_BL2_SIZE)
++/*
++ * BL31 follow BL2.
++ */
++#define BL31_BASE			BL2_LIMIT
++#define BL31_LIMIT			(BL31_BASE + PLAT_LS_MAX_BL31_SIZE)
++
++#endif /* NOR_BOOT */
++
++/* Put BL32 in secure memory */
++#define BL32_BASE		LS_SECURE_DRAM_BASE
++#define BL32_LIMIT		(LS_SECURE_DRAM_BASE + LS_SECURE_DRAM_SIZE)
++/* BL33 memory region */
++#define BL33_BASE		0x82000000
++#define BL33_LIMIT		(LS_NS_DRAM_BASE + LS_NS_DRAM_SIZE)
++
++/*******************************************************************************
++ * BL32 specific defines.
++ ******************************************************************************/
++/*
++ * On ARM standard platforms, the TSP can execute from Trusted SRAM,
++ * Trusted DRAM (if available) or the DRAM region secured by the TrustZone
++ * controller.
++ */
++
++#define TSP_SEC_MEM_BASE		BL32_BASE
++#define TSP_SEC_MEM_SIZE		(BL32_LIMIT - BL32_BASE)
++
++/*
++ * ID of the secure physical generic timer interrupt used by the TSP.
++ */
++#define TSP_IRQ_SEC_PHY_TIMER		29
++
++/* Define UART to be used by TF-A log */
++#define LS_TF_UART_BASE		PLAT_LS_UART_BASE
++#define PLAT_LS_UART_CLOCK		300000000
++#define LS_TF_UART_CLOCK		PLAT_LS_UART_CLOCK
++#define LS_TF_UART_BAUDRATE		PLAT_LS_UART_BAUDRATE
++
++/* Size of cacheable stacks */
++#if defined(IMAGE_BL2)
++#define PLATFORM_STACK_SIZE		0x400
++#define MAX_MMAP_REGIONS		8
++#define MAX_XLAT_TABLES			6
++#elif defined(IMAGE_BL31)
++#define PLATFORM_STACK_SIZE		0x400
++#define MAX_MMAP_REGIONS		8
++#define MAX_XLAT_TABLES			4
++#elif defined(IMAGE_BL32)
++#define PLATFORM_STACK_SIZE		0x440
++#define MAX_MMAP_REGIONS		8
++#define MAX_XLAT_TABLES			9
++#endif
++
++#define MAX_IO_DEVICES			3
++#define MAX_IO_HANDLES			4
++
++#endif /* __PLATFORM_DEF_H__ */
+diff --git a/plat/layerscape/board/ls1046/ls1046_bl2_setup.c b/plat/layerscape/board/ls1046/ls1046_bl2_setup.c
+new file mode 100644
+index 0000000..acdac4b
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/ls1046_bl2_setup.c
+@@ -0,0 +1,51 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include <mmio.h>
++#include <cci.h>
++#include <debug.h>
++#include "plat_ls.h"
++
++static const int cci_map[] = {
++	PLAT_LS1046_CCI_CLUSTER0_SL_IFACE_IX
++};
++
++void bl2_platform_setup(void)
++{
++	NOTICE(FIRMWARE_WELCOME_STR_LS_BL2);
++
++	/*
++	 * Initialize system level generic timer for Layerscape Socs.
++	 */
++	ls_delay_timer_init();
++
++	/* TODO: remove these DDR code */
++	INFO("CS0_BNDS = %x\n", mmio_read_32(0x1080000 + 0x000));
++	INFO("ERR DETECT = %x\n", mmio_read_32(0x1080000 + 0xe40));
++
++#ifdef	SD_BOOT
++	INFO("loading FIP from sd\n");
++	sd_load_fip_image();
++#endif
++}
++
++void bl2_el3_early_platform_setup(u_register_t arg1, u_register_t arg2,
++				  u_register_t arg3, u_register_t arg4)
++{
++	ls_bl2_early_platform_setup();
++
++	/*
++	 * Initialize Interconnect for this cluster during cold boot.
++	 * No need for locks as no other CPU is active.
++	 */
++	cci_init(PLAT_LS_CCI_BASE, cci_map, ARRAY_SIZE(cci_map));
++
++	/*
++	 * Enable coherency in Interconnect for the primary CPU's cluster.
++	 */
++	cci_enable_snoop_dvm_reqs(MPIDR_AFFLVL1_VAL(read_mpidr()));
++
++}
+diff --git a/plat/layerscape/board/ls1046/ls1046_bl31_setup.c b/plat/layerscape/board/ls1046/ls1046_bl31_setup.c
+new file mode 100644
+index 0000000..24a9ff4
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/ls1046_bl31_setup.c
+@@ -0,0 +1,55 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include <cci.h>
++#include <debug.h>
++#include "plat_ls.h"
++#include "fsl_csu.h"
++
++/* slave interfaces according to the RM */
++static const int cci_map[] = {
++	4,
++};
++
++void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
++		u_register_t arg2, u_register_t arg3)
++{
++#ifdef LS_BL2_IN_OCRAM
++	unsigned long romem_base = (unsigned long)(&__TEXT_START__);
++	unsigned long romem_size = (unsigned long)(&__RODATA_END__)
++					- romem_base;
++
++	/* Check the Text and RO-Data region size */
++	if (romem_size > BL31_TEXT_RODATA_SIZE) {
++		ERROR("BL31 Text and RO-Data region size exceed reserved memory size\n");
++		panic();
++	}
++#endif
++
++	/*
++	 * Initialize system level generic timer for Layerscape Socs.
++	 */
++	ls_delay_timer_init();
++
++	ls_bl31_early_platform_setup((void *)arg0, (void *)arg3);
++
++	/*
++	 * Initialize the correct interconnect for this cluster during cold
++	 * boot. No need for locks as no other CPU is active.
++	 */
++	cci_init(PLAT_LS_CCI_BASE, cci_map, ARRAY_SIZE(cci_map));
++
++	/*
++	 * Enable coherency in interconnect for the primary CPU's cluster.
++	 * Earlier bootloader stages might already do this (e.g. Trusted
++	 * Firmware's BL1 does it) but we can't assume so. There is no harm in
++	 * executing this code twice anyway.
++	 */
++	cci_enable_snoop_dvm_reqs(MPIDR_AFFLVL1_VAL(read_mpidr()));
++
++	/* Init CSU to enable non-secure access to peripherals */
++	enable_layerscape_ns_access();
++}
+diff --git a/plat/layerscape/board/ls1046/ls1046_err.c b/plat/layerscape/board/ls1046/ls1046_err.c
+new file mode 100644
+index 0000000..e4a2cae
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/ls1046_err.c
+@@ -0,0 +1,30 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include <arch_helpers.h>
++#include <debug.h>
++#include <errno.h>
++#include <stdint.h>
++
++/*
++ * Error handler
++ */
++void plat_error_handler(int err)
++{
++	switch (err) {
++	case -ENOENT:
++	case -EAUTH:
++		/* ToDo */
++		break;
++	default:
++		/* Unexpected error */
++		break;
++	}
++
++	/* Loop until the watchdog resets the system */
++	for (;;)
++		wfi();
++}
+diff --git a/plat/layerscape/board/ls1046/ls1046_psci.c b/plat/layerscape/board/ls1046/ls1046_psci.c
+new file mode 100644
+index 0000000..fe8060e
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/ls1046_psci.c
+@@ -0,0 +1,168 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include <arch_helpers.h>
++#include <debug.h>
++#include <errno.h>
++#include <assert.h>
++#include <platform.h>
++#include <psci.h>
++#include <mmio.h>
++#include <sys/endian.h>
++#include <gicv2.h>
++#include <delay_timer.h>
++#include "platform_def.h"
++
++#define LS_SCFG_BASE			0x01570000
++/* register to store warm boot entry, big endian, higher 32bit */
++#define LS_SCFG_SCRATCHRW0_OFFSET	     0x600
++/* register to store warm boot entry, big endian, lower 32bit */
++#define LS_SCFG_SCRATCHRW1_OFFSET	     0x604
++#define LS_SCFG_COREBCR_OFFSET		     0x680
++
++#define LS_DCFG_BASE			0x01EE0000
++#define LS_DCFG_RSTCR_OFFSET		     0x0B0
++#define LS_DCFG_RSTRQMR1_OFFSET		     0x0C0
++#define LS_DCFG_BRR_OFFSET		     0x0E4
++
++#define LS_SCFG_CORE0_SFT_RST_OFFSET		0x130
++#define LS_SCFG_CORE1_SFT_RST_OFFSET		0x134
++#define LS_SCFG_CORE2_SFT_RST_OFFSET		0x138
++#define LS_SCFG_CORE3_SFT_RST_OFFSET		0x13C
++
++#define LS_SCFG_CORESRENCR_OFFSET		0x204
++
++#define LS_SCFG_RVBAR0_0_OFFSET			0x220
++#define LS_SCFG_RVBAR0_1_OFFSET			0x224
++
++#define LS_SCFG_RVBAR1_0_OFFSET			0x228
++#define LS_SCFG_RVBAR1_1_OFFSET			0x22C
++
++#define LS_SCFG_RVBAR2_0_OFFSET			0x230
++#define LS_SCFG_RVBAR2_1_OFFSET			0x234
++
++#define LS_SCFG_RVBAR3_0_OFFSET			0x238
++#define LS_SCFG_RVBAR3_1_OFFSET			0x23C
++
++/* the entry for core warm boot */
++static uintptr_t warmboot_entry;
++
++/* warm reset single core */
++static void ls1046_reset_core(int core_pos)
++{
++	assert(core_pos >= 0 && core_pos < PLATFORM_CORE_COUNT);
++
++	/* set 0 in RVBAR, boot from bootrom at 0x0 */
++	mmio_write_32(LS_SCFG_BASE + LS_SCFG_RVBAR0_0_OFFSET + core_pos * 8,
++		      0);
++	mmio_write_32(LS_SCFG_BASE + LS_SCFG_RVBAR0_1_OFFSET + core_pos * 8,
++		      0);
++
++	dsb();
++	/* enable core soft reset */
++	mmio_write_32(LS_SCFG_BASE + LS_SCFG_CORESRENCR_OFFSET,
++		      htobe32(1 << 31));
++	dsb();
++	isb();
++	/* reset core */
++	mmio_write_32(LS_SCFG_BASE + LS_SCFG_CORE0_SFT_RST_OFFSET +
++			core_pos * 4, htobe32(1 << 31));
++	mdelay(10);
++}
++
++static void __dead2 ls1046_system_reset(void)
++{
++	/* clear reset request mask bits */
++	mmio_write_32(LS_DCFG_BASE + LS_DCFG_RSTRQMR1_OFFSET, 0);
++
++	/* set reset request bit */
++	mmio_write_32(LS_DCFG_BASE + LS_DCFG_RSTCR_OFFSET,
++		      htobe32((uint32_t)0x2));
++
++	/* system will reset; if fail, enter wfi */
++	dsb();
++	isb();
++	wfi();
++
++	panic();
++}
++
++
++static int ls1046_pwr_domain_on(u_register_t mpidr)
++{
++	int core_pos = plat_core_pos_by_mpidr(mpidr);
++	uint32_t core_mask, brr;
++
++	assert(core_pos >= 0 && core_pos < PLATFORM_CORE_COUNT);
++	core_mask = 1 << core_pos;
++
++	/* set warm boot entry */
++	mmio_write_32(LS_SCFG_BASE + LS_SCFG_SCRATCHRW0_OFFSET,
++		htobe32((uint32_t)(warmboot_entry >> 32)));
++
++	mmio_write_32(LS_SCFG_BASE + LS_SCFG_SCRATCHRW1_OFFSET,
++		htobe32((uint32_t)warmboot_entry));
++
++	dsb();
++
++	brr = be32toh(mmio_read_32(LS_DCFG_BASE + LS_DCFG_BRR_OFFSET));
++	if (brr & core_mask) {
++		/* core has been released, must reset it to restart */
++		ls1046_reset_core(core_pos);
++
++		/* set bit in core boot control register to enable boot */
++		mmio_write_32(LS_SCFG_BASE + LS_SCFG_COREBCR_OFFSET,
++			htobe32(core_mask));
++
++	} else {
++		/* set bit in core boot control register to enable boot */
++		mmio_write_32(LS_SCFG_BASE + LS_SCFG_COREBCR_OFFSET,
++			htobe32(core_mask));
++
++		/* release core */
++		mmio_write_32(LS_DCFG_BASE + LS_DCFG_BRR_OFFSET,
++			      htobe32(brr | core_mask));
++	}
++
++	mdelay(20);
++
++	/* wake core in case it is in wfe */
++	dsb();
++	isb();
++	sev();
++
++	return PSCI_E_SUCCESS;
++}
++
++static void ls1046_pwr_domain_on_finish(const psci_power_state_t *target_state)
++{
++	/* Per cpu gic distributor setup */
++	gicv2_pcpu_distif_init();
++
++	/* Enable the gic CPU interface */
++	gicv2_cpuif_enable();
++}
++
++static void ls1046_pwr_domain_off(const psci_power_state_t *target_state)
++{
++	/* Disable the gic CPU interface */
++	gicv2_cpuif_disable();
++}
++
++static plat_psci_ops_t ls1046_psci_pm_ops = {
++	.system_reset = ls1046_system_reset,
++	.pwr_domain_on = ls1046_pwr_domain_on,
++	.pwr_domain_on_finish = ls1046_pwr_domain_on_finish,
++	.pwr_domain_off = ls1046_pwr_domain_off,
++};
++
++int plat_setup_psci_ops(uintptr_t sec_entrypoint,
++			const plat_psci_ops_t **psci_ops)
++{
++	warmboot_entry = sec_entrypoint;
++	*psci_ops = &ls1046_psci_pm_ops;
++	return 0;
++}
+diff --git a/plat/layerscape/board/ls1046/ls1046_security.c b/plat/layerscape/board/ls1046/ls1046_security.c
+new file mode 100644
+index 0000000..18ae56e
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/ls1046_security.c
+@@ -0,0 +1,15 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include "plat_ls.h"
++
++/*
++ * We assume that all security programming is done by the primary core.
++ */
++void plat_ls_security_setup(void)
++{
++	tzc380_setup();
++}
+diff --git a/plat/layerscape/board/ls1046/ls1046_stack_protector.c b/plat/layerscape/board/ls1046/ls1046_stack_protector.c
+new file mode 100644
+index 0000000..50f463b
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/ls1046_stack_protector.c
+@@ -0,0 +1,21 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include <arch_helpers.h>
++#include <stdint.h>
++
++#define RANDOM_CANARY_VALUE ((u_register_t) 3288484550995823360ULL)
++
++u_register_t plat_get_stack_protector_canary(void)
++{
++	/*
++	 * Ideally, a random number should be returned instead of the
++	 * combination of a timer's value and a compile-time constant. As the
++	 * FVP does not have any random number generator, this is better than
++	 * nothing but not necessarily really secure.
++	 */
++	return RANDOM_CANARY_VALUE ^ read_cntpct_el0();
++}
+diff --git a/plat/layerscape/board/ls1046/ls1046_topology.c b/plat/layerscape/board/ls1046/ls1046_topology.c
+new file mode 100644
+index 0000000..906bd4f
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/ls1046_topology.c
+@@ -0,0 +1,56 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include <arch.h>
++#include <cassert.h>
++#include "plat_ls.h"
++#include "platform_def.h"
++
++unsigned char ls1046_power_domain_tree_desc[LS1046_CLUSTER_COUNT + 1];
++
++
++CASSERT(LS1046_CLUSTER_COUNT && LS1046_CLUSTER_COUNT <= 256,
++		assert_invalid_LS1046_cluster_count);
++
++/*******************************************************************************
++ * This function dynamically constructs the topology according to
++ * LS1046_CLUSTER_COUNT and returns it.
++ ******************************************************************************/
++const unsigned char *plat_get_power_domain_tree_desc(void)
++{
++	int i;
++
++	ls1046_power_domain_tree_desc[0] = LS1046_CLUSTER_COUNT;
++
++	for (i = 0; i < LS1046_CLUSTER_COUNT; i++)
++		ls1046_power_domain_tree_desc[i + 1] =
++						LS1046_MAX_CPUS_PER_CLUSTER;
++
++	return ls1046_power_domain_tree_desc;
++}
++
++/*******************************************************************************
++ * This function returns the core count within the cluster corresponding to
++ * `mpidr`.
++ ******************************************************************************/
++unsigned int plat_ls_get_cluster_core_count(u_register_t mpidr)
++{
++	return LS1046_MAX_CPUS_PER_CLUSTER;
++}
++
++/*******************************************************************************
++ * This function implements a part of the critical interface between the psci
++ * generic layer and the platform that allows the former to query the platform
++ * to convert an MPIDR to a unique linear index. An error code (-1) is returned
++ * in case the MPIDR is invalid.
++ ******************************************************************************/
++int plat_core_pos_by_mpidr(u_register_t mpidr)
++{
++	if (ls_check_mpidr(mpidr) == -1)
++		return -1;
++
++	return plat_ls_calc_core_pos(mpidr);
++}
+diff --git a/plat/layerscape/board/ls1046/ls1046ardb_pbi.cfg b/plat/layerscape/board/ls1046/ls1046ardb_pbi.cfg
+new file mode 100644
+index 0000000..5478217
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/ls1046ardb_pbi.cfg
+@@ -0,0 +1,22 @@
++#Configure Scratch register
++09570600 00000000
++09570604 10000000
++#Disable CCI barrier tranaction
++09570178 0000e010
++09180000 00000008
++#USB PHY frequency sel
++09570418 0000009e
++0957041c 0000009e
++09570420 0000009e
++#Serdes SATA
++09eb1300 80104e20
++09eb08dc 00502880
++#PEX gen3 link
++09570158 00000300
++89400890 01048000
++89500890 01048000
++89600890 01048000
++#Alt base register
++09570158 00001000
++#flush PBI data
++096100c0 000fffff
+diff --git a/plat/layerscape/board/ls1046/ls1046ardb_rcw_sd.cfg b/plat/layerscape/board/ls1046/ls1046ardb_rcw_sd.cfg
+new file mode 100644
+index 0000000..d5265b8
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/ls1046ardb_rcw_sd.cfg
+@@ -0,0 +1,7 @@
++#PBL preamble and RCW header
++aa55aa55 01ee0100
++# RCW
++0c150010 0e000000 00000000 00000000
++11335559 40005012 60040000 c1000000
++00000000 00000000 00000000 00238800
++20124000 00003101 00000096 00000001
+diff --git a/plat/layerscape/board/ls1046/ls_gic.c b/plat/layerscape/board/ls1046/ls_gic.c
+new file mode 100644
+index 0000000..ce49cfe
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/ls_gic.c
+@@ -0,0 +1,47 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include <mmio.h>
++#include <debug.h>
++#include <endian.h>
++#include "platform_def.h"
++
++#define SVR_WO_E		0xFFFFFE
++#define SVR_LS1046A		0x879204
++#define SVR_LS1046AE		0x879200
++
++/* Get GIC offset
++ * For LS1046a rev1.0, GIC base address align with 4k.
++ * For LS1046a rev1.1, if DCFG_GIC400_ALIGN[GIC_ADDR_BIT]
++ * is set, GIC base address align with 4K, or else alig
++ * with 64k. */
++void get_gic_offset(uint32_t *gicc_base, uint32_t *gicd_base)
++{
++
++	uint32_t *ccsr_svr = (uint32_t *)DCFG_CCSR_SVR;
++	uint32_t *gic_align = (uint32_t *)SCFG_GIC400_ALIGN;
++	uint32_t val;
++	uint32_t soc_dev_id;
++
++	val = be32toh(mmio_read_32((uintptr_t)ccsr_svr));
++	soc_dev_id = val & (SVR_WO_E << 8);
++
++	if ((soc_dev_id == (SVR_LS1046A << 8) ||
++			soc_dev_id == (SVR_LS1046AE << 8)) &&
++			((val & 0xff) == REV1_1)) {
++		val = be32toh(mmio_read_32((uintptr_t)gic_align));
++		if (val & (1 << GIC_ADDR_BIT)) {
++			*gicc_base = GICC_BASE;
++			*gicd_base = GICD_BASE;
++		} else {
++			*gicc_base = GICC_BASE_64K;
++			*gicd_base = GICD_BASE_64K;
++		}
++	} else {
++		*gicc_base = GICC_BASE;
++		*gicd_base = GICD_BASE;
++	}
++}
+diff --git a/plat/layerscape/board/ls1046/platform.mk b/plat/layerscape/board/ls1046/platform.mk
+new file mode 100644
+index 0000000..a5f6d92
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/platform.mk
+@@ -0,0 +1,73 @@
++#
++# Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++#
++# SPDX-License-Identifier: BSD-3-Clause
++#
++
++# indicate the reset vector address can be programmed
++PROGRAMMABLE_RESET_ADDRESS	:=	1
++USE_COHERENT_MEM		:=	0
++RESET_TO_BL31			:=	0
++ENABLE_STACK_PROTECTOR		:=	0
++LS1046_GIC_SOURCES		:=	drivers/arm/gic/common/gic_common.c	\
++					drivers/arm/gic/v2/gicv2_main.c		\
++					drivers/arm/gic/v2/gicv2_helpers.c	\
++					plat/common/plat_gicv2.c		\
++					plat/layerscape/board/ls1046/ls_gic.c
++
++
++LS1046_INTERCONNECT_SOURCES	:= 	drivers/arm/cci/cci.c
++
++LS1046_SECURITY_SOURCES 	:=	plat/layerscape/common/ls_tzc380.c	\
++					plat/layerscape/board/ls1046/ls1046_security.c
++
++PLAT_INCLUDES			:=	-Iplat/layerscape/board/ls1046/include   \
++					-Iinclude/plat/arm/common	\
++					-Iplat/layerscape/common/include	\
++					-Iinclude/drivers/arm   \
++					-Iinclude/lib		\
++					-Iinclude/drivers/io
++
++
++PLAT_BL_COMMON_SOURCES		:=	drivers/console/aarch64/console.S	\
++					plat/layerscape/common/aarch64/ls_console.S
++
++LS1046_CPU_LIBS			:=	lib/cpus/${ARCH}/aem_generic.S
++
++LS1046_CPU_LIBS			+=	lib/cpus/aarch64/cortex_a72.S
++
++BL2_SOURCES			+=	drivers/delay_timer/delay_timer.c		\
++					plat/layerscape/board/ls1046/${ARCH}/ls1046_helpers.S \
++					plat/layerscape/board/ls1046/ls1046_bl2_setup.c		\
++					plat/layerscape/board/ls1046/ls1046_err.c			\
++					${LS1046_CPU_LIBS}					\
++					${LS1046_INTERCONNECT_SOURCES}		\
++					${LS1046_SECURITY_SOURCES}
++
++
++BL31_SOURCES			+=	plat/layerscape/board/ls1046/ls1046_bl31_setup.c		\
++					plat/layerscape/board/ls1046/ls1046_topology.c		\
++					plat/layerscape/board/ls1046/aarch64/ls1046_helpers.S	\
++					plat/layerscape/board/ls1046/ls1046_psci.c		\
++					drivers/delay_timer/delay_timer.c		\
++					${LS1046_CPU_LIBS}					\
++					${LS1046_GIC_SOURCES}				\
++					${LS1046_INTERCONNECT_SOURCES}			\
++					${LS1046_SECURITY_SOURCES}
++
++# Disable the PSCI platform compatibility layer
++ENABLE_PLAT_COMPAT		:= 	0
++MULTI_CONSOLE_API		:=	1
++
++# Enable workarounds for selected Cortex-A72 erratas.
++ERRATA_A72_859971		:=      1
++
++ifneq (${ENABLE_STACK_PROTECTOR},0)
++PLAT_BL_COMMON_SOURCES		+=	plat/layerscape/board/ls1046/ls1046_stack_protector.c
++endif
++
++ifeq (${ARCH},aarch32)
++    NEED_BL32 := yes
++endif
++
++include plat/layerscape/common/ls_common.mk
+diff --git a/plat/layerscape/board/ls1046/tsp/ls1046_tsp_setup.c b/plat/layerscape/board/ls1046/tsp/ls1046_tsp_setup.c
+new file mode 100644
+index 0000000..4fc019c
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/tsp/ls1046_tsp_setup.c
+@@ -0,0 +1,14 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include "plat_ls.h"
++
++void tsp_early_platform_setup(void)
++{
++	ls_tsp_early_platform_setup();
++
++	/*Todo: Initialize the platform config for future decision making */
++}
+diff --git a/plat/layerscape/board/ls1046/tsp/tsp-ls1046.mk b/plat/layerscape/board/ls1046/tsp/tsp-ls1046.mk
+new file mode 100644
+index 0000000..6eca456
+--- /dev/null
++++ b/plat/layerscape/board/ls1046/tsp/tsp-ls1046.mk
+@@ -0,0 +1,12 @@
++#
++# Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++#
++# SPDX-License-Identifier: BSD-3-Clause
++#
++
++# TSP source files specific to FVP platform
++BL32_SOURCES		+=	plat/layerscape/board/ls1046/ls1046_topology.c		\
++				plat/layerscape/board/ls1046/tsp/ls1046_tsp_setup.c		\
++				${LS1046_GIC_SOURCES}
++
++include plat/layerscape/common/tsp/ls_tsp.mk
+-- 
+1.7.1
+

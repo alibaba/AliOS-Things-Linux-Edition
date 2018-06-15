@@ -1,0 +1,36 @@
+From b982997c96e11b9c0b3cd58a31af2d0a219713a3 Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Fri, 11 Aug 2017 18:39:58 -0700
+Subject: [PATCH 7/9] Delete unused variables
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+Upstream-Status: Pending
+
+ decoder/vaapidecoder_vp8.cpp | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/decoder/vaapidecoder_vp8.cpp b/decoder/vaapidecoder_vp8.cpp
+index 5fc89ec..ff5b896 100644
+--- a/decoder/vaapidecoder_vp8.cpp
++++ b/decoder/vaapidecoder_vp8.cpp
+@@ -32,12 +32,12 @@ typedef VaapiDecoderVP8::PicturePtr PicturePtr;
+ 
+ // the following parameter apply to Intra-Predicted Macroblocks,
+ // $11.2 $11.4: key frame default probs
+-static const uint8_t keyFrameYModeProbs[4] = { 145, 156, 163, 128 };
+-static const uint8_t keyFrameUVModeProbs[3] = { 142, 114, 183 };
++//static const uint8_t keyFrameYModeProbs[4] = { 145, 156, 163, 128 };
++//static const uint8_t keyFrameUVModeProbs[3] = { 142, 114, 183 };
+ 
+ // $16.1: non-key frame default probs
+-static const uint8_t nonKeyFrameDefaultYModeProbs[4] = { 112, 86, 140, 37 };
+-static const uint8_t nonKeyFrameDefaultUVModeProbs[3] = { 162, 101, 204 };
++//static const uint8_t nonKeyFrameDefaultYModeProbs[4] = { 112, 86, 140, 37 };
++//static const uint8_t nonKeyFrameDefaultUVModeProbs[3] = { 162, 101, 204 };
+ 
+ static const uint32_t surfaceNumVP8 = 3;
+ 
+-- 
+2.14.1
+

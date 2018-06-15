@@ -1,0 +1,42 @@
+From 87cd5a5e0f06ceb7f9dbdcc4029e0c279a38e6ad Mon Sep 17 00:00:00 2001
+From: Mikko Ylinen <mikko.ylinen@linux.intel.com>
+Date: Mon, 27 Feb 2017 10:04:03 +0200
+Subject: [PATCH] sd-boot: stub: check LoadOptions contains data
+
+With some UEFI shells LoadOptionsSize is reported being > 0
+but the corresponding LoadOptions does not contain any data
+(the first element has value 0).
+
+When that happens, the stub feature that allows .cmdline to be
+replaced by what's in LoadOptions ends up copying nothing/random
+data to the kernel cmdline resulting in different kinds of boot
+problems.
+
+To fix this, add a check to see if LoadOptions contains data
+before replacing the .cmdline.
+
+Upstream-Status: Accepted [https://github.com/systemd/systemd/pull/5467]
+
+Fixes [YOCTO #11078].
+
+Signed-off-by: Mikko Ylinen <mikko.ylinen@linux.intel.com>
+---
+ src/boot/efi/stub.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/boot/efi/stub.c b/src/boot/efi/stub.c
+index 7c1ffb1bc..b7d5d3cda 100644
+--- a/src/boot/efi/stub.c
++++ b/src/boot/efi/stub.c
+@@ -87,7 +87,7 @@ EFI_STATUS efi_main(EFI_HANDLE image, EFI_SYSTEM_TABLE *sys_table) {
+         cmdline_len = szs[0];
+ 
+         /* if we are not in secure boot mode, accept a custom command line and replace the built-in one */
+-        if (!secure && loaded_image->LoadOptionsSize > 0) {
++        if (!secure && loaded_image->LoadOptionsSize > 0 && *(CHAR16 *)loaded_image->LoadOptions != 0) {
+                 CHAR16 *options;
+                 CHAR8 *line;
+                 UINTN i;
+-- 
+2.11.0
+

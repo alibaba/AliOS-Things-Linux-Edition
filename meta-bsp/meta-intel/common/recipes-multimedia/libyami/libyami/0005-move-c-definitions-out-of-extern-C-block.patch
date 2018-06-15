@@ -1,0 +1,130 @@
+From 3748cf904089878971cfcf66abf14c4d74f8241a Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Fri, 11 Aug 2017 18:03:07 -0700
+Subject: [PATCH 5/9] move c++ definitions out of extern "C" block
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+Upstream-Status: Pending
+
+ decoder/vaapidecoder_host.cpp    | 2 +-
+ encoder/vaapiencoder_host.cpp    | 3 ++-
+ interface/VideoDecoderHost.h     | 8 ++++----
+ interface/VideoEncoderHost.h     | 8 ++++----
+ interface/VideoPostProcessHost.h | 8 ++++----
+ vpp/vaapipostprocess_host.cpp    | 3 +--
+ 6 files changed, 16 insertions(+), 16 deletions(-)
+
+diff --git a/decoder/vaapidecoder_host.cpp b/decoder/vaapidecoder_host.cpp
+index bcc9165..d9129f3 100644
+--- a/decoder/vaapidecoder_host.cpp
++++ b/decoder/vaapidecoder_host.cpp
+@@ -100,9 +100,9 @@ void releaseVideoDecoder(IVideoDecoder * p)
+ {
+     delete p;
+ }
++} // extern "C"
+ 
+ std::vector<std::string> getVideoDecoderMimeTypes()
+ {
+     return VaapiDecoderFactory::keys();
+ }
+-} // extern "C"
+diff --git a/encoder/vaapiencoder_host.cpp b/encoder/vaapiencoder_host.cpp
+index 49e903a..3ee9354 100644
+--- a/encoder/vaapiencoder_host.cpp
++++ b/encoder/vaapiencoder_host.cpp
+@@ -78,9 +78,10 @@ void releaseVideoEncoder(IVideoEncoder* p) {
+     delete p;
+ }
+ 
++} // extern "C"
++
+ std::vector<std::string> getVideoEncoderMimeTypes()
+ {
+     return VaapiEncoderFactory::keys();
+ }
+ 
+-} // extern "C"
+diff --git a/interface/VideoDecoderHost.h b/interface/VideoDecoderHost.h
+index 86210fe..fd2ba7b 100644
+--- a/interface/VideoDecoderHost.h
++++ b/interface/VideoDecoderHost.h
+@@ -32,12 +32,12 @@ extern "C" { // for dlsym usage
+ YamiMediaCodec::IVideoDecoder *createVideoDecoder(const char *mimeType);
+ /// \brief destroy the decoder
+ void releaseVideoDecoder(YamiMediaCodec::IVideoDecoder * p);
+-/** \fn void getVideoDecoderMimeTypes()
+- * \brief return the MimeTypes enabled in the current build
+-*/
+-std::vector<std::string> getVideoDecoderMimeTypes();
+ 
+ typedef YamiMediaCodec::IVideoDecoder *(*YamiCreateVideoDecoderFuncPtr) (const char *mimeType);
+ typedef void (*YamiReleaseVideoDecoderFuncPtr)(YamiMediaCodec::IVideoDecoder * p);
+ }
++// \fn void getVideoDecoderMimeTypes()
++// \brief return the MimeTypes enabled in the current build
++//
++std::vector<std::string> getVideoDecoderMimeTypes();
+ #endif                          /* VIDEO_DECODER_HOST_H_ */
+diff --git a/interface/VideoEncoderHost.h b/interface/VideoEncoderHost.h
+index fb80335..5fb5ab3 100644
+--- a/interface/VideoEncoderHost.h
++++ b/interface/VideoEncoderHost.h
+@@ -32,12 +32,12 @@ extern "C" { // for dlsym usage
+ YamiMediaCodec::IVideoEncoder *createVideoEncoder(const char *mimeType);
+ ///brief destroy encoder
+ void releaseVideoEncoder(YamiMediaCodec::IVideoEncoder * p);
+-/** \fn void getVideoEncoderMimeTypes()
+- * \brief return the MimeTypes enabled in the current build
+-*/
+-std::vector<std::string> getVideoEncoderMimeTypes();
+ 
+ typedef YamiMediaCodec::IVideoEncoder *(*YamiCreateVideoEncoderFuncPtr) (const char *mimeType);
+ typedef void (*YamiReleaseVideoEncoderFuncPtr)(YamiMediaCodec::IVideoEncoder * p);
+ }
+ #endif                          /* VIDEO_ENCODER_HOST_H_ */
++// \fn void getVideoEncoderMimeTypes()
++// \brief return the MimeTypes enabled in the current build
++//
++std::vector<std::string> getVideoEncoderMimeTypes();
+diff --git a/interface/VideoPostProcessHost.h b/interface/VideoPostProcessHost.h
+index de046cd..f1c5ce5 100644
+--- a/interface/VideoPostProcessHost.h
++++ b/interface/VideoPostProcessHost.h
+@@ -34,12 +34,12 @@ YamiMediaCodec::IVideoPostProcess *createVideoPostProcess(const char *mimeType);
+  * \brief destroy encoder
+ */
+ void releaseVideoPostProcess(YamiMediaCodec::IVideoPostProcess * p);
+-/** \fn void getVideoPostProcessMimeTypes()
+- * \brief return the MimeTypes enabled in the current build
+-*/
+-std::vector<std::string> getVideoPostProcessMimeTypes();
+ 
+ typedef YamiMediaCodec::IVideoPostProcess *(*YamiCreateVideoPostProcessFuncPtr) (const char *mimeType);
+ typedef void (*YamiReleaseVideoPostProcessFuncPtr)(YamiMediaCodec::IVideoPostProcess * p);
+ }
+ #endif                          /* VIDEO_POST_PROCESS_HOST_H_ */
++// \fn void getVideoPostProcessMimeTypes()
++// \brief return the MimeTypes enabled in the current build
++//
++std::vector<std::string> getVideoPostProcessMimeTypes();
+diff --git a/vpp/vaapipostprocess_host.cpp b/vpp/vaapipostprocess_host.cpp
+index cd40dea..bc06b38 100644
+--- a/vpp/vaapipostprocess_host.cpp
++++ b/vpp/vaapipostprocess_host.cpp
+@@ -75,10 +75,9 @@ void releaseVideoPostProcess(IVideoPostProcess * p)
+ {
+     delete p;
+ }
++} // extern "C"
+ 
+ std::vector<std::string> getVideoPostProcessMimeTypes()
+ {
+     return VaapiPostProcessFactory::keys();
+ }
+-
+-} // extern "C"
+-- 
+2.14.1
+

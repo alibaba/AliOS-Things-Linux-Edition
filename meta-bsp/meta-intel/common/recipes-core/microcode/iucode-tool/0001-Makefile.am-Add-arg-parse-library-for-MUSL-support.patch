@@ -1,0 +1,29 @@
+From 5f6826b3a59dedf508d5a6122362d69a4813e8e6 Mon Sep 17 00:00:00 2001
+From: Saul Wold <sgw@linux.intel.com>
+Date: Fri, 3 Feb 2017 16:08:51 -0800
+Subject: [PATCH] Makefile.am: Add arg-parse library for MUSL support
+
+iucode-tool needs argp-standalone when used with MUSL, so add this
+patch to the Makefile to link with argp
+
+Upstream-Status: Pending
+Signed-off-by: Saul Wold <sgw@linux.intel.com>
+---
+ Makefile.am | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/Makefile.am b/Makefile.am
+index 415a241..764fb61 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -5,6 +5,7 @@
+ sbin_PROGRAMS	 = iucode_tool
+ man_MANS	 = iucode_tool.8
+ 
++iucode_tool_LDADD = -largp
+ iucode_tool_SOURCES = intel_microcode.h intel_microcode.c iucode_tool.c
+ EXTRA_DIST	= autogen.sh CONTRIBUTING
+ 
+-- 
+2.7.4
+

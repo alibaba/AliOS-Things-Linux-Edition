@@ -1,0 +1,82 @@
+From c6c26ca043b8f3c22d80a12fa0cf24c1e60e534e Mon Sep 17 00:00:00 2001
+From: Boris Brezillon <boris.brezillon@free-electrons.com>
+Date: Thu, 14 Apr 2016 21:17:37 +0200
+Subject: [PATCH 10/27] UPSTREAM: pwm: Keep PWM state in sync with hardware
+ state
+
+Before the introduction of pwm_args, the core was resetting the PWM
+period and polarity states to the reference values (those provided
+through the DT, a PWM lookup table or hardcoded in the driver).
+
+Now that all PWM users are correctly using pwm_args to configure their
+PWM device, we can safely remove the pwm_apply_args() call in pwm_get()
+and of_pwm_get().
+
+We can also get rid of the pwm_set_period() call in pwm_apply_args(),
+because PWM users are now directly using pargs->period instead of
+pwm_get_period(). By doing that we avoid messing with the current PWM
+period.
+
+The only remaining bit in pwm_apply_args() is the initial polarity
+setting, and it should go away when all PWM users have been patched to
+use the atomic API (with this API the polarity will be set along with
+other PWM arguments when configuring the PWM).
+
+Signed-off-by: Boris Brezillon <boris.brezillon@free-electrons.com>
+Signed-off-by: Thierry Reding <thierry.reding@gmail.com>
+(cherry picked from commit a8c3862551e063344f80c3e05d595f9d8836f355)
+
+Change-Id: I5112f2d8a7b66e01184984376dcae84decf5ad28
+Signed-off-by: David Wu <david.wu@rock-chips.com>
+---
+ drivers/pwm/core.c  | 14 --------------
+ include/linux/pwm.h |  1 -
+ 2 files changed, 15 deletions(-)
+
+diff --git a/drivers/pwm/core.c b/drivers/pwm/core.c
+index 01de925be0f3..ab86ecddbe14 100644
+--- a/drivers/pwm/core.c
++++ b/drivers/pwm/core.c
+@@ -612,13 +612,6 @@ struct pwm_device *of_pwm_get(struct device_node *np, const char *con_id)
+ 
+ 	pwm->label = con_id;
+ 
+-	/*
+-	 * FIXME: This should be removed once all PWM users properly make use
+-	 * of struct pwm_args to initialize the PWM device. As long as this is
+-	 * here, the PWM state and hardware state can get out of sync.
+-	 */
+-	pwm_apply_args(pwm);
+-
+ put:
+ 	of_node_put(args.np);
+ 
+@@ -753,13 +746,6 @@ struct pwm_device *pwm_get(struct device *dev, const char *con_id)
+ 	pwm->args.period = chosen->period;
+ 	pwm->args.polarity = chosen->polarity;
+ 
+-	/*
+-	 * FIXME: This should be removed once all PWM users properly make use
+-	 * of struct pwm_args to initialize the PWM device. As long as this is
+-	 * here, the PWM state and hardware state can get out of sync.
+-	 */
+-	pwm_apply_args(pwm);
+-
+ out:
+ 	mutex_unlock(&pwm_lookup_lock);
+ 	return pwm;
+diff --git a/include/linux/pwm.h b/include/linux/pwm.h
+index 661ece188a51..fea78abc8b78 100644
+--- a/include/linux/pwm.h
++++ b/include/linux/pwm.h
+@@ -171,7 +171,6 @@ static inline void pwm_get_args(const struct pwm_device *pwm,
+ 
+ static inline void pwm_apply_args(struct pwm_device *pwm)
+ {
+-	pwm_set_period(pwm, pwm->args.period);
+ 	pwm_set_polarity(pwm, pwm->args.polarity);
+ }
+ 
+-- 
+2.11.0
+

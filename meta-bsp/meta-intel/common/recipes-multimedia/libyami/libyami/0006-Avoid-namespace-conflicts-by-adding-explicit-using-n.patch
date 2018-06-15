@@ -1,0 +1,41 @@
+From 27b61f5ab1b1643436f56517e4980734b4b9acca Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Fri, 11 Aug 2017 18:38:05 -0700
+Subject: [PATCH 6/9] Avoid namespace conflicts by adding explicit using
+ <namespace>
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+Upstream-Status: Pending
+
+ decoder/vaapidecoder_h264.h | 1 +
+ decoder/vaapidecoder_h265.h | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/decoder/vaapidecoder_h264.h b/decoder/vaapidecoder_h264.h
+index 57e2c27..ea5c2f2 100644
+--- a/decoder/vaapidecoder_h264.h
++++ b/decoder/vaapidecoder_h264.h
+@@ -30,6 +30,7 @@ namespace YamiMediaCodec {
+ 
+ class VaapiDecPictureH264;
+ class VaapiDecoderH264 : public VaapiDecoderBase {
++using YamiMediaCodec::VaapiDecoderBase::createPicture;
+ public:
+     typedef SharedPtr<VaapiDecPictureH264> PicturePtr;
+     typedef std::vector<PicturePtr> RefSet;
+diff --git a/decoder/vaapidecoder_h265.h b/decoder/vaapidecoder_h265.h
+index f7e2303..159e25f 100644
+--- a/decoder/vaapidecoder_h265.h
++++ b/decoder/vaapidecoder_h265.h
+@@ -38,6 +38,7 @@ namespace YamiMediaCodec {
+ 
+ class VaapiDecPictureH265;
+ class VaapiDecoderH265:public VaapiDecoderBase {
++    using YamiMediaCodec::VaapiDecoderBase::createPicture;
+     typedef YamiParser::H265::SPS SPS;
+     typedef YamiParser::H265::SliceHeader SliceHeader;
+     typedef YamiParser::H265::NalUnit NalUnit;
+-- 
+2.14.1
+

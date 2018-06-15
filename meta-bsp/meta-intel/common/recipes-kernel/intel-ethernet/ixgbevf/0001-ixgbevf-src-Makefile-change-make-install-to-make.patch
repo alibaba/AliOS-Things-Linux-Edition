@@ -1,0 +1,32 @@
+From 511ee0d8d40a3e76b3e9875a96228ff370dbdfc6 Mon Sep 17 00:00:00 2001
+From: "Goh, Wen Sen" <wen.sen.goh@intel.com>
+Date: Wed, 22 Jun 2016 11:25:41 +0800
+Subject: [PATCH] ixgbevf_patch
+
+---
+ Makefile | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 8df134a..8d5660e 100644
+--- a/Makefile
++++ b/Makefile
+@@ -100,7 +100,7 @@ clean:
+	@-rm -rf *.${MANSECTION}.gz *.ko
+
+ # Install the modules and manpage
+-install: default manfile
++modules_install: default manfile
+	@echo "Copying manpages..."
+	@install -D -m 644 ${DRIVER}.${MANSECTION}.gz ${INSTALL_MOD_PATH}${MANDIR}/man${MANSECTION}/${DRIVER}.${MANSECTION}.gz
+	@echo "Installing modules..."
+@@ -145,6 +145,6 @@ help:
+	@echo ' Other variables may be available for tuning make process, see'
+	@echo ' Kernel Kbuild documentation for more information'
+
+-.PHONY: default noisy clean manfile silent sparse ccc install uninstall help
++.PHONY: default noisy clean manfile silent sparse ccc modules_install uninstall help
+
+ endif	# ifneq($(KERNELRELEASE),)
+--
+2.8.3

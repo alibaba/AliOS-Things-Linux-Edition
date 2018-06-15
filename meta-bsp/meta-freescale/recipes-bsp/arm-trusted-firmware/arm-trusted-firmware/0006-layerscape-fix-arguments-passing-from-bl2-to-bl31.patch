@@ -1,0 +1,26 @@
+From a49428b8590dd9b38458714f46910c2c8acc7ed6 Mon Sep 17 00:00:00 2001
+From: jiaheng.fan <jiaheng.fan@nxp.com>
+Date: Tue, 8 May 2018 17:34:57 +0800
+Subject: [PATCH 6/8] layerscape: fix arguments passing from bl2 to bl31
+
+Signed-off-by: jiaheng.fan <jiaheng.fan@nxp.com>
+---
+ plat/layerscape/board/ls1043/ls1043_bl31_setup.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/plat/layerscape/board/ls1043/ls1043_bl31_setup.c b/plat/layerscape/board/ls1043/ls1043_bl31_setup.c
+index 24a9ff4..dc5093a 100644
+--- a/plat/layerscape/board/ls1043/ls1043_bl31_setup.c
++++ b/plat/layerscape/board/ls1043/ls1043_bl31_setup.c
+@@ -34,7 +34,7 @@ void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
+ 	 */
+ 	ls_delay_timer_init();
+ 
+-	ls_bl31_early_platform_setup((void *)arg0, (void *)arg3);
++	ls_bl31_early_platform_setup((void *)arg0, (void *)arg1);
+ 
+ 	/*
+ 	 * Initialize the correct interconnect for this cluster during cold
+-- 
+1.7.1
+

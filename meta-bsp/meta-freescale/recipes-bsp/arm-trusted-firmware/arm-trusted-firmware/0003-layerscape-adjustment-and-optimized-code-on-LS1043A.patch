@@ -1,0 +1,1176 @@
+From 884ba0a8eda6ea83f562c3d93cf25f1e5431dcfb Mon Sep 17 00:00:00 2001
+From: Wen He <wen.he_1@nxp.com>
+Date: Mon, 16 Apr 2018 15:59:06 +0800
+Subject: [PATCH 3/8] layerscape: adjustment and optimized code on LS1043A
+
+This patch move some platform header file to common, and optimized some
+platform definition.
+
+Signed-off-by: Wen He <wen.he_1@nxp.com>
+---
+ plat/layerscape/board/ls1043/include/ls_def.h      |  107 ------------
+ plat/layerscape/board/ls1043/include/ns_access.h   |  174 --------------------
+ plat/layerscape/board/ls1043/include/plat_macros.S |   21 ---
+ .../layerscape/board/ls1043/include/platform_def.h |   49 +-----
+ plat/layerscape/board/ls1043/include/soc_tzasc.h   |   93 -----------
+ plat/layerscape/board/ls1043/ls1043_bl2_setup.c    |    4 +-
+ plat/layerscape/board/ls1043/ls1043_bl31_setup.c   |    2 +-
+ plat/layerscape/board/ls1043/ls_gic.c              |    5 +-
+ plat/layerscape/common/include/ls_def.h            |  107 ++++++++++++
+ plat/layerscape/common/include/lsch2_soc.h         |   42 +++++
+ plat/layerscape/common/include/ns_access.h         |  174 ++++++++++++++++++++
+ plat/layerscape/common/include/plat_ls.h           |    3 +
+ plat/layerscape/common/include/plat_macros.S       |   21 +++
+ plat/layerscape/common/include/soc.h               |   18 --
+ plat/layerscape/common/include/soc_tzasc.h         |   93 +++++++++++
+ plat/layerscape/common/ls_bl31_setup.c             |    9 +-
+ plat/layerscape/common/ls_tzc380.c                 |    2 +-
+ plat/layerscape/common/tsp/ls_tsp_setup.c          |    3 +-
+ 18 files changed, 462 insertions(+), 465 deletions(-)
+ delete mode 100644 plat/layerscape/board/ls1043/include/ls_def.h
+ delete mode 100644 plat/layerscape/board/ls1043/include/ns_access.h
+ delete mode 100644 plat/layerscape/board/ls1043/include/plat_macros.S
+ delete mode 100644 plat/layerscape/board/ls1043/include/soc_tzasc.h
+ create mode 100644 plat/layerscape/common/include/ls_def.h
+ create mode 100644 plat/layerscape/common/include/lsch2_soc.h
+ create mode 100644 plat/layerscape/common/include/ns_access.h
+ create mode 100644 plat/layerscape/common/include/plat_macros.S
+ delete mode 100644 plat/layerscape/common/include/soc.h
+ create mode 100644 plat/layerscape/common/include/soc_tzasc.h
+
+diff --git a/plat/layerscape/board/ls1043/include/ls_def.h b/plat/layerscape/board/ls1043/include/ls_def.h
+deleted file mode 100644
+index 1015129..0000000
+--- a/plat/layerscape/board/ls1043/include/ls_def.h
++++ /dev/null
+@@ -1,107 +0,0 @@
+-/*
+- * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
+- *
+- * SPDX-License-Identifier: BSD-3-Clause
+- */
+-
+-#ifndef __LS_DEF_H__
+-#define __LS_DEF_H__
+-
+-#include <arch.h>
+-#include <common_def.h>
+-#include <platform_def.h>
+-#include <tbbr_img_def.h>
+-#include <utils_def.h>
+-#include <xlat_tables_defs.h>
+-
+-
+-/******************************************************************************
+- * Definitions common to all ARM standard platforms
+- *****************************************************************************/
+-/* Special value used to verify platform parameters from BL2 to BL31 */
+-#define LS_BL31_PLAT_PARAM_VAL		0x0f1e2d3c4b5a6978ULL
+-
+-#define LS_CACHE_WRITEBACK_SHIFT	6
+-
+-/*
+- * Macros mapping the MPIDR Affinity levels to Layerscape Platform Power levels. The
+- * power levels have a 1:1 mapping with the MPIDR affinity levels.
+- */
+-#define LS_PWR_LVL0		MPIDR_AFFLVL0
+-#define LS_PWR_LVL1		MPIDR_AFFLVL1
+-#define LS_PWR_LVL2		MPIDR_AFFLVL2
+-
+-/*
+- *  Macros for local power states in Layerscape platforms encoded by State-ID field
+- *  within the power-state parameter.
+- */
+-/* Local power state for power domains in Run state. */
+-#define LS_LOCAL_STATE_RUN	0
+-/* Local power state for retention. Valid only for CPU power domains */
+-#define LS_LOCAL_STATE_RET	1
+-/*
+- * Local power state for OFF/power-down. Valid for CPU and cluster power
+- * domains
+- */
+-#define LS_LOCAL_STATE_OFF	2
+-
+-#define LS_MAP_NS_DRAM		MAP_REGION_FLAT( \
+-					(LS_NS_DRAM_BASE), \
+-					LS_DRAM1_SIZE, \
+-					MT_DEVICE | MT_RW | MT_NS)
+-
+-#define LS_MAP_TSP_SEC_MEM	MAP_REGION_FLAT( \
+-					TSP_SEC_MEM_BASE, \
+-					TSP_SEC_MEM_SIZE, \
+-				MT_DEVICE | MT_RW | MT_SECURE)
+-
+-
+-#define LS_MAP_FLASH0_RW	MAP_REGION_FLAT(PLAT_LS_FLASH_BASE,\
+-					PLAT_LS_FLASH_SIZE, \
+-					MT_DEVICE | MT_RW)
+-
+-#define LS_MAP_CCSR		MAP_REGION_FLAT(PLAT_LS_CCSR_BASE, \
+-					PLAT_LS_CCSR_SIZE, \
+-					MT_DEVICE | MT_RW | MT_SECURE)
+-
+-
+-#define LS_MAP_CONSOLE		MAP_REGION_FLAT(PLAT_LS1043_DUART1_BASE, \
+-					PLAT_LS1043_DUART_SIZE, \
+-					MT_DEVICE | MT_RW | MT_NS)
+-
+-/*
+- * The number of regions like RO(code), coherent and data required by
+- * different BL stages which need to be mapped in the MMU.
+- */
+-/******************************************************************************
+- * Required platform porting definitions common to all ARM standard platforms
+- *****************************************************************************/
+-
+-#define PLAT_PHY_ADDR_SPACE_SIZE	(1ull << 32)
+-#define PLAT_VIRT_ADDR_SPACE_SIZE	(1ull << 32)
+-
+-/*
+- * This macro defines the deepest retention state possible. A higher state
+- * id will represent an invalid or a power down state.
+- */
+-#define PLAT_MAX_RET_STATE		LS_LOCAL_STATE_RET
+-
+-/*
+- * This macro defines the deepest power down states possible. Any state ID
+- * higher than this is invalid.
+- */
+-#define PLAT_MAX_OFF_STATE		LS_LOCAL_STATE_OFF
+-
+-/*
+- * Some data must be aligned on the biggest cache line size in the platform.
+- * This is known only to the platform as it might have a combination of
+- * integrated and external caches.
+- */
+-#define CACHE_WRITEBACK_GRANULE		(1 << LS_CACHE_WRITEBACK_SHIFT)
+-
+-/*
+- * One cache line needed for bakery locks on Layerscape platforms
+- */
+-#define PLAT_PERCPU_BAKERY_LOCK_SIZE		(1 * CACHE_WRITEBACK_GRANULE)
+-
+-#endif /* __LS_DEF_H__ */
+diff --git a/plat/layerscape/board/ls1043/include/ns_access.h b/plat/layerscape/board/ls1043/include/ns_access.h
+deleted file mode 100644
+index 6ed7bc0..0000000
+--- a/plat/layerscape/board/ls1043/include/ns_access.h
++++ /dev/null
+@@ -1,174 +0,0 @@
+-/*
+- * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
+- *
+- * SPDX-License-Identifier: BSD-3-Clause
+- */
+-
+-#ifndef __FSL_NS_ACCESS_H_
+-#define __FSL_NS_ACCESS_H_
+-
+-#include "fsl_csu.h"
+-
+-enum csu_cslx_ind {
+-	CSU_CSLX_PCIE2_IO = 0,
+-	CSU_CSLX_PCIE1_IO,
+-	CSU_CSLX_MG2TPR_IP,
+-	CSU_CSLX_IFC_MEM,
+-	CSU_CSLX_OCRAM,
+-	CSU_CSLX_GIC,
+-	CSU_CSLX_PCIE1,
+-	CSU_CSLX_OCRAM2,
+-	CSU_CSLX_QSPI_MEM,
+-	CSU_CSLX_PCIE2,
+-	CSU_CSLX_SATA,
+-	CSU_CSLX_USB1,
+-	CSU_CSLX_QM_BM_SWPORTAL,
+-	CSU_CSLX_PCIE3 = 16,
+-	CSU_CSLX_PCIE3_IO,
+-	CSU_CSLX_USB3 = 20,
+-	CSU_CSLX_USB2,
+-	CSU_CSLX_PFE = 23,
+-	CSU_CSLX_SERDES = 32,
+-	CSU_CSLX_QDMA,
+-	CSU_CSLX_LPUART2,
+-	CSU_CSLX_LPUART1,
+-	CSU_CSLX_LPUART4,
+-	CSU_CSLX_LPUART3,
+-	CSU_CSLX_LPUART6,
+-	CSU_CSLX_LPUART5,
+-	CSU_CSLX_DSPI1 = 41,
+-	CSU_CSLX_QSPI,
+-	CSU_CSLX_ESDHC,
+-	CSU_CSLX_IFC = 45,
+-	CSU_CSLX_I2C1,
+-	CSU_CSLX_USB_2,
+-	CSU_CSLX_I2C3 = 48,
+-	CSU_CSLX_I2C2,
+-	CSU_CSLX_DUART2 = 50,
+-	CSU_CSLX_DUART1,
+-	CSU_CSLX_WDT2,
+-	CSU_CSLX_WDT1,
+-	CSU_CSLX_EDMA,
+-	CSU_CSLX_SYS_CNT,
+-	CSU_CSLX_DMA_MUX2,
+-	CSU_CSLX_DMA_MUX1,
+-	CSU_CSLX_DDR,
+-	CSU_CSLX_QUICC,
+-	CSU_CSLX_DCFG_CCU_RCPM = 60,
+-	CSU_CSLX_SECURE_BOOTROM,
+-	CSU_CSLX_SFP,
+-	CSU_CSLX_TMU,
+-	CSU_CSLX_SECURE_MONITOR,
+-	CSU_CSLX_SCFG,
+-	CSU_CSLX_FM = 66,
+-	CSU_CSLX_SEC5_5,
+-	CSU_CSLX_BM,
+-	CSU_CSLX_QM,
+-	CSU_CSLX_GPIO2 = 70,
+-	CSU_CSLX_GPIO1,
+-	CSU_CSLX_GPIO4,
+-	CSU_CSLX_GPIO3,
+-	CSU_CSLX_PLATFORM_CONT,
+-	CSU_CSLX_CSU,
+-	CSU_CSLX_IIC4 = 77,
+-	CSU_CSLX_WDT4,
+-	CSU_CSLX_WDT3,
+-	CSU_CSLX_ESDHC2 = 80,
+-	CSU_CSLX_WDT5 = 81,
+-	CSU_CSLX_SAI2,
+-	CSU_CSLX_SAI1,
+-	CSU_CSLX_SAI4,
+-	CSU_CSLX_SAI3,
+-	CSU_CSLX_FTM2 = 86,
+-	CSU_CSLX_FTM1,
+-	CSU_CSLX_FTM4,
+-	CSU_CSLX_FTM3,
+-	CSU_CSLX_FTM6 = 90,
+-	CSU_CSLX_FTM5,
+-	CSU_CSLX_FTM8,
+-	CSU_CSLX_FTM7,
+-	CSU_CSLX_DSCR = 121,
+-};
+-
+-static struct csu_ns_dev ns_dev[] = {
+-	 {CSU_CSLX_PCIE2_IO, CSU_ALL_RW},
+-	 {CSU_CSLX_PCIE1_IO, CSU_ALL_RW},
+-	 {CSU_CSLX_MG2TPR_IP, CSU_ALL_RW},
+-	 {CSU_CSLX_IFC_MEM, CSU_ALL_RW},
+-	 {CSU_CSLX_OCRAM, CSU_ALL_RW},
+-	 {CSU_CSLX_GIC, CSU_ALL_RW},
+-	 {CSU_CSLX_PCIE1, CSU_ALL_RW},
+-	 {CSU_CSLX_OCRAM2, CSU_ALL_RW},
+-	 {CSU_CSLX_QSPI_MEM, CSU_ALL_RW},
+-	 {CSU_CSLX_PCIE2, CSU_ALL_RW},
+-	 {CSU_CSLX_SATA, CSU_ALL_RW},
+-	 {CSU_CSLX_USB1, CSU_ALL_RW},
+-	 {CSU_CSLX_QM_BM_SWPORTAL, CSU_ALL_RW},
+-	 {CSU_CSLX_PCIE3, CSU_ALL_RW},
+-	 {CSU_CSLX_PCIE3_IO, CSU_ALL_RW},
+-	 {CSU_CSLX_USB3, CSU_ALL_RW},
+-	 {CSU_CSLX_USB2, CSU_ALL_RW},
+-	 {CSU_CSLX_PFE, CSU_ALL_RW},
+-	 {CSU_CSLX_SERDES, CSU_ALL_RW},
+-	 {CSU_CSLX_QDMA, CSU_ALL_RW},
+-	 {CSU_CSLX_LPUART2, CSU_ALL_RW},
+-	 {CSU_CSLX_LPUART1, CSU_ALL_RW},
+-	 {CSU_CSLX_LPUART4, CSU_ALL_RW},
+-	 {CSU_CSLX_LPUART3, CSU_ALL_RW},
+-	 {CSU_CSLX_LPUART6, CSU_ALL_RW},
+-	 {CSU_CSLX_LPUART5, CSU_ALL_RW},
+-	 {CSU_CSLX_DSPI1, CSU_ALL_RW},
+-	 {CSU_CSLX_QSPI, CSU_ALL_RW},
+-	 {CSU_CSLX_ESDHC, CSU_ALL_RW},
+-	 {CSU_CSLX_IFC, CSU_ALL_RW},
+-	 {CSU_CSLX_I2C1, CSU_ALL_RW},
+-	 {CSU_CSLX_USB_2, CSU_ALL_RW},
+-	 {CSU_CSLX_I2C3, CSU_ALL_RW},
+-	 {CSU_CSLX_I2C2, CSU_ALL_RW},
+-	 {CSU_CSLX_DUART2, CSU_ALL_RW},
+-	 {CSU_CSLX_DUART1, CSU_ALL_RW},
+-	 {CSU_CSLX_WDT2, CSU_ALL_RW},
+-	 {CSU_CSLX_WDT1, CSU_ALL_RW},
+-	 {CSU_CSLX_EDMA, CSU_ALL_RW},
+-	 {CSU_CSLX_SYS_CNT, CSU_ALL_RW},
+-	 {CSU_CSLX_DMA_MUX2, CSU_ALL_RW},
+-	 {CSU_CSLX_DMA_MUX1, CSU_ALL_RW},
+-	 {CSU_CSLX_DDR, CSU_ALL_RW},
+-	 {CSU_CSLX_QUICC, CSU_ALL_RW},
+-	 {CSU_CSLX_DCFG_CCU_RCPM, CSU_ALL_RW},
+-	 {CSU_CSLX_SECURE_BOOTROM, CSU_ALL_RW},
+-	 {CSU_CSLX_SFP, CSU_ALL_RW},
+-	 {CSU_CSLX_TMU, CSU_ALL_RW},
+-	 {CSU_CSLX_SECURE_MONITOR, CSU_ALL_RW},
+-	 {CSU_CSLX_SCFG, CSU_ALL_RW},
+-	 {CSU_CSLX_FM, CSU_ALL_RW},
+-	 {CSU_CSLX_SEC5_5, CSU_ALL_RW},
+-	 {CSU_CSLX_BM, CSU_ALL_RW},
+-	 {CSU_CSLX_QM, CSU_ALL_RW},
+-	 {CSU_CSLX_GPIO2, CSU_ALL_RW},
+-	 {CSU_CSLX_GPIO1, CSU_ALL_RW},
+-	 {CSU_CSLX_GPIO4, CSU_ALL_RW},
+-	 {CSU_CSLX_GPIO3, CSU_ALL_RW},
+-	 {CSU_CSLX_PLATFORM_CONT, CSU_ALL_RW},
+-	 {CSU_CSLX_CSU, CSU_ALL_RW},
+-	 {CSU_CSLX_IIC4, CSU_ALL_RW},
+-	 {CSU_CSLX_WDT4, CSU_ALL_RW},
+-	 {CSU_CSLX_WDT3, CSU_ALL_RW},
+-	 {CSU_CSLX_ESDHC2, CSU_ALL_RW},
+-	 {CSU_CSLX_WDT5, CSU_ALL_RW},
+-	 {CSU_CSLX_SAI2, CSU_ALL_RW},
+-	 {CSU_CSLX_SAI1, CSU_ALL_RW},
+-	 {CSU_CSLX_SAI4, CSU_ALL_RW},
+-	 {CSU_CSLX_SAI3, CSU_ALL_RW},
+-	 {CSU_CSLX_FTM2, CSU_ALL_RW},
+-	 {CSU_CSLX_FTM1, CSU_ALL_RW},
+-	 {CSU_CSLX_FTM4, CSU_ALL_RW},
+-	 {CSU_CSLX_FTM3, CSU_ALL_RW},
+-	 {CSU_CSLX_FTM6, CSU_ALL_RW},
+-	 {CSU_CSLX_FTM5, CSU_ALL_RW},
+-	 {CSU_CSLX_FTM8, CSU_ALL_RW},
+-	 {CSU_CSLX_FTM7, CSU_ALL_RW},
+-	 {CSU_CSLX_DSCR, CSU_ALL_RW},
+-};
+-
+-#endif
+diff --git a/plat/layerscape/board/ls1043/include/plat_macros.S b/plat/layerscape/board/ls1043/include/plat_macros.S
+deleted file mode 100644
+index 8163dc1..0000000
+--- a/plat/layerscape/board/ls1043/include/plat_macros.S
++++ /dev/null
+@@ -1,21 +0,0 @@
+-/*
+- * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
+- *
+- * SPDX-License-Identifier: BSD-3-Clause
+- */
+-
+-#ifndef __PLAT_MACROS_S__
+-#define __PLAT_MACROS_S__
+-
+-	/* ---------------------------------------------
+-	 * The below required platform porting macro
+-	 * prints out relevant GIC and CCI registers
+-	 * whenever an unhandled exception is taken in
+-	 * BL31.
+-	 * Clobbers: x0 - x10, x16, x17, sp
+-	 * ---------------------------------------------
+-	 */
+-	.macro plat_crash_print_regs
+-	.endm
+-
+-#endif /* __PLAT_MACROS_S__ */
+diff --git a/plat/layerscape/board/ls1043/include/platform_def.h b/plat/layerscape/board/ls1043/include/platform_def.h
+index 256d0dc..56ed4f7 100644
+--- a/plat/layerscape/board/ls1043/include/platform_def.h
++++ b/plat/layerscape/board/ls1043/include/platform_def.h
+@@ -11,10 +11,11 @@
+ #include <tzc400.h>
+ #include <utils.h>
+ #include "ls_def.h"
++#include "lsch2_soc.h"
+ 
+-#define FIRMWARE_WELCOME_STR_LS1043_BL2	"Welcome to LS1043 BL2 Phase\n"
+-#define FIRMWARE_WELCOME_STR_LS1043_BL31 "Welcome to LS1043 BL31 Phase\n"
+-#define FIRMWARE_WELCOME_STR_LS1043_BL32 "Welcome to LS1043 BL32 Phase, TSP\n"
++#define FIRMWARE_WELCOME_STR_LS_BL2	"Welcome to LS1043 BL2 Phase\n"
++#define FIRMWARE_WELCOME_STR_LS_BL31	"Welcome to LS1043 BL31 Phase\n"
++#define FIRMWARE_WELCOME_STR_LS_BL32	"Welcome to LS1043 BL32 Phase, TSP\n"
+ 
+ /* Required platform porting definitions */
+ #define PLAT_PRIMARY_CPU		0x0
+@@ -35,6 +36,7 @@
+ #define LS_DRAM2_SIZE			0x780000000	/* 30G */
+ #define LS_DRAM1_SIZE			0x80000000	/* 2G */
+ #define LS_NS_DRAM_BASE			LS_DRAM1_BASE
++
+ /* 64M Secure Memory, in fact there a 2M non-secure hole on top of it */
+ #define LS_SECURE_DRAM_SIZE		(64 * 1024 * 1024)
+ #define LS_SECURE_DRAM_BASE		(LS_NS_DRAM_BASE + LS_DRAM1_SIZE - \
+@@ -57,9 +59,6 @@
+ 						- 3 * 1024 * 1024)
+ #endif
+ 
+-#define PLAT_LS_CCSR_BASE		0x1000000
+-#define PLAT_LS_CCSR_SIZE		0xF000000
+-
+ /* Flash base address, currently ROM is not used for TF-A images on LS platforms */
+ #define PLAT_LS_TRUSTED_ROM_BASE	0x60100000
+ #define PLAT_LS_TRUSTED_ROM_SIZE	0x20000000	/* Flash size */
+@@ -145,41 +144,11 @@
+  */
+ #define TSP_IRQ_SEC_PHY_TIMER		29
+ 
+-
+-/*
+- * GIC related constants
+- */
+-#define PLAT_LS1043_CCI_BASE		0x01180000
+-#define GICD_BASE			0x01401000
+-#define GICC_BASE			0x01402000
+-#define GICD_BASE_64K			0x01410000
+-#define GICC_BASE_64K			0x01420000
+-
+-#define DCFG_CCSR_SVR			0x1ee00a4
+-#define REV1_0				0x10
+-#define REV1_1				0x11
+-#define GIC_ADDR_BIT			31
+-#define SCFG_GIC400_ALIGN		0x1570188
+-
+-/* UART related definition */
+-
+-#define PLAT_LS1043_DUART1_BASE		0x021c0000
+-#define PLAT_LS1043_DUART2_BASE		0x021d0000
+-#define PLAT_LS1043_DUART_SIZE		0x10000
+-
+-#define PLAT_LS1043_UART_BASE		0x21c0500
+-#define PLAT_LS1043_UART2_BASE		0x21c0600
+-#define PLAT_LS1043_UART_CLOCK		400000000
+-#define PLAT_LS1043_UART_BAUDRATE	115200
+ /* Define UART to be used by TF-A log */
+-#define LS_TF_UART_BASE		PLAT_LS1043_UART_BASE
+-#define LS_TF_UART_CLOCK		PLAT_LS1043_UART_CLOCK
+-#define LS_TF_UART_BAUDRATE		PLAT_LS1043_UART_BAUDRATE
+-
+-#define LS1043_SYS_CNTCTL_BASE		0x2B00000
+-
+-#define CONFIG_SYS_IMMR			0x01000000
+-#define CONFIG_SYS_FSL_CSU_ADDR		(CONFIG_SYS_IMMR + 0x00510000)
++#define LS_TF_UART_BASE		PLAT_LS_UART_BASE
++#define PLAT_LS_UART_CLOCK		400000000
++#define LS_TF_UART_CLOCK		PLAT_LS_UART_CLOCK
++#define LS_TF_UART_BAUDRATE		PLAT_LS_UART_BAUDRATE
+ 
+ /* Size of cacheable stacks */
+ #if defined(IMAGE_BL2)
+diff --git a/plat/layerscape/board/ls1043/include/soc_tzasc.h b/plat/layerscape/board/ls1043/include/soc_tzasc.h
+deleted file mode 100644
+index 0039f2d..0000000
+--- a/plat/layerscape/board/ls1043/include/soc_tzasc.h
++++ /dev/null
+@@ -1,93 +0,0 @@
+-/*
+- * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
+- *
+- * SPDX-License-Identifier: BSD-3-Clause
+- */
+-
+-#ifndef _SOC_TZASC_H_
+-#define _SOC_TZASC_H_
+-
+-#include "tzc380.h"
+-
+-#define MAX_NUM_TZC_REGION	3
+-
+-/* TZASC related constants */
+-#define TZASC_CONFIGURATION_REG		0x000
+-#define TZASC_SECURITY_INV_REG		0x034
+-#define TZASC_SECURITY_INV_EN		0x1
+-#define TZASC_REGIONS_REG		0x100
+-/* As region address should address atleast 32KB memory. */
+-#define TZASC_REGION_LOWADDR_MASK	0xFFFF8000
+-#define TZASC_REGION_LOWADDR_OFFSET	0x0
+-#define TZASC_REGION_HIGHADDR_OFFSET	0x4
+-#define TZASC_REGION_ATTR_OFFSET	0x8
+-#define TZASC_REGION_ENABLED		1
+-#define TZASC_REGION_DISABLED		0
+-#define TZASC_REGION_SIZE_32KB		0xE
+-#define TZASC_REGION_SIZE_64KB		0xF
+-#define TZASC_REGION_SIZE_128KB		0x10
+-#define TZASC_REGION_SIZE_256KB		0x11
+-#define TZASC_REGION_SIZE_512KB		0x12
+-#define TZASC_REGION_SIZE_1MB		0x13
+-#define TZASC_REGION_SIZE_2MB		0x14
+-#define TZASC_REGION_SIZE_4MB		0x15
+-#define TZASC_REGION_SIZE_8MB		0x16
+-#define TZASC_REGION_SIZE_16MB		0x17
+-#define TZASC_REGION_SIZE_32MB		0x18
+-#define TZASC_REGION_SIZE_64MB		0x19
+-#define TZASC_REGION_SIZE_128MB		0x1A
+-#define TZASC_REGION_SIZE_256MB		0x1B
+-#define TZASC_REGION_SIZE_512MB		0x1C
+-#define TZASC_REGION_SIZE_1GB		0x1D
+-#define TZASC_REGION_SIZE_2GB		0x1E
+-#define TZASC_REGION_SIZE_4GB		0x1F
+-#define TZASC_REGION_SIZE_8GB		0x20
+-#define TZASC_REGION_SIZE_16GB		0x21
+-#define TZASC_REGION_SIZE_32GB		0x22
+-#define TZASC_REGION_SECURITY_SR	(1 << 3)
+-#define TZASC_REGION_SECURITY_SW	(1 << 2)
+-#define TZASC_REGION_SECURITY_SRW	(TZASC_REGION_SECURITY_SR| \
+-						TZASC_REGION_SECURITY_SW)
+-#define TZASC_REGION_SECURITY_NSR	(1 << 1)
+-#define TZASC_REGION_SECURITY_NSW	1
+-#define TZASC_REGION_SECURITY_NSRW	(TZASC_REGION_SECURITY_NSR| \
+-						TZASC_REGION_SECURITY_NSW)
+-
+-#define CSU_SEC_ACCESS_REG_OFFSET	0x21C
+-#define TZASC_BYPASS_MUX_DISABLE	0x4
+-#define CCI_TERMINATE_BARRIER_TX	0x8
+-#define CONFIG_SYS_FSL_TZASC_ADDR	0x1500000
+-
+-/* List of MAX_NUM_TZC_REGION TZC regions' boundaries and configurations. */
+-
+-static const struct tzc380_reg tzc380_reg_list[] = {
+-	{
+-		TZASC_REGION_SECURITY_NSRW,	/* .secure attr */
+-		0x0,			/* .enabled */
+-		0x0,			/* .lowaddr */
+-		0x0,			/* .highaddr */
+-		0x0,			/* .size */
+-		0x0,			/* .submask */
+-	},
+-	{
+-		TZASC_REGION_SECURITY_SRW,
+-		TZASC_REGION_ENABLED,
+-		0xFC000000,
+-		0x0,
+-		TZASC_REGION_SIZE_64MB,
+-		0x80,			/* Disable region 7 */
+-	},
+-	/* reserve 2M non-scure memory for OPTEE public memory */
+-	{
+-		TZASC_REGION_SECURITY_SRW,
+-		TZASC_REGION_ENABLED,
+-		0xFF800000,
+-		0x0,
+-		TZASC_REGION_SIZE_8MB,
+-		0xC0,			/* Disable region 6 & 7 */
+-	},
+-
+-	{}
+-};
+-
+-#endif /* _SOC_TZASC_H_ */
+diff --git a/plat/layerscape/board/ls1043/ls1043_bl2_setup.c b/plat/layerscape/board/ls1043/ls1043_bl2_setup.c
+index 07ac3ba..22e437b 100644
+--- a/plat/layerscape/board/ls1043/ls1043_bl2_setup.c
++++ b/plat/layerscape/board/ls1043/ls1043_bl2_setup.c
+@@ -15,7 +15,7 @@ static const int cci_map[] = {
+ 
+ void bl2_platform_setup(void)
+ {
+-	NOTICE(FIRMWARE_WELCOME_STR_LS1043_BL2);
++	NOTICE(FIRMWARE_WELCOME_STR_LS_BL2);
+ 
+ 	/*
+ 	 * Initialize system level generic timer for Layerscape Socs.
+@@ -41,7 +41,7 @@ void bl2_el3_early_platform_setup(u_register_t arg1, u_register_t arg2,
+ 	 * Initialize Interconnect for this cluster during cold boot.
+ 	 * No need for locks as no other CPU is active.
+ 	 */
+-	cci_init(PLAT_LS1043_CCI_BASE, cci_map, ARRAY_SIZE(cci_map));
++	cci_init(PLAT_LS_CCI_BASE, cci_map, ARRAY_SIZE(cci_map));
+ 
+ 	/*
+ 	 * Enable coherency in Interconnect for the primary CPU's cluster.
+diff --git a/plat/layerscape/board/ls1043/ls1043_bl31_setup.c b/plat/layerscape/board/ls1043/ls1043_bl31_setup.c
+index 3473d98..24a9ff4 100644
+--- a/plat/layerscape/board/ls1043/ls1043_bl31_setup.c
++++ b/plat/layerscape/board/ls1043/ls1043_bl31_setup.c
+@@ -40,7 +40,7 @@ void bl31_early_platform_setup2(u_register_t arg0, u_register_t arg1,
+ 	 * Initialize the correct interconnect for this cluster during cold
+ 	 * boot. No need for locks as no other CPU is active.
+ 	 */
+-	cci_init(PLAT_LS1043_CCI_BASE, cci_map, ARRAY_SIZE(cci_map));
++	cci_init(PLAT_LS_CCI_BASE, cci_map, ARRAY_SIZE(cci_map));
+ 
+ 	/*
+ 	 * Enable coherency in interconnect for the primary CPU's cluster.
+diff --git a/plat/layerscape/board/ls1043/ls_gic.c b/plat/layerscape/board/ls1043/ls_gic.c
+index 3986153..48bf942 100644
+--- a/plat/layerscape/board/ls1043/ls_gic.c
++++ b/plat/layerscape/board/ls1043/ls_gic.c
+@@ -8,7 +8,10 @@
+ #include <debug.h>
+ #include <endian.h>
+ #include "platform_def.h"
+-#include "soc.h"
++
++#define SVR_WO_E		0xFFFFFE
++#define SVR_LS1043A		0x879204
++#define SVR_LS1043AE		0x879200
+ 
+ /*
+  * Get GIC offset
+diff --git a/plat/layerscape/common/include/ls_def.h b/plat/layerscape/common/include/ls_def.h
+new file mode 100644
+index 0000000..1015129
+--- /dev/null
++++ b/plat/layerscape/common/include/ls_def.h
+@@ -0,0 +1,107 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#ifndef __LS_DEF_H__
++#define __LS_DEF_H__
++
++#include <arch.h>
++#include <common_def.h>
++#include <platform_def.h>
++#include <tbbr_img_def.h>
++#include <utils_def.h>
++#include <xlat_tables_defs.h>
++
++
++/******************************************************************************
++ * Definitions common to all ARM standard platforms
++ *****************************************************************************/
++/* Special value used to verify platform parameters from BL2 to BL31 */
++#define LS_BL31_PLAT_PARAM_VAL		0x0f1e2d3c4b5a6978ULL
++
++#define LS_CACHE_WRITEBACK_SHIFT	6
++
++/*
++ * Macros mapping the MPIDR Affinity levels to Layerscape Platform Power levels. The
++ * power levels have a 1:1 mapping with the MPIDR affinity levels.
++ */
++#define LS_PWR_LVL0		MPIDR_AFFLVL0
++#define LS_PWR_LVL1		MPIDR_AFFLVL1
++#define LS_PWR_LVL2		MPIDR_AFFLVL2
++
++/*
++ *  Macros for local power states in Layerscape platforms encoded by State-ID field
++ *  within the power-state parameter.
++ */
++/* Local power state for power domains in Run state. */
++#define LS_LOCAL_STATE_RUN	0
++/* Local power state for retention. Valid only for CPU power domains */
++#define LS_LOCAL_STATE_RET	1
++/*
++ * Local power state for OFF/power-down. Valid for CPU and cluster power
++ * domains
++ */
++#define LS_LOCAL_STATE_OFF	2
++
++#define LS_MAP_NS_DRAM		MAP_REGION_FLAT( \
++					(LS_NS_DRAM_BASE), \
++					LS_DRAM1_SIZE, \
++					MT_DEVICE | MT_RW | MT_NS)
++
++#define LS_MAP_TSP_SEC_MEM	MAP_REGION_FLAT( \
++					TSP_SEC_MEM_BASE, \
++					TSP_SEC_MEM_SIZE, \
++				MT_DEVICE | MT_RW | MT_SECURE)
++
++
++#define LS_MAP_FLASH0_RW	MAP_REGION_FLAT(PLAT_LS_FLASH_BASE,\
++					PLAT_LS_FLASH_SIZE, \
++					MT_DEVICE | MT_RW)
++
++#define LS_MAP_CCSR		MAP_REGION_FLAT(PLAT_LS_CCSR_BASE, \
++					PLAT_LS_CCSR_SIZE, \
++					MT_DEVICE | MT_RW | MT_SECURE)
++
++
++#define LS_MAP_CONSOLE		MAP_REGION_FLAT(PLAT_LS1043_DUART1_BASE, \
++					PLAT_LS1043_DUART_SIZE, \
++					MT_DEVICE | MT_RW | MT_NS)
++
++/*
++ * The number of regions like RO(code), coherent and data required by
++ * different BL stages which need to be mapped in the MMU.
++ */
++/******************************************************************************
++ * Required platform porting definitions common to all ARM standard platforms
++ *****************************************************************************/
++
++#define PLAT_PHY_ADDR_SPACE_SIZE	(1ull << 32)
++#define PLAT_VIRT_ADDR_SPACE_SIZE	(1ull << 32)
++
++/*
++ * This macro defines the deepest retention state possible. A higher state
++ * id will represent an invalid or a power down state.
++ */
++#define PLAT_MAX_RET_STATE		LS_LOCAL_STATE_RET
++
++/*
++ * This macro defines the deepest power down states possible. Any state ID
++ * higher than this is invalid.
++ */
++#define PLAT_MAX_OFF_STATE		LS_LOCAL_STATE_OFF
++
++/*
++ * Some data must be aligned on the biggest cache line size in the platform.
++ * This is known only to the platform as it might have a combination of
++ * integrated and external caches.
++ */
++#define CACHE_WRITEBACK_GRANULE		(1 << LS_CACHE_WRITEBACK_SHIFT)
++
++/*
++ * One cache line needed for bakery locks on Layerscape platforms
++ */
++#define PLAT_PERCPU_BAKERY_LOCK_SIZE		(1 * CACHE_WRITEBACK_GRANULE)
++
++#endif /* __LS_DEF_H__ */
+diff --git a/plat/layerscape/common/include/lsch2_soc.h b/plat/layerscape/common/include/lsch2_soc.h
+new file mode 100644
+index 0000000..a73ec66
+--- /dev/null
++++ b/plat/layerscape/common/include/lsch2_soc.h
+@@ -0,0 +1,42 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#ifndef __LSCH2_SOC_H__
++#define __LSCH2_SOC_H__
++
++#define PLAT_LS_CCSR_BASE		0x1000000
++#define PLAT_LS_CCSR_SIZE		0xF000000
++
++/*
++ * GIC related constants
++ */
++#define PLAT_LS_CCI_BASE		0x01180000
++#define GICD_BASE			0x01401000
++#define GICC_BASE			0x01402000
++#define GICD_BASE_64K			0x01410000
++#define GICC_BASE_64K			0x01420000
++
++#define DCFG_CCSR_SVR			0x1ee00a4
++#define REV1_0				0x10
++#define REV1_1				0x11
++#define GIC_ADDR_BIT			31
++#define SCFG_GIC400_ALIGN		0x1570188
++
++/* UART related definition */
++#define PLAT_LS_DUART1_BASE		0x021c0000
++#define PLAT_LS_DUART2_BASE		0x021d0000
++#define PLAT_LS_DUART_SIZE		0x10000
++
++#define PLAT_LS_UART_BASE		0x21c0500
++#define PLAT_LS_UART2_BASE		0x21c0600
++#define PLAT_LS_UART_BAUDRATE	115200
++
++#define LS_SYS_CNTCTL_BASE		0x2B00000
++
++#define CONFIG_SYS_IMMR			0x01000000
++#define CONFIG_SYS_FSL_CSU_ADDR		(CONFIG_SYS_IMMR + 0x00510000)
++
++#endif /* __LSCH2_SOC_H__ */
+diff --git a/plat/layerscape/common/include/ns_access.h b/plat/layerscape/common/include/ns_access.h
+new file mode 100644
+index 0000000..6ed7bc0
+--- /dev/null
++++ b/plat/layerscape/common/include/ns_access.h
+@@ -0,0 +1,174 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#ifndef __FSL_NS_ACCESS_H_
++#define __FSL_NS_ACCESS_H_
++
++#include "fsl_csu.h"
++
++enum csu_cslx_ind {
++	CSU_CSLX_PCIE2_IO = 0,
++	CSU_CSLX_PCIE1_IO,
++	CSU_CSLX_MG2TPR_IP,
++	CSU_CSLX_IFC_MEM,
++	CSU_CSLX_OCRAM,
++	CSU_CSLX_GIC,
++	CSU_CSLX_PCIE1,
++	CSU_CSLX_OCRAM2,
++	CSU_CSLX_QSPI_MEM,
++	CSU_CSLX_PCIE2,
++	CSU_CSLX_SATA,
++	CSU_CSLX_USB1,
++	CSU_CSLX_QM_BM_SWPORTAL,
++	CSU_CSLX_PCIE3 = 16,
++	CSU_CSLX_PCIE3_IO,
++	CSU_CSLX_USB3 = 20,
++	CSU_CSLX_USB2,
++	CSU_CSLX_PFE = 23,
++	CSU_CSLX_SERDES = 32,
++	CSU_CSLX_QDMA,
++	CSU_CSLX_LPUART2,
++	CSU_CSLX_LPUART1,
++	CSU_CSLX_LPUART4,
++	CSU_CSLX_LPUART3,
++	CSU_CSLX_LPUART6,
++	CSU_CSLX_LPUART5,
++	CSU_CSLX_DSPI1 = 41,
++	CSU_CSLX_QSPI,
++	CSU_CSLX_ESDHC,
++	CSU_CSLX_IFC = 45,
++	CSU_CSLX_I2C1,
++	CSU_CSLX_USB_2,
++	CSU_CSLX_I2C3 = 48,
++	CSU_CSLX_I2C2,
++	CSU_CSLX_DUART2 = 50,
++	CSU_CSLX_DUART1,
++	CSU_CSLX_WDT2,
++	CSU_CSLX_WDT1,
++	CSU_CSLX_EDMA,
++	CSU_CSLX_SYS_CNT,
++	CSU_CSLX_DMA_MUX2,
++	CSU_CSLX_DMA_MUX1,
++	CSU_CSLX_DDR,
++	CSU_CSLX_QUICC,
++	CSU_CSLX_DCFG_CCU_RCPM = 60,
++	CSU_CSLX_SECURE_BOOTROM,
++	CSU_CSLX_SFP,
++	CSU_CSLX_TMU,
++	CSU_CSLX_SECURE_MONITOR,
++	CSU_CSLX_SCFG,
++	CSU_CSLX_FM = 66,
++	CSU_CSLX_SEC5_5,
++	CSU_CSLX_BM,
++	CSU_CSLX_QM,
++	CSU_CSLX_GPIO2 = 70,
++	CSU_CSLX_GPIO1,
++	CSU_CSLX_GPIO4,
++	CSU_CSLX_GPIO3,
++	CSU_CSLX_PLATFORM_CONT,
++	CSU_CSLX_CSU,
++	CSU_CSLX_IIC4 = 77,
++	CSU_CSLX_WDT4,
++	CSU_CSLX_WDT3,
++	CSU_CSLX_ESDHC2 = 80,
++	CSU_CSLX_WDT5 = 81,
++	CSU_CSLX_SAI2,
++	CSU_CSLX_SAI1,
++	CSU_CSLX_SAI4,
++	CSU_CSLX_SAI3,
++	CSU_CSLX_FTM2 = 86,
++	CSU_CSLX_FTM1,
++	CSU_CSLX_FTM4,
++	CSU_CSLX_FTM3,
++	CSU_CSLX_FTM6 = 90,
++	CSU_CSLX_FTM5,
++	CSU_CSLX_FTM8,
++	CSU_CSLX_FTM7,
++	CSU_CSLX_DSCR = 121,
++};
++
++static struct csu_ns_dev ns_dev[] = {
++	 {CSU_CSLX_PCIE2_IO, CSU_ALL_RW},
++	 {CSU_CSLX_PCIE1_IO, CSU_ALL_RW},
++	 {CSU_CSLX_MG2TPR_IP, CSU_ALL_RW},
++	 {CSU_CSLX_IFC_MEM, CSU_ALL_RW},
++	 {CSU_CSLX_OCRAM, CSU_ALL_RW},
++	 {CSU_CSLX_GIC, CSU_ALL_RW},
++	 {CSU_CSLX_PCIE1, CSU_ALL_RW},
++	 {CSU_CSLX_OCRAM2, CSU_ALL_RW},
++	 {CSU_CSLX_QSPI_MEM, CSU_ALL_RW},
++	 {CSU_CSLX_PCIE2, CSU_ALL_RW},
++	 {CSU_CSLX_SATA, CSU_ALL_RW},
++	 {CSU_CSLX_USB1, CSU_ALL_RW},
++	 {CSU_CSLX_QM_BM_SWPORTAL, CSU_ALL_RW},
++	 {CSU_CSLX_PCIE3, CSU_ALL_RW},
++	 {CSU_CSLX_PCIE3_IO, CSU_ALL_RW},
++	 {CSU_CSLX_USB3, CSU_ALL_RW},
++	 {CSU_CSLX_USB2, CSU_ALL_RW},
++	 {CSU_CSLX_PFE, CSU_ALL_RW},
++	 {CSU_CSLX_SERDES, CSU_ALL_RW},
++	 {CSU_CSLX_QDMA, CSU_ALL_RW},
++	 {CSU_CSLX_LPUART2, CSU_ALL_RW},
++	 {CSU_CSLX_LPUART1, CSU_ALL_RW},
++	 {CSU_CSLX_LPUART4, CSU_ALL_RW},
++	 {CSU_CSLX_LPUART3, CSU_ALL_RW},
++	 {CSU_CSLX_LPUART6, CSU_ALL_RW},
++	 {CSU_CSLX_LPUART5, CSU_ALL_RW},
++	 {CSU_CSLX_DSPI1, CSU_ALL_RW},
++	 {CSU_CSLX_QSPI, CSU_ALL_RW},
++	 {CSU_CSLX_ESDHC, CSU_ALL_RW},
++	 {CSU_CSLX_IFC, CSU_ALL_RW},
++	 {CSU_CSLX_I2C1, CSU_ALL_RW},
++	 {CSU_CSLX_USB_2, CSU_ALL_RW},
++	 {CSU_CSLX_I2C3, CSU_ALL_RW},
++	 {CSU_CSLX_I2C2, CSU_ALL_RW},
++	 {CSU_CSLX_DUART2, CSU_ALL_RW},
++	 {CSU_CSLX_DUART1, CSU_ALL_RW},
++	 {CSU_CSLX_WDT2, CSU_ALL_RW},
++	 {CSU_CSLX_WDT1, CSU_ALL_RW},
++	 {CSU_CSLX_EDMA, CSU_ALL_RW},
++	 {CSU_CSLX_SYS_CNT, CSU_ALL_RW},
++	 {CSU_CSLX_DMA_MUX2, CSU_ALL_RW},
++	 {CSU_CSLX_DMA_MUX1, CSU_ALL_RW},
++	 {CSU_CSLX_DDR, CSU_ALL_RW},
++	 {CSU_CSLX_QUICC, CSU_ALL_RW},
++	 {CSU_CSLX_DCFG_CCU_RCPM, CSU_ALL_RW},
++	 {CSU_CSLX_SECURE_BOOTROM, CSU_ALL_RW},
++	 {CSU_CSLX_SFP, CSU_ALL_RW},
++	 {CSU_CSLX_TMU, CSU_ALL_RW},
++	 {CSU_CSLX_SECURE_MONITOR, CSU_ALL_RW},
++	 {CSU_CSLX_SCFG, CSU_ALL_RW},
++	 {CSU_CSLX_FM, CSU_ALL_RW},
++	 {CSU_CSLX_SEC5_5, CSU_ALL_RW},
++	 {CSU_CSLX_BM, CSU_ALL_RW},
++	 {CSU_CSLX_QM, CSU_ALL_RW},
++	 {CSU_CSLX_GPIO2, CSU_ALL_RW},
++	 {CSU_CSLX_GPIO1, CSU_ALL_RW},
++	 {CSU_CSLX_GPIO4, CSU_ALL_RW},
++	 {CSU_CSLX_GPIO3, CSU_ALL_RW},
++	 {CSU_CSLX_PLATFORM_CONT, CSU_ALL_RW},
++	 {CSU_CSLX_CSU, CSU_ALL_RW},
++	 {CSU_CSLX_IIC4, CSU_ALL_RW},
++	 {CSU_CSLX_WDT4, CSU_ALL_RW},
++	 {CSU_CSLX_WDT3, CSU_ALL_RW},
++	 {CSU_CSLX_ESDHC2, CSU_ALL_RW},
++	 {CSU_CSLX_WDT5, CSU_ALL_RW},
++	 {CSU_CSLX_SAI2, CSU_ALL_RW},
++	 {CSU_CSLX_SAI1, CSU_ALL_RW},
++	 {CSU_CSLX_SAI4, CSU_ALL_RW},
++	 {CSU_CSLX_SAI3, CSU_ALL_RW},
++	 {CSU_CSLX_FTM2, CSU_ALL_RW},
++	 {CSU_CSLX_FTM1, CSU_ALL_RW},
++	 {CSU_CSLX_FTM4, CSU_ALL_RW},
++	 {CSU_CSLX_FTM3, CSU_ALL_RW},
++	 {CSU_CSLX_FTM6, CSU_ALL_RW},
++	 {CSU_CSLX_FTM5, CSU_ALL_RW},
++	 {CSU_CSLX_FTM8, CSU_ALL_RW},
++	 {CSU_CSLX_FTM7, CSU_ALL_RW},
++	 {CSU_CSLX_DSCR, CSU_ALL_RW},
++};
++
++#endif
+diff --git a/plat/layerscape/common/include/plat_ls.h b/plat/layerscape/common/include/plat_ls.h
+index 4b4366c..f6ecdcb 100644
+--- a/plat/layerscape/common/include/plat_ls.h
++++ b/plat/layerscape/common/include/plat_ls.h
+@@ -41,6 +41,9 @@ int ls_check_mpidr(u_register_t mpidr);
+ /* Security utility functions */
+ int tzc380_setup(void);
+ 
++/* GIC utility functions */
++void get_gic_offset(uint32_t *gicc_base, uint32_t *gicd_base);
++
+ /* Timer utility functions */
+ uint64_t ls_get_timer(uint64_t start);
+ void ls_delay_timer_init(void);
+diff --git a/plat/layerscape/common/include/plat_macros.S b/plat/layerscape/common/include/plat_macros.S
+new file mode 100644
+index 0000000..8163dc1
+--- /dev/null
++++ b/plat/layerscape/common/include/plat_macros.S
+@@ -0,0 +1,21 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#ifndef __PLAT_MACROS_S__
++#define __PLAT_MACROS_S__
++
++	/* ---------------------------------------------
++	 * The below required platform porting macro
++	 * prints out relevant GIC and CCI registers
++	 * whenever an unhandled exception is taken in
++	 * BL31.
++	 * Clobbers: x0 - x10, x16, x17, sp
++	 * ---------------------------------------------
++	 */
++	.macro plat_crash_print_regs
++	.endm
++
++#endif /* __PLAT_MACROS_S__ */
+diff --git a/plat/layerscape/common/include/soc.h b/plat/layerscape/common/include/soc.h
+deleted file mode 100644
+index 72c10cf..0000000
+--- a/plat/layerscape/common/include/soc.h
++++ /dev/null
+@@ -1,18 +0,0 @@
+-/*
+- * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
+- *
+- * SPDX-License-Identifier: BSD-3-Clause
+- */
+-
+-#ifndef __LAYERSCAPE_SOC_H__
+-#define __LAYERSCAPE_SOC_H__
+-
+-#include <stdint.h>
+-
+-#define SVR_WO_E		0xFFFFFE
+-#define SVR_LS1043A		0x879204
+-#define SVR_LS1043AE		0x879200
+-
+-void get_gic_offset(uint32_t *gicc_base, uint32_t *gicd_base);
+-
+-#endif /* __LAYERSCAPE_SOC_H__ */
+diff --git a/plat/layerscape/common/include/soc_tzasc.h b/plat/layerscape/common/include/soc_tzasc.h
+new file mode 100644
+index 0000000..0039f2d
+--- /dev/null
++++ b/plat/layerscape/common/include/soc_tzasc.h
+@@ -0,0 +1,93 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#ifndef _SOC_TZASC_H_
++#define _SOC_TZASC_H_
++
++#include "tzc380.h"
++
++#define MAX_NUM_TZC_REGION	3
++
++/* TZASC related constants */
++#define TZASC_CONFIGURATION_REG		0x000
++#define TZASC_SECURITY_INV_REG		0x034
++#define TZASC_SECURITY_INV_EN		0x1
++#define TZASC_REGIONS_REG		0x100
++/* As region address should address atleast 32KB memory. */
++#define TZASC_REGION_LOWADDR_MASK	0xFFFF8000
++#define TZASC_REGION_LOWADDR_OFFSET	0x0
++#define TZASC_REGION_HIGHADDR_OFFSET	0x4
++#define TZASC_REGION_ATTR_OFFSET	0x8
++#define TZASC_REGION_ENABLED		1
++#define TZASC_REGION_DISABLED		0
++#define TZASC_REGION_SIZE_32KB		0xE
++#define TZASC_REGION_SIZE_64KB		0xF
++#define TZASC_REGION_SIZE_128KB		0x10
++#define TZASC_REGION_SIZE_256KB		0x11
++#define TZASC_REGION_SIZE_512KB		0x12
++#define TZASC_REGION_SIZE_1MB		0x13
++#define TZASC_REGION_SIZE_2MB		0x14
++#define TZASC_REGION_SIZE_4MB		0x15
++#define TZASC_REGION_SIZE_8MB		0x16
++#define TZASC_REGION_SIZE_16MB		0x17
++#define TZASC_REGION_SIZE_32MB		0x18
++#define TZASC_REGION_SIZE_64MB		0x19
++#define TZASC_REGION_SIZE_128MB		0x1A
++#define TZASC_REGION_SIZE_256MB		0x1B
++#define TZASC_REGION_SIZE_512MB		0x1C
++#define TZASC_REGION_SIZE_1GB		0x1D
++#define TZASC_REGION_SIZE_2GB		0x1E
++#define TZASC_REGION_SIZE_4GB		0x1F
++#define TZASC_REGION_SIZE_8GB		0x20
++#define TZASC_REGION_SIZE_16GB		0x21
++#define TZASC_REGION_SIZE_32GB		0x22
++#define TZASC_REGION_SECURITY_SR	(1 << 3)
++#define TZASC_REGION_SECURITY_SW	(1 << 2)
++#define TZASC_REGION_SECURITY_SRW	(TZASC_REGION_SECURITY_SR| \
++						TZASC_REGION_SECURITY_SW)
++#define TZASC_REGION_SECURITY_NSR	(1 << 1)
++#define TZASC_REGION_SECURITY_NSW	1
++#define TZASC_REGION_SECURITY_NSRW	(TZASC_REGION_SECURITY_NSR| \
++						TZASC_REGION_SECURITY_NSW)
++
++#define CSU_SEC_ACCESS_REG_OFFSET	0x21C
++#define TZASC_BYPASS_MUX_DISABLE	0x4
++#define CCI_TERMINATE_BARRIER_TX	0x8
++#define CONFIG_SYS_FSL_TZASC_ADDR	0x1500000
++
++/* List of MAX_NUM_TZC_REGION TZC regions' boundaries and configurations. */
++
++static const struct tzc380_reg tzc380_reg_list[] = {
++	{
++		TZASC_REGION_SECURITY_NSRW,	/* .secure attr */
++		0x0,			/* .enabled */
++		0x0,			/* .lowaddr */
++		0x0,			/* .highaddr */
++		0x0,			/* .size */
++		0x0,			/* .submask */
++	},
++	{
++		TZASC_REGION_SECURITY_SRW,
++		TZASC_REGION_ENABLED,
++		0xFC000000,
++		0x0,
++		TZASC_REGION_SIZE_64MB,
++		0x80,			/* Disable region 7 */
++	},
++	/* reserve 2M non-scure memory for OPTEE public memory */
++	{
++		TZASC_REGION_SECURITY_SRW,
++		TZASC_REGION_ENABLED,
++		0xFF800000,
++		0x0,
++		TZASC_REGION_SIZE_8MB,
++		0xC0,			/* Disable region 6 & 7 */
++	},
++
++	{}
++};
++
++#endif /* _SOC_TZASC_H_ */
+diff --git a/plat/layerscape/common/ls_bl31_setup.c b/plat/layerscape/common/ls_bl31_setup.c
+index 7f07490..5ac7ce9 100644
+--- a/plat/layerscape/common/ls_bl31_setup.c
++++ b/plat/layerscape/common/ls_bl31_setup.c
+@@ -10,7 +10,6 @@
+ #include <gicv2.h>
+ #include "ls_16550.h"
+ #include "plat_ls.h"
+-#include "soc.h"
+ 
+ #define BL31_END (uintptr_t)(&__BL31_END__)
+ 
+@@ -147,7 +146,7 @@ void ls_bl31_platform_setup(void)
+ {
+ 	uint32_t gicc_base, gicd_base;
+ 
+-	NOTICE(FIRMWARE_WELCOME_STR_LS1043_BL31);
++	NOTICE(FIRMWARE_WELCOME_STR_LS_BL31);
+ 	/* Initialize the GIC driver, cpu and distributor interfaces */
+ 	get_gic_offset(&gicc_base, &gicd_base);
+ 	ls_gic_data.gicd_base = (uintptr_t)gicd_base;
+@@ -167,7 +166,7 @@ void ls_bl31_platform_setup(void)
+ #endif /* RESET_TO_BL31 */
+ 
+ 	/* Enable and initialize the System level generic timer */
+-	mmio_write_32(LS1043_SYS_CNTCTL_BASE + CNTCR_OFF,
++	mmio_write_32(LS_SYS_CNTCTL_BASE + CNTCR_OFF,
+ 			CNTCR_FCREQ(0) | CNTCR_EN);
+ 
+ 	VERBOSE("Leave arm_bl31_platform_setup\n");
+@@ -182,8 +181,8 @@ void ls_bl31_plat_runtime_setup(void)
+ 	static console_ls_16550_t console;
+ 
+ 	/* Initialize the runtime console */
+-	console_ls_16550_register(PLAT_LS1043_UART_BASE, PLAT_LS1043_UART_CLOCK,
+-				PLAT_LS1043_UART_BAUDRATE, &console);
++	console_ls_16550_register(LS_TF_UART_BASE, LS_TF_UART_CLOCK,
++				LS_TF_UART_BAUDRATE, &console);
+ }
+ 
+ void bl31_platform_setup(void)
+diff --git a/plat/layerscape/common/ls_tzc380.c b/plat/layerscape/common/ls_tzc380.c
+index b9f32ac..421bd56 100644
+--- a/plat/layerscape/common/ls_tzc380.c
++++ b/plat/layerscape/common/ls_tzc380.c
+@@ -52,7 +52,7 @@ int tzc380_setup(void)
+ 	 * Configure CCI control override register to terminate all barrier
+ 	 * transactions
+ 	 */
+-	mmio_write_32(PLAT_LS1043_CCI_BASE, CCI_TERMINATE_BARRIER_TX);
++	mmio_write_32(PLAT_LS_CCI_BASE, CCI_TERMINATE_BARRIER_TX);
+ 
+ 	/* Configure CSU secure access register to disable TZASC bypass mux */
+ 	mmio_write_32((uintptr_t)(CONFIG_SYS_FSL_CSU_ADDR +
+diff --git a/plat/layerscape/common/tsp/ls_tsp_setup.c b/plat/layerscape/common/tsp/ls_tsp_setup.c
+index 82ac965..534d2ae 100644
+--- a/plat/layerscape/common/tsp/ls_tsp_setup.c
++++ b/plat/layerscape/common/tsp/ls_tsp_setup.c
+@@ -8,7 +8,6 @@
+ #include <debug.h>
+ #include "ls_16550.h"
+ #include "plat_ls.h"
+-#include "soc.h"
+ 
+ #define BL32_END (unsigned long)(&__BL32_END__)
+ 
+@@ -35,7 +34,7 @@ void ls_tsp_early_platform_setup(void)
+ 	 */
+ 	console_ls_16550_register(PLAT_LS1043_UART2_BASE, PLAT_LS1043_UART_CLOCK,
+ 			PLAT_LS1043_UART_BAUDRATE, &console);
+-	NOTICE(FIRMWARE_WELCOME_STR_LS1043_BL32);
++	NOTICE(FIRMWARE_WELCOME_STR_LS_BL32);
+ }
+ 
+ /*******************************************************************************
+-- 
+1.7.1
+

@@ -1,0 +1,20 @@
+Add a missing debug ifdef causing compilation problems.
+
+Upstream-Status: Submitted
+
+Signed-off-by: Tom Zanussi <tom.zanussi (a] intel.com>
+
+Index: lms-7.1.20/src/tools/ATNetworkTool.cpp
+===================================================================
+--- lms-7.1.20.orig/src/tools/ATNetworkTool.cpp	2012-04-30 23:24:56.693879920 -0500
++++ lms-7.1.20/src/tools/ATNetworkTool.cpp	2012-04-30 23:25:32.363473948 -0500
+@@ -302,7 +302,9 @@
+ 			close(s);
+ 			return -1;
+ 		}
++#ifdef LMS_NET_DEBUG
+ 		printf("successfully binded local\n");
++#endif
+ 	  
+ 	}
+ 	if (bind(s, addr, addrlen) == -1) {

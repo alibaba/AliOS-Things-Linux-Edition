@@ -1,0 +1,1720 @@
+From f3898ab5a54ea0e220221c1a0c7a873a6e44511f Mon Sep 17 00:00:00 2001
+From: Jiafei Pan <Jiafei.Pan@nxp.com>
+Date: Fri, 2 Mar 2018 07:23:35 +0000
+Subject: [PATCH 2/8] layerscape: add sd boot support for ls1043ardb board
+
+Signed-off-by: jiaheng.fan <jiaheng.fan@nxp.com>
+Signed-off-by: Ruchika Gupta <ruchika.gupta@nxp.com>
+Signed-off-by: Jiafei Pan <Jiafei.Pan@nxp.com>
+---
+ docs/plat/ls1043a.rst                              |   42 +
+ .../layerscape/board/ls1043/include/platform_def.h |   26 +
+ plat/layerscape/board/ls1043/ls1043_bl2_setup.c    |    4 +
+ plat/layerscape/board/ls1043/ls1043ardb_pbi.cfg    |   14 +
+ plat/layerscape/board/ls1043/ls1043ardb_rcw_sd.cfg |    7 +
+ plat/layerscape/common/include/ls_sd_mmc.h         |  324 ++++++
+ plat/layerscape/common/include/plat_ls.h           |    4 +
+ plat/layerscape/common/ls_common.c                 |    2 +
+ plat/layerscape/common/ls_common.mk                |   15 +-
+ plat/layerscape/common/ls_sd_mmc.c                 | 1138 ++++++++++++++++++++
+ 10 files changed, 1574 insertions(+), 2 deletions(-)
+ create mode 100644 plat/layerscape/board/ls1043/ls1043ardb_pbi.cfg
+ create mode 100644 plat/layerscape/board/ls1043/ls1043ardb_rcw_sd.cfg
+ create mode 100644 plat/layerscape/common/include/ls_sd_mmc.h
+ create mode 100644 plat/layerscape/common/ls_sd_mmc.c
+
+diff --git a/docs/plat/ls1043a.rst b/docs/plat/ls1043a.rst
+index 5ce2810..63a05cc 100644
+--- a/docs/plat/ls1043a.rst
++++ b/docs/plat/ls1043a.rst
+@@ -68,6 +68,32 @@ Build Procedure
+        CROSS_COMPILE=aarch64-linux-gnu- make PLAT=ls1043 fip \
+        BL33=u-boot.bin NEED_BL32=yes BL32=tee.bin SPD=opteed
+ 
++-  Build TF-A for SD boot
++
++   Build bl2:
++
++   .. code:: shell
++
++       CROSS_COMPILE=aarch64-linux-gnu- make PLAT=ls1043 bl2 \
++       BOOT_MODE=sd
++
++   Build fip:
++
++   .. code:: shell
++
++       CROSS_COMPILE=aarch64-linux-gnu- make PLAT=ls1043 fip \
++       BL33=u-boot.bin NEED_BL32=yes BL32=tee.bin SPD=opteed \
++       BOOT_MODE=sd
++
++   Build spl images which include RCW, PBI and TF-A images:
++
++   .. code:: shell
++
++	mkimage -n ./plat/layerscape/board/ls1043/ls1043ardb_rcw_sd.cfg \
++        -R ./plat/layerscape/board/ls1043/ls1043ardb_pbi.cfg -T pblimage \
++        -A arm -a 0x10000000 -d build/ls1043/release/bl2.bin bl2.pbl
++
++
+ Deploy TF-A Images
+ -----------------
+ 
+@@ -87,5 +113,21 @@ Deploy TF-A Images
+ 
+        => cpld reset altbank
+ 
++-  Deploy TF-A images on SD card.
++
++   .. code:: shell
++
++       => tftp 82000000  bl2.pbl
++       => mmc write 82000000 8 50
++
++       => tftp 82000000  fip.bin
++       => mmc write 82000000 800 900
++
++   Then change to SD boot and boot up TF-A:
++
++   .. code:: shell
++
++       => cpld reset sd
++
+ 
+ .. _ls1043: https://www.nxp.com/products/processors-and-microcontrollers/arm-based-processors-and-mcus/qoriq-layerscape-arm-processors/qoriq-layerscape-1043a-and-1023a-multicore-communications-processors:LS1043A?lang_cd=en
+diff --git a/plat/layerscape/board/ls1043/include/platform_def.h b/plat/layerscape/board/ls1043/include/platform_def.h
+index 5a3308f..256d0dc 100644
+--- a/plat/layerscape/board/ls1043/include/platform_def.h
++++ b/plat/layerscape/board/ls1043/include/platform_def.h
+@@ -75,6 +75,8 @@
+ #define PLAT_LS_FIP_MAX_SIZE		0x4000000
+ 
+ /* Memory Layout */
++#ifdef NOR_BOOT		/* Nor boot */
++
+ #define BL2_RO_BASE			PLAT_LS_TRUSTED_ROM_BASE
+ #define BL2_RO_LIMIT			(PLAT_LS_TRUSTED_ROM_BASE	\
+ 					 + PLAT_LS_TRUSTED_ROM_SIZE)
+@@ -95,6 +97,30 @@
+ #define BL2_RW_BASE			BL31_LIMIT
+ #define BL2_RW_LIMIT			LS_SRAM_LIMIT
+ 
++#elif defined(SD_BOOT)	/* SD boot memory layout */
++
++#define LOAD_FIP_IN_DDR_BASE		0x83000000
++#define PLAT_LS_FIP_BASE		LOAD_FIP_IN_DDR_BASE
++
++#define LS_FIP_SD_START_BLOCK		0x800
++#define LS_FIP_SD_BLOCK_NUMS		4096	/* 2M Byte */
++
++#define PLAT_LS_MAX_BL31_SIZE		(64 * 1024)		/* 64K */
++#define PLAT_LS_MAX_BL2_SIZE		(64 * 1024)		/* 64K */
++
++/*
++ * Put BL2 at the start of the Trusted SRAM.
++ */
++#define BL2_BASE			LS_SRAM_BASE
++#define BL2_LIMIT			(BL2_BASE + PLAT_LS_MAX_BL2_SIZE)
++/*
++ * BL31 follow BL2.
++ */
++#define BL31_BASE			BL2_LIMIT
++#define BL31_LIMIT			(BL31_BASE + PLAT_LS_MAX_BL31_SIZE)
++
++#endif /* NOR_BOOT */
++
+ /* Put BL32 in secure memory */
+ #define BL32_BASE		LS_SECURE_DRAM_BASE
+ #define BL32_LIMIT		(LS_SECURE_DRAM_BASE + LS_SECURE_DRAM_SIZE)
+diff --git a/plat/layerscape/board/ls1043/ls1043_bl2_setup.c b/plat/layerscape/board/ls1043/ls1043_bl2_setup.c
+index fba9f19..07ac3ba 100644
+--- a/plat/layerscape/board/ls1043/ls1043_bl2_setup.c
++++ b/plat/layerscape/board/ls1043/ls1043_bl2_setup.c
+@@ -26,6 +26,10 @@ void bl2_platform_setup(void)
+ 	VERBOSE("CS0_BNDS = %llx\n", mmio_read_32(0x1080000 + 0x000));
+ 	mmio_write_32(0x1080000 + 0x000, 0x7f000000);
+ 	VERBOSE("CS0_BNDS = %llx\n", mmio_read_32(0x1080000 + 0x000));
++#ifdef	SD_BOOT
++	INFO("loading FIP from sd\n");
++	sd_load_fip_image();
++#endif
+ }
+ 
+ void bl2_el3_early_platform_setup(u_register_t arg1, u_register_t arg2,
+diff --git a/plat/layerscape/board/ls1043/ls1043ardb_pbi.cfg b/plat/layerscape/board/ls1043/ls1043ardb_pbi.cfg
+new file mode 100644
+index 0000000..f072274
+--- /dev/null
++++ b/plat/layerscape/board/ls1043/ls1043ardb_pbi.cfg
+@@ -0,0 +1,14 @@
++#Configure Scratch register
++09570600 00000000
++09570604 10000000
++#Alt base register
++09570158 00001000
++#Disable CCI barrier tranaction
++09570178 0000e010
++09180000 00000008
++#USB PHY frequency sel
++09570418 0000009e
++0957041c 0000009e
++09570420 0000009e
++#flush PBI data
++096100c0 000fffff
+diff --git a/plat/layerscape/board/ls1043/ls1043ardb_rcw_sd.cfg b/plat/layerscape/board/ls1043/ls1043ardb_rcw_sd.cfg
+new file mode 100644
+index 0000000..e2ee34b
+--- /dev/null
++++ b/plat/layerscape/board/ls1043/ls1043ardb_rcw_sd.cfg
+@@ -0,0 +1,7 @@
++#PBL preamble and RCW header
++aa55aa55 01ee0100
++# RCW
++08100010 0a000000 00000000 00000000
++14550002 80004012 60040000 c1002000
++00000000 00000000 00000000 00038800
++00000000 00001100 00000096 00000001
+diff --git a/plat/layerscape/common/include/ls_sd_mmc.h b/plat/layerscape/common/include/ls_sd_mmc.h
+new file mode 100644
+index 0000000..a23a1a5
+--- /dev/null
++++ b/plat/layerscape/common/include/ls_sd_mmc.h
+@@ -0,0 +1,324 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#ifndef __LS_SD_MMC_H__
++#define __LS_SD_MMC_H__
++
++#include <mmio.h>
++
++ /* operating freq */
++#define CARD_IDENTIFICATION_FREQ	400000
++#define SD_SS_25MHZ	20000000
++#define SD_HS_50MHZ	40000000
++#define MMC_SS_20MHZ	15000000
++#define MMC_HS_26MHZ	20000000
++#define MMC_HS_52MHZ	40000000
++
++ /* Need to check this value ? */
++#define MAX_PLATFORM_CLOCK	800000000
++
++ /* eSDHC system control register defines */
++#define ESDHC_SYSCTL_DTOCV(t)		(((t) & 0xF) << 16)
++#define ESDHC_SYSCTL_SDCLKFS(f)		(((f) & 0xFF) << 8)
++#define ESDHC_SYSCTL_DVS(d)		(((d) & 0xF) << 4)
++#define ESDHC_SYSCTL_SDCLKEN		(0x00000008)
++#define ESDHC_SYSCTL_RSTA		(0x01000000)
++
++ /* Data timeout counter value. SDHC_CLK x 227 */
++#define TIMEOUT_COUNTER_SDCLK_2_27	0xE
++#define ESDHC_SYSCTL_INITA	0x08000000
++
++ /* eSDHC interrupt status enable register defines */
++#define ESDHC_IRQSTATEN_CINS	0x00000040
++#define ESDHC_IRQSTATEN_BWR	0x00000010
++
++ /* eSDHC interrupt status register defines */
++#define ESDHC_IRQSTAT_DMAE	(0x10000000)
++#define ESDHC_IRQSTAT_AC12E	(0x01000000)
++#define ESDHC_IRQSTAT_DEBE	(0x00400000)
++#define ESDHC_IRQSTAT_DCE	(0x00200000)
++#define ESDHC_IRQSTAT_DTOE	(0x00100000)
++#define ESDHC_IRQSTAT_CIE	(0x00080000)
++#define ESDHC_IRQSTAT_CEBE	(0x00040000)
++#define ESDHC_IRQSTAT_CCE	(0x00020000)
++#define ESDHC_IRQSTAT_CTOE	(0x00010000)
++#define ESDHC_IRQSTAT_CINT	(0x00000100)
++#define ESDHC_IRQSTAT_CRM	(0x00000080)
++#define ESDHC_IRQSTAT_CINS	(0x00000040)
++#define ESDHC_IRQSTAT_BRR	(0x00000020)
++#define ESDHC_IRQSTAT_BWR	(0x00000010)
++#define ESDHC_IRQSTAT_DINT	(0x00000008)
++#define ESDHC_IRQSTAT_BGE	(0x00000004)
++#define ESDHC_IRQSTAT_TC	(0x00000002)
++#define ESDHC_IRQSTAT_CC	(0x00000001)
++#define ESDHC_IRQSTAT_CMD_ERR	(ESDHC_IRQSTAT_CIE |\
++			ESDHC_IRQSTAT_CEBE |\
++			ESDHC_IRQSTAT_CCE)
++#define ESDHC_IRQSTAT_DATA_ERR	(ESDHC_IRQSTAT_DEBE |\
++			ESDHC_IRQSTAT_DCE |\
++			ESDHC_IRQSTAT_DTOE)
++#define ESDHC_IRQSTAT_CLEAR_ALL	(0xFFFFFFFF)
++
++/* eSDHC present state register defines */
++#define ESDHC_PRSSTAT_CLSL	0x00800000
++#define ESDHC_PRSSTAT_WPSPL	0x00080000
++#define ESDHC_PRSSTAT_CDPL	0x00040000
++#define ESDHC_PRSSTAT_CINS	0x00010000
++#define ESDHC_PRSSTAT_BREN	0x00000800
++#define ESDHC_PRSSTAT_BWEN	0x00000400
++#define ESDHC_PRSSTAT_RTA	0x00000200
++#define ESDHC_PRSSTAT_WTA	0x00000100
++#define ESDHC_PRSSTAT_SDOFF	0x00000080
++#define ESDHC_PRSSTAT_PEROFF	0x00000040
++#define ESDHC_PRSSTAT_HCKOFF	0x00000020
++#define ESDHC_PRSSTAT_IPGOFF	0x00000010
++#define ESDHC_PRSSTAT_DLA	0x00000004
++#define ESDHC_PRSSTAT_CDIHB	0x00000002
++#define ESDHC_PRSSTAT_CIHB	0x00000001
++
++/* eSDHC protocol control register defines */
++#define ESDHC_PROCTL_EMODE_LE	0x00000020
++#define ESDHC_PROCTL_DTW_1BIT	0x00000000
++#define ESDHC_PROCTL_DTW_4BIT	0x00000002
++#define ESDHC_PROCTL_DTW_8BIT	0x00000004
++
++/* Watermark Level Register (WML) */
++#define ESDHC_WML_RD_WML(w)	((w) & 0x7F)
++#define ESDHC_WML_WR_WML(w)	(((w) & 0x7F) << 16)
++#define ESDHC_WML_RD_BRST(w)	(((w) & 0xF) << 8)
++#define ESDHC_WML_WR_BRST(w)	(((w) & 0xF) << 24)
++#define ESDHC_WML_WR_BRST_MASK	(0x0F000000)
++#define ESDHC_WML_RD_BRST_MASK	(0x00000F00)
++#define ESDHC_WML_RD_WML_MASK	(0x0000007F)
++#define ESDHC_WML_WR_WML_MASK	(0x007F0000)
++#define WML_512_BYTES		(0x0)
++#define BURST_128_BYTES	(0x0)
++
++/* eSDHC control register define */
++#define ESDHC_DCR_SNOOP		0x00000040
++
++/* ESDHC Block attributes register */
++#define ESDHC_BLKATTR_BLKCNT(c)	(((c) & 0xffff) << 16)
++#define ESDHC_BLKATTR_BLKSZE(s)	((s) & 0xfff)
++
++/* Transfer Type Register */
++#define ESDHC_XFERTYP_CMD(c)	(((c) & 0x3F) << 24)
++#define ESDHC_XFERTYP_CMDTYP_NORMAL	(0x0)
++#define ESDHC_XFERTYP_CMDTYP_SUSPEND	(0x00400000)
++#define ESDHC_XFERTYP_CMDTYP_RESUME	(0x00800000)
++#define ESDHC_XFERTYP_CMDTYP_ABORT	(0x00C00000)
++#define ESDHC_XFERTYP_DPSEL	(0x00200000)
++#define ESDHC_XFERTYP_CICEN	(0x00100000)
++#define ESDHC_XFERTYP_CCCEN	(0x00080000)
++#define ESDHC_XFERTYP_RSPTYP_NONE	(0x0)
++#define ESDHC_XFERTYP_RSPTYP_136	(0x00010000)
++#define ESDHC_XFERTYP_RSPTYP_48	(0x00020000)
++#define ESDHC_XFERTYP_RSPTYP_48_BUSY	(0x00030000)
++#define ESDHC_XFERTYP_MSBSEL	(0x00000020)
++#define ESDHC_XFERTYP_DTDSEL	(0x00000010)
++#define ESDHC_XFERTYP_AC12EN	(0x00000004)
++#define ESDHC_XFERTYP_BCEN	(0x00000002)
++#define ESDHC_XFERTYP_DMAEN	(0x00000001)
++
++#define MMC_VDD_HIGH_VOLTAGE	0x00000100
++
++/* command index */
++#define CMD0	0
++#define CMD1	1
++#define CMD2	2
++#define CMD3	3
++#define CMD5	5
++#define CMD6	6
++#define CMD7	7
++#define CMD8	8
++#define CMD9	9
++#define CMD12	12
++#define CMD13	13
++#define CMD14	14
++#define CMD16	16
++#define CMD17	17
++#define CMD18	18
++#define CMD19	19
++#define CMD41	41
++#define CMD42	42
++#define CMD51	51
++#define CMD55	55
++#define CMD56	56
++#define ACMD6	CMD6
++#define ACMD13	CMD13
++#define ACMD41	CMD41
++#define ACMD42	CMD42
++#define ACMD51	CMD51
++
++/* commands abbreviations */
++#define CMD_GO_IDLE_STATE	CMD0
++#define CMD_MMC_SEND_OP_COND	CMD1
++#define CMD_ALL_SEND_CID	CMD2
++#define CMD_SEND_RELATIVE_ADDR	CMD3
++#define CMD_SET_DSR	CMD4
++#define CMD_SWITCH_FUNC	CMD6
++#define CMD_SELECT_CARD	CMD7
++#define CMD_DESELECT_CARD	CMD7
++#define CMD_SEND_IF_COND	CMD8
++#define CMD_MMC_SEND_EXT_CSD	CMD8
++#define CMD_SEND_CSD	CMD9
++#define CMD_SEND_CID	CMD10
++#define CMD_STOP_TRANSMISSION	CMD12
++#define CMD_SEND_STATUS	CMD13
++#define CMD_BUS_TEST_R	CMD14
++#define CMD_GO_INACTIVE_STATE	CMD15
++#define CMD_SET_BLOCKLEN	CMD16
++#define CMD_READ_SINGLE_BLOCK	CMD17
++#define CMD_READ_MULTIPLE_BLOCK	CMD18
++#define CMD_BUS_TEST_W	CMD19
++#define CMD_APP_CMD	CMD55
++#define CMD_GEN_CMD	CMD56
++#define CMD_SET_BUS_WIDTH	ACMD6
++#define CMD_SD_STATUS	ACMD13
++#define CMD_SD_SEND_OP_COND	ACMD41
++#define CMD_SET_CLR_CARD_DETECT	ACMD42
++#define CMD_SEND_SCR	ACMD51
++
++/* MMC card spec version */
++#define MMC_CARD_VERSION_1_2	0
++#define MMC_CARD_VERSION_1_4	1
++#define MMC_CARD_VERSION_2_X	2
++#define MMC_CARD_VERSION_3_X	3
++#define MMC_CARD_VERSION_4_X	4
++
++/* SD Card Spec Version */
++/* May need to add version 3 here? */
++#define SD_CARD_VERSION_1_0	0
++#define SD_CARD_VERSION_1_10	1
++#define SD_CARD_VERSION_2_0	2
++
++/* card types */
++#define MMC_CARD	0
++#define SD_CARD		1
++#define NOT_SD_CARD	MMC_CARD
++
++/* Card rca */
++#define SD_MMC_CARD_RCA	0x1
++#define BLOCK_LEN_512	512
++
++/* card state */
++#define STATE_IDLE	0
++#define STATE_READY	1
++#define STATE_IDENT	2
++#define STATE_STBY	3
++#define STATE_TRAN	4
++#define STATE_DATA	5
++#define STATE_RCV	6
++#define STATE_PRG	7
++#define STATE_DIS	8
++
++/* Card OCR register */
++/* VDD voltage window 1,65 to 1.95 */
++#define MMC_OCR_VDD_165_195	0x00000080
++/* VDD voltage window 2.7-2.8 */
++#define MMC_OCR_VDD_FF8	0x00FF8000
++#define MMC_OCR_CCS	0x40000000 /* Card Capacity */
++#define MMC_OCR_BUSY	0x80000000 /* busy bit */
++#define SD_OCR_HCS	0x40000000 /* High capacity host */
++#define MMC_OCR_SECTOR_MODE	0x40000000 /* Access Mode as Sector */
++
++/* mmc Switch function */
++#define SET_EXT_CSD_HS_TIMING	0x03B90100 /* set High speed */
++
++/* check supports switching or not */
++#define SD_SWITCH_FUNC_CHECK_MODE	0x00FFFFF1
++#define SD_SWITCH_FUNC_SWITCH_MODE	0x80FFFFF1 /* switch */
++#define SD_SWITCH_FUNC_HIGH_SPEED	0x02 /* HIGH SPEED FUNC */
++#define SWITCH_ERROR		0x00000080
++
++/* errors in sending commands */
++#define RESP_TIMEOUT	0x1
++#define COMMAND_ERROR	0x2
++/* error in response */
++#define R1_ERROR	(1 << 19)
++#define R1_CURRENT_STATE(x)	(((x) & 0x00001E00) >> 9)
++
++/* Host Controller Capabilities */
++#define ESDHC_HOSTCAPBLT_DMAS           (0x00400000)
++
++
++/* SD/MMC memory map */
++struct esdhc_regs {
++	uint32_t dsaddr;	 /* dma system address */
++	uint32_t blkattr;	 /* Block attributes */
++	uint32_t cmdarg;	 /* Command argument */
++	uint32_t xfertyp;	 /* Command transfer type */
++	uint32_t cmdrsp[4];	 /* Command response0,1,2,3 */
++	uint32_t datport;	 /* Data buffer access port */
++	uint32_t prsstat;	 /* Present state */
++	uint32_t proctl;	 /* Protocol control */
++	uint32_t sysctl;	 /* System control */
++	uint32_t irqstat;	 /* Interrupt status */
++	uint32_t irqstaten;	 /* Interrupt status enable */
++	uint32_t irqsigen;	 /* Interrupt signal enable */
++	uint32_t autoc12err;	 /* Auto CMD12 status */
++	uint32_t hostcapblt;	 /* Host controller capabilities */
++	uint32_t wml;	 /* Watermark level */
++	uint32_t res1[2];
++	uint32_t fevt;	 /* Force event */
++	uint32_t res2;
++	uint32_t adsaddrl;
++	uint32_t adsaddrh;
++	uint32_t res3[39];
++	uint32_t hostver;	 /* Host controller version */
++	uint32_t res4;
++	uint32_t dmaerr;	 /* DMA error address */
++	uint32_t dmaerrh;	 /* DMA error address high */
++	uint32_t dmaerrattr;  /* DMA error atrribute */
++	uint32_t res5;
++	uint32_t hostcapblt2; /* Host controller capabilities2 */
++	uint32_t res6[2];
++	uint32_t tcr;		/* Tuning control */
++	uint32_t res7[7];
++	uint32_t dirctrl;	 /* Direction control */
++	uint32_t ccr;	 /* Clock control */
++	uint32_t res8[177];
++	uint32_t ctl;	 /* Control register */
++};
++
++/* SD/MMC card attributes */
++struct card_attributes {
++	uint32_t type;	 /* sd or mmc card */
++	uint32_t version;	 /* version */
++	uint32_t block_len;	 /* block length */
++	uint32_t bus_freq;	 /* sdhc bus frequency */
++	uint16_t rca;	 /* relative card address */
++	uint8_t is_high_capacity;	 /* high capacity */
++};
++
++struct mmc {
++	struct esdhc_regs *esdhc_regs;
++	struct card_attributes card;
++
++	uint32_t block_len;
++	uint32_t voltages_caps;	/* supported voltaes */
++	uint32_t dma_support;	/* DMA support */
++};
++
++int sd_mmc_init(void);
++int esdhc_read(uint32_t src_offset, uint8_t *dst, uint32_t size);
++
++#define ESDHC_BASE_ADDR           0x01560000
++
++#define CONFIG_SYS_FSL_CCSR_ESDHC_BE
++
++#ifdef CONFIG_SYS_FSL_CCSR_ESDHC_BE
++#define esdhc_in32(a)           bswap32(mmio_read_32((uintptr_t)a))
++#define esdhc_out32(a, v)       mmio_write_32((uintptr_t)a, bswap32(v))
++#elif defined(CONFIG_SYS_FSL_CCSR_ESDHC_LE)
++#define esdhc_in32(a)           mmio_read_32((uintptr_t)a)
++#define esdhc_out32(a, v)       mmio_write_32((uintptr_t)a, v)
++#else
++#error Please define CCSR ESDHC register endianness
++#endif
++
++
++#endif /*__LS_SD_MMC_H__*/
+diff --git a/plat/layerscape/common/include/plat_ls.h b/plat/layerscape/common/include/plat_ls.h
+index c0ce9d5..4b4366c 100644
+--- a/plat/layerscape/common/include/plat_ls.h
++++ b/plat/layerscape/common/include/plat_ls.h
+@@ -54,4 +54,8 @@ unsigned int plat_ls_calc_core_pos(u_register_t mpidr);
+ /* others */
+ unsigned int plat_ls_get_cluster_core_count(u_register_t mpidr);
+ 
++#ifdef SD_BOOT
++int sd_load_fip_image(void);
++#endif
++
+ #endif /* __PLAT_LS_H__ */
+diff --git a/plat/layerscape/common/ls_common.c b/plat/layerscape/common/ls_common.c
+index fedbf0b..89ae152 100644
+--- a/plat/layerscape/common/ls_common.c
++++ b/plat/layerscape/common/ls_common.c
+@@ -23,7 +23,9 @@ const mmap_region_t *plat_ls_get_mmap(void);
+  */
+ #ifdef IMAGE_BL2
+ const mmap_region_t plat_ls_mmap[] = {
++#ifdef	NOR_BOOT
+ 	LS_MAP_FLASH0_RW,
++#endif
+ 	LS_MAP_CCSR,
+ 	LS_MAP_NS_DRAM,
+ 	LS_MAP_TSP_SEC_MEM,
+diff --git a/plat/layerscape/common/ls_common.mk b/plat/layerscape/common/ls_common.mk
+index 74a17af..a9c517f 100644
+--- a/plat/layerscape/common/ls_common.mk
++++ b/plat/layerscape/common/ls_common.mk
+@@ -4,6 +4,15 @@
+ # SPDX-License-Identifier: BSD-3-Clause
+ #
+ 
++BOOT_MODE			:=	nor
++
++
++ifeq (${BOOT_MODE}, nor)
++$(eval $(call add_define,NOR_BOOT))
++BL2_IN_XIP_MEM			:=	1
++else ifeq (${BOOT_MODE}, sd)
++$(eval $(call add_define,SD_BOOT))
++endif
+ 
+ # Process LS1043_DISABLE_TRUSTED_WDOG flag
+ # TODO:Temparally disabled it on development phase, not implemented yet
+@@ -21,8 +30,6 @@ USE_TBBR_DEFS			:=	1
+ 
+ BL2_AT_EL3			:=	1
+ 
+-BL2_IN_XIP_MEM			:=	1
+-
+ COLD_BOOT_SINGLE_CPU		:=	1
+ 
+ PLAT_INCLUDES		+=	-Iinclude/common/tbbr
+@@ -34,6 +41,10 @@ include lib/xlat_tables_v2/xlat_tables.mk
+ 
+ PLAT_BL_COMMON_SOURCES	+=	${XLAT_TABLES_LIB_SRCS}
+ 
++ifeq (${BOOT_MODE}, sd)
++BL2_SOURCES		+=	plat/layerscape/common/ls_sd_mmc.c
++endif
++
+ BL2_SOURCES		+=	drivers/io/io_fip.c				\
+ 				drivers/io/io_memmap.c				\
+ 				drivers/io/io_storage.c				\
+diff --git a/plat/layerscape/common/ls_sd_mmc.c b/plat/layerscape/common/ls_sd_mmc.c
+new file mode 100644
+index 0000000..9276f55
+--- /dev/null
++++ b/plat/layerscape/common/ls_sd_mmc.c
+@@ -0,0 +1,1138 @@
++/*
++ * Copyright (c) 2018, ARM Limited and Contributors. All rights reserved.
++ *
++ * SPDX-License-Identifier: BSD-3-Clause
++ */
++
++#include <debug.h>
++#include <mmio.h>
++#include <string.h>
++#include <endian.h>
++#include "plat_ls.h"
++#include "ls_sd_mmc.h"
++
++/* Private structure for MMC driver data */
++static struct mmc mmc_drv_data;
++
++/* To debug without dma comment this MACRO */
++#define SD_DMA_CAPABILITY
++
++#define SD_TIMEOUT        1000 /* ms */
++#define SD_TIMEOUT_HIGH   20000 /* ms */
++#define SD_BLOCK_TIMEOUT  8 /* ms */
++
++#define ERROR_ESDHC_CARD_DETECT_FAIL	-1
++#define ERROR_ESDHC_UNUSABLE_CARD	-2
++#define ERROR_ESDHC_COMMUNICATION_ERROR	-3
++#define ERROR_ESDHC_BLOCK_LENGTH	-4
++#define ERROR_ESDHC_DMA_ERROR		-5
++#define ERROR_ESDHC_BUSY		-6
++
++/***************************************************************
++ * Function    :    set_speed
++ * Arguments   :    mmc - Pointer to mmc struct
++ *                  clock - Clock Value to be set
++ * Return      :    void
++ * Description :    Calculates the value of SDCLKFS and DVS to be set
++ *                  for getting the required clock assuming the base_clk
++ *                  as a fixed value (MAX_PLATFORM_CLOCK)
++ *****************************************************************/
++static void set_speed(struct mmc *mmc, uint32_t clock)
++{
++	uint32_t dvs = 1;
++	uint32_t sdclkfs = 2;
++	/* TBD - Change this to actual platform clock by reading via RCW */
++	uint32_t base_clk = MAX_PLATFORM_CLOCK;
++
++	if (base_clk / 16 > clock) {
++		for (sdclkfs = 2; sdclkfs < 256; sdclkfs *= 2) {
++			if ((base_clk / sdclkfs) <= (clock * 16))
++				break;
++		}
++	}
++
++	for (dvs = 1; dvs <= 16; dvs++) {
++		if ((base_clk / (dvs * sdclkfs)) <= clock)
++			break;
++	}
++
++	sdclkfs >>= 1;
++	dvs -= 1;
++
++	esdhc_out32(&mmc->esdhc_regs->sysctl,
++			(ESDHC_SYSCTL_DTOCV(TIMEOUT_COUNTER_SDCLK_2_27) |
++			 ESDHC_SYSCTL_SDCLKFS(sdclkfs) | ESDHC_SYSCTL_DVS(dvs) |
++			 ESDHC_SYSCTL_SDCLKEN));
++}
++
++/***************************************************************************
++ * Function    :    esdhc_init
++ * Arguments   :    mmc - Pointer to mmc struct
++ *                  src_emmc - flag indicating if SRC is eMMC or not
++ * Return      :    SUCCESS or Error Code
++ * Description :    1. Set Initial Clock Speed
++ *                  2. Card Detect if not eMMC
++ *                  3. Enable Controller Clock
++ *                  4. Send 80 ticks for card to power up
++ *                  5. Set LE mode and Bus Width as 1 bit.
++ ***************************************************************************/
++static int esdhc_init(struct mmc *mmc, uint32_t src_emmc)
++{
++	uint32_t val;
++	unsigned long start_time;
++
++	/* Reset the entire host controller */
++	val = esdhc_in32(&mmc->esdhc_regs->sysctl) | ESDHC_SYSCTL_RSTA;
++	esdhc_out32(&mmc->esdhc_regs->sysctl, val);
++
++	/* Wait until the controller is available */
++	start_time = ls_get_timer(0);
++	while (ls_get_timer(start_time) < SD_TIMEOUT_HIGH) {
++		val = esdhc_in32(&mmc->esdhc_regs->sysctl) & ESDHC_SYSCTL_RSTA;
++		if (!val)
++			break;
++	}
++
++	val = esdhc_in32(&mmc->esdhc_regs->sysctl) &
++		(ESDHC_SYSCTL_RSTA);
++	if (val) {
++		ERROR("SD Reset failed\n");
++		return ERROR_ESDHC_BUSY;
++	}
++
++	/* Set initial clock speed */
++	set_speed(mmc, CARD_IDENTIFICATION_FREQ);
++
++	/* Check CINS in prsstat register */
++	val = esdhc_in32(&mmc->esdhc_regs->prsstat) & ESDHC_PRSSTAT_CINS;
++	if (!val) {
++		ERROR("CINS not set in prsstat\n");
++		return ERROR_ESDHC_CARD_DETECT_FAIL;
++	}
++
++	/* Enable controller clock */
++	val = esdhc_in32(&mmc->esdhc_regs->sysctl) | ESDHC_SYSCTL_SDCLKEN;
++	esdhc_out32(&mmc->esdhc_regs->sysctl, val);
++
++	/* Send 80 clock ticks for the card to power up */
++	val = esdhc_in32(&mmc->esdhc_regs->sysctl) | ESDHC_SYSCTL_INITA;
++	esdhc_out32(&mmc->esdhc_regs->sysctl, val);
++
++	start_time = ls_get_timer(0);
++	while (ls_get_timer(start_time) < SD_TIMEOUT) {
++		val = esdhc_in32(&mmc->esdhc_regs->sysctl) & ESDHC_SYSCTL_INITA;
++		if (val)
++			break;
++	}
++
++	val = esdhc_in32(&mmc->esdhc_regs->sysctl) & ESDHC_SYSCTL_INITA;
++	if (!val) {
++		ERROR("Failed to power up the card\n");
++		return ERROR_ESDHC_CARD_DETECT_FAIL;
++	}
++
++	INFO("Card detected successfully\n");
++
++	val = esdhc_in32(&mmc->esdhc_regs->proctl);
++	val = val | (ESDHC_PROCTL_EMODE_LE | ESDHC_PROCTL_DTW_1BIT);
++
++	/* Set little endian mode, set bus width as 1-bit */
++	esdhc_out32(&mmc->esdhc_regs->proctl, val);
++
++	/* Enable cache snooping for DMA transactions */
++	val = esdhc_in32(&mmc->esdhc_regs->ctl) | ESDHC_DCR_SNOOP;
++	esdhc_out32(&mmc->esdhc_regs->ctl, val);
++
++	return 0;
++}
++
++/***************************************************************************
++ * Function    :    esdhc_send_cmd
++ * Arguments   :    mmc - Pointer to mmc struct
++ *                  cmd - Command Number
++ *                  args - Command Args
++ * Return      :    SUCCESS is 0, or Error Code ( < 0)
++ * Description :    Updates the eSDHC registers cmdargs and xfertype
++ ***************************************************************************/
++static int esdhc_send_cmd(struct mmc *mmc, uint32_t cmd, uint32_t args)
++{
++	uint32_t val;
++	unsigned long start_time;
++	uint32_t xfertyp = 0;
++
++	esdhc_out32(&mmc->esdhc_regs->irqstat, ESDHC_IRQSTAT_CLEAR_ALL);
++
++	/*
++	 * Wait for the command line & data line to be free
++	 * (poll the CIHB,CDIHB bit of the present state register)
++	 */
++	start_time = ls_get_timer(0);
++	while (ls_get_timer(start_time) < SD_TIMEOUT_HIGH) {
++		val = esdhc_in32(&mmc->esdhc_regs->prsstat) &
++			(ESDHC_PRSSTAT_CIHB | ESDHC_PRSSTAT_CDIHB);
++		if (!val)
++			break;
++	}
++
++	val = esdhc_in32(&mmc->esdhc_regs->prsstat) &
++		(ESDHC_PRSSTAT_CIHB | ESDHC_PRSSTAT_CDIHB);
++	if (val) {
++		ERROR("SD send cmd: Command Line or Data Line Busy cmd = %x\n",
++				cmd);
++		return ERROR_ESDHC_BUSY;
++	}
++
++	if (cmd == CMD2 || cmd == CMD9)
++		xfertyp |= ESDHC_XFERTYP_RSPTYP_136;
++	else  if (cmd == CMD7 || (cmd == CMD6 && mmc->card.type == MMC_CARD))
++		xfertyp |= ESDHC_XFERTYP_RSPTYP_48_BUSY;
++	else if (cmd != CMD0)
++		xfertyp |= ESDHC_XFERTYP_RSPTYP_48;
++
++	if (cmd == CMD2 || cmd == CMD9)
++		xfertyp |= ESDHC_XFERTYP_CCCEN; /* Command index check enable */
++	else if ((cmd != CMD0) && (cmd != ACMD41) && (cmd != CMD1))
++		xfertyp = xfertyp | ESDHC_XFERTYP_CCCEN | ESDHC_XFERTYP_CICEN;
++
++	if ((cmd == CMD8 || cmd == CMD14 || cmd == CMD19) &&
++			mmc->card.type == MMC_CARD) {
++		xfertyp |=  ESDHC_XFERTYP_DPSEL;
++		if (cmd != CMD19)
++			xfertyp |= ESDHC_XFERTYP_DTDSEL;
++	}
++
++	if (cmd == CMD6 || cmd == CMD17 || cmd == CMD18 || cmd == ACMD51) {
++		if (!(mmc->card.type == MMC_CARD && cmd == CMD6))
++			xfertyp |=
++				(ESDHC_XFERTYP_DPSEL | ESDHC_XFERTYP_DTDSEL);
++		if (cmd == CMD18) {
++			xfertyp |= ESDHC_XFERTYP_BCEN;
++			if (mmc->dma_support)
++				/* Set BCEN of XFERTYP */
++				xfertyp |= ESDHC_XFERTYP_DMAEN;
++		}
++
++		if (cmd == CMD17 && mmc->dma_support)
++			xfertyp |= ESDHC_XFERTYP_DMAEN;
++	}
++
++	xfertyp |= ((cmd & 0x3F) << 24);
++	esdhc_out32(&mmc->esdhc_regs->cmdarg, args);
++	esdhc_out32(&mmc->esdhc_regs->xfertyp, xfertyp);
++
++#ifdef SD_DEBUG
++	INFO("cmd = %d\n", cmd);
++	INFO("args = %x\n", args);
++	INFO("xfertyp: = %x\n", xfertyp);
++#endif
++	return 0;
++}
++
++/***************************************************************************
++ * Function    :    esdhc_wait_response
++ * Arguments   :    mmc - Pointer to mmc struct
++ *                  response - Value updated
++ * Return      :    SUCCESS - Response Received
++ *                  COMMUNICATION_ERROR - Command not Complete
++ *                  COMMAND_ERROR - CIE, CCE or CEBE  error
++ *                  RESP_TIMEOUT - CTOE error
++ * Description :    Checks for successful command completion.
++ *                  Clears the CC bit at the end.
++ ***************************************************************************/
++static int esdhc_wait_response(struct mmc *mmc, uint32_t *response)
++{
++	uint32_t val;
++	unsigned long start_time;
++	uint32_t status = 0;
++
++	/* Wait for the command to complete */
++	start_time = ls_get_timer(0);
++	while (ls_get_timer(start_time) < SD_TIMEOUT_HIGH) {
++		val = esdhc_in32(&mmc->esdhc_regs->irqstat) & ESDHC_IRQSTAT_CC;
++		if (val)
++			break;
++	}
++
++	val = esdhc_in32(&mmc->esdhc_regs->irqstat) & ESDHC_IRQSTAT_CC;
++	if (!val) {
++		ERROR("SD wait_response err: IRQSTAT Command not complete (CC not set)\n");
++		return ERROR_ESDHC_COMMUNICATION_ERROR;
++	}
++
++	status = esdhc_in32(&mmc->esdhc_regs->irqstat);
++
++	/* Check whether the interrupt is a CRC, CTOE or CIE error */
++	if (status & (ESDHC_IRQSTAT_CIE | ESDHC_IRQSTAT_CEBE |
++				ESDHC_IRQSTAT_CCE)) {
++		ERROR("SD wait_response err: IRQSTAT CRC, CEBE or CIE error = %x\n", status);
++		return COMMAND_ERROR;
++	}
++
++	if (status & ESDHC_IRQSTAT_CTOE) {
++		ERROR("SD wait_response err: IRQSTAT CTOE set = %x\n", status);
++		return RESP_TIMEOUT;
++	}
++
++	if (status & ESDHC_IRQSTAT_DMAE) {
++		ERROR("SD wait_response err: IRQSTAT DMAE set = %x\n", status);
++		return ERROR_ESDHC_DMA_ERROR;
++	}
++
++	if (response) {
++		/* Get response values from eSDHC CMDRSPx registers. */
++		response[0] = esdhc_in32(&mmc->esdhc_regs->cmdrsp[0]);
++		response[1] = esdhc_in32(&mmc->esdhc_regs->cmdrsp[1]);
++		response[2] = esdhc_in32(&mmc->esdhc_regs->cmdrsp[2]);
++		response[3] = esdhc_in32(&mmc->esdhc_regs->cmdrsp[3]);
++#ifdef SD_DEBUG
++		INFO("Resp R1 R2 R3 R4\n");
++		INFO("Resp R1 = %x\n", response[0]);
++		INFO("R2 = %x\n", response[1]);
++		INFO("R3 = %x\n", response[2]);
++		INFO("R4 = %x\n", response[3]);
++		INFO("\n");
++#endif
++	}
++
++	/* Clear the CC bit - w1c */
++	val = esdhc_in32(&mmc->esdhc_regs->irqstat) | ESDHC_IRQSTAT_CC;
++	esdhc_out32(&mmc->esdhc_regs->irqstat, val);
++
++	return 0;
++}
++
++/***************************************************************************
++ * Function    :    mmc_switch_to_high_frquency
++ * Arguments   :    mmc - Pointer to mmc struct
++ * Return      :    SUCCESS or Error Code
++ * Description :    mmc card bellow ver 4.0 does not support high speed
++ *                  freq = 20 MHz
++ *                  Send CMD6 (CMD_SWITCH_FUNC) With args 0x03B90100
++ *                  Send CMD13 (CMD_SEND_STATUS)
++ *                  if SWITCH Error, freq = 26 MHz
++ *                  if no error, freq = 52 MHz
++ ***************************************************************************/
++static int mmc_switch_to_high_frquency(struct mmc *mmc)
++{
++	int error;
++	uint32_t response[4];
++	unsigned long start_time;
++
++	mmc->card.bus_freq = MMC_SS_20MHZ;
++	/* mmc card bellow ver 4.0 does not support high speed */
++	if (mmc->card.version < MMC_CARD_VERSION_4_X)
++		return 0;
++
++	/* send switch cmd to change the card to High speed */
++	error = esdhc_send_cmd(mmc, CMD_SWITCH_FUNC, SET_EXT_CSD_HS_TIMING);
++	if (error)
++		return error;
++	error = esdhc_wait_response(mmc, response);
++	if (error)
++		return error;
++
++	start_time = ls_get_timer(0);
++	do {
++		/* check the status for which error */
++		error = esdhc_send_cmd(mmc,
++				CMD_SEND_STATUS, mmc->card.rca << 16);
++		if (error)
++			return error;
++		error = esdhc_wait_response(mmc, response);
++		if (error)
++			return error;
++	} while ((response[0] & SWITCH_ERROR) &&
++			(ls_get_timer(start_time) < SD_TIMEOUT));
++
++	/* Check for the present state of card */
++	if (response[0] & SWITCH_ERROR)
++		mmc->card.bus_freq = MMC_HS_26MHZ;
++	else
++		mmc->card.bus_freq = MMC_HS_52MHZ;
++
++	return 0;
++}
++
++/***************************************************************************
++ * Function    :    esdhc_set_data_attributes
++ * Arguments   :    mmc - Pointer to mmc struct
++ *                  blkcnt
++ *                  blklen
++ * Return      :    SUCCESS or Error Code
++ * Description :    Set block attributes and watermark level register
++ ***************************************************************************/
++static int esdhc_set_data_attributes(struct mmc *mmc, uint32_t *dest_ptr,
++		uint32_t blkcnt, uint32_t blklen)
++{
++	uint32_t val;
++	unsigned long start_time;
++	uint32_t wml;
++	uint32_t wl;
++	uint32_t dst = (uint32_t)((uint64_t)(dest_ptr));
++
++	/* set blkattr when no transactions are executing */
++	start_time = ls_get_timer(0);
++	while (ls_get_timer(start_time) < SD_TIMEOUT_HIGH) {
++		val = esdhc_in32(&mmc->esdhc_regs->prsstat) & ESDHC_PRSSTAT_DLA;
++		if (!val)
++			break;
++	}
++
++	val = esdhc_in32(&mmc->esdhc_regs->prsstat) & ESDHC_PRSSTAT_DLA;
++	if (val) {
++		ERROR("esdhc_set_data_attributes: Data line active. Can't set attribute\n");
++		return ERROR_ESDHC_COMMUNICATION_ERROR;
++	}
++
++	wml = esdhc_in32(&mmc->esdhc_regs->wml);
++	wml &= ~(ESDHC_WML_WR_BRST_MASK | ESDHC_WML_RD_BRST_MASK |
++			ESDHC_WML_RD_WML_MASK | ESDHC_WML_WR_WML_MASK);
++
++	if (mmc->dma_support && dest_ptr) {
++		/* Set burst length to 128 bytes */
++		esdhc_out32(&mmc->esdhc_regs->wml,
++				wml | ESDHC_WML_WR_BRST(BURST_128_BYTES));
++		esdhc_out32(&mmc->esdhc_regs->wml,
++				wml | ESDHC_WML_RD_BRST(BURST_128_BYTES));
++
++		/* Set DMA System Destination Address */
++		esdhc_out32(&mmc->esdhc_regs->dsaddr, dst);
++	} else {
++		wl = (blklen >= BLOCK_LEN_512) ?
++			WML_512_BYTES : ((blklen + 3) / 4);
++		/* Set 'Read Water Mark Level' register */
++		esdhc_out32(&mmc->esdhc_regs->wml, wml | ESDHC_WML_RD_WML(wl));
++	}
++
++	/* Configure block Attributes register */
++	esdhc_out32(&mmc->esdhc_regs->blkattr,
++		ESDHC_BLKATTR_BLKCNT(blkcnt) | ESDHC_BLKATTR_BLKSZE(blklen));
++
++	mmc->block_len = blklen;
++
++	return 0;
++}
++
++/***************************************************************************
++ * Function    :    esdhc_read_data_nodma
++ * Arguments   :    mmc - Pointer to mmc struct
++ *                  dest_ptr - Bufffer where read data is to be copied
++ *                  len - Length of Data to be read
++ * Return      :    SUCCESS or Error Code
++ * Description :    Read data from the sdhc buffer without using DMA
++ *                  and using polling mode
++ ***************************************************************************/
++static int esdhc_read_data_nodma(struct mmc *mmc, void *dest_ptr, uint32_t len)
++{
++	uint32_t i = 0;
++	uint32_t status;
++	uint32_t num_blocks;
++	uint32_t *dst = (uint32_t *)dest_ptr;
++	uint32_t val;
++	unsigned long start_time;
++
++	num_blocks = len / mmc->block_len;
++
++	while (num_blocks--) {
++
++		start_time = ls_get_timer(0);
++		while (ls_get_timer(start_time) < SD_TIMEOUT_HIGH) {
++			val = esdhc_in32(&mmc->esdhc_regs->prsstat) &
++				ESDHC_PRSSTAT_BREN;
++			if (val)
++				break;
++		}
++
++		val = esdhc_in32(&mmc->esdhc_regs->prsstat)
++			& ESDHC_PRSSTAT_BREN;
++		if (!val)
++			return ERROR_ESDHC_COMMUNICATION_ERROR;
++
++		for (i = 0, status = esdhc_in32(&mmc->esdhc_regs->irqstat);
++				i < mmc->block_len / 4;    i++, dst++) {
++			/* get data from data port */
++			val = mmio_read_32((uintptr_t)&mmc->esdhc_regs->datport);
++			esdhc_out32(dst, val);
++			/* Increment destination pointer */
++			status = esdhc_in32(&mmc->esdhc_regs->irqstat);
++		}
++		/* Check whether the interrupt is an DTOE/DCE/DEBE */
++		if (status & (ESDHC_IRQSTAT_DTOE | ESDHC_IRQSTAT_DCE |
++					ESDHC_IRQSTAT_DEBE)) {
++			ERROR("SD read error - DTOE, DCE, DEBE bit set = %x\n", status);
++			return ERROR_ESDHC_COMMUNICATION_ERROR;
++		}
++	}
++
++	/* Wait for TC */
++	start_time = ls_get_timer(0);
++	while (ls_get_timer(start_time) < SD_TIMEOUT_HIGH) {
++		val = esdhc_in32(&mmc->esdhc_regs->irqstat) & ESDHC_IRQSTAT_TC;
++		if (val)
++			break;
++	}
++
++	val = esdhc_in32(&mmc->esdhc_regs->irqstat) & ESDHC_IRQSTAT_TC;
++	if (!val) {
++		ERROR("SD read timeout: Transfer bit not set in IRQSTAT\n");
++		return ERROR_ESDHC_COMMUNICATION_ERROR;
++	}
++
++	return 0;
++}
++
++/***************************************************************************
++ * Function    :    esdhc_read_data_dma
++ * Arguments   :    mmc - Pointer to mmc struct
++ *                  len - Length of Data to be read
++ * Return      :    SUCCESS or Error Code
++ * Description :    Read data from the sd card using DMA.
++ ***************************************************************************/
++static int esdhc_read_data_dma(struct mmc *mmc, uint32_t len)
++{
++	uint32_t status;
++	uint32_t tblk;
++	unsigned long start_time;
++
++	tblk = SD_BLOCK_TIMEOUT * (len / mmc->block_len);
++
++	start_time = ls_get_timer(0);
++
++	/* poll till TC is set */
++	do {
++		status = esdhc_in32(&mmc->esdhc_regs->irqstat);
++
++		if (status & (ESDHC_IRQSTAT_DEBE | ESDHC_IRQSTAT_DCE
++					| ESDHC_IRQSTAT_DTOE)) {
++			ERROR("SD read error - DTOE, DCE, DEBE bit set = %x\n", status);
++			return ERROR_ESDHC_COMMUNICATION_ERROR;
++		}
++
++		if (status & (ESDHC_IRQSTAT_DMAE)) {
++			ERROR("SD read error - DMA error = %x\n", status);
++			return ERROR_ESDHC_DMA_ERROR;
++		}
++
++	} while (!(status & ESDHC_IRQSTAT_TC) &&
++		(esdhc_in32(&mmc->esdhc_regs->prsstat) & ESDHC_PRSSTAT_DLA) &&
++		(ls_get_timer(start_time) < SD_TIMEOUT_HIGH + tblk));
++
++	if (ls_get_timer(start_time) > SD_TIMEOUT_HIGH + tblk) {
++		ERROR("SD read DMA timeout\n");
++		return ERROR_ESDHC_COMMUNICATION_ERROR;
++	}
++
++	return 0;
++}
++
++/***************************************************************************
++ * Function    :    esdhc_read_data
++ * Arguments   :    mmc - Pointer to mmc struct
++ *                  dest_ptr - Bufffer where read data is to be copied
++ *                  len - Length of Data to be read
++ * Return      :    SUCCESS or Error Code
++ * Description :    Calls esdhc_read_data_nodma and clear interrupt status
++ ***************************************************************************/
++int esdhc_read_data(struct mmc *mmc, void *dest_ptr, uint32_t len)
++{
++	int ret;
++
++	if (mmc->dma_support && len > 64)
++		ret = esdhc_read_data_dma(mmc, len);
++	else
++		ret = esdhc_read_data_nodma(mmc, dest_ptr, len);
++
++	/* clear interrupt status */
++	esdhc_out32(&mmc->esdhc_regs->irqstat, ESDHC_IRQSTAT_CLEAR_ALL);
++
++	return ret;
++}
++
++/***************************************************************************
++ * Function    :    sd_switch_to_high_freq
++ * Arguments   :    mmc - Pointer to mmc struct
++ * Return      :    SUCCESS or Error Code
++ * Description :    1. Send ACMD51 (CMD_SEND_SCR)
++ *                  2. Read the SCR to check if card supports higher freq
++ *                  3. check version from SCR
++ *                  4. If SD 1.0, return (no Switch) freq = 25 MHz.
++ *                  5. Send CMD6 (CMD_SWITCH_FUNC) with args 0x00FFFFF1 to
++ *                     check the status of switch func
++ *                  6. Send CMD6 (CMD_SWITCH_FUNC) With args 0x80FFFFF1 to
++ *                     switch to high frequency = 50 Mhz
++ ***************************************************************************/
++static int sd_switch_to_high_freq(struct mmc *mmc)
++{
++	int err;
++	uint8_t scr[8];
++	uint8_t status[64];
++	uint32_t response[4];
++	uint32_t version;
++	uint32_t count;
++	uint32_t sd_versions[] = {SD_CARD_VERSION_1_0, SD_CARD_VERSION_1_10,
++		SD_CARD_VERSION_2_0};
++
++	mmc->card.bus_freq = SD_SS_25MHZ;
++	/* Send Application command */
++	err = esdhc_send_cmd(mmc, CMD_APP_CMD, mmc->card.rca << 16);
++	if (err)
++		return err;
++
++	err = esdhc_wait_response(mmc, response);
++	if (err)
++		return err;
++
++	esdhc_set_data_attributes(mmc, NULL, 1, 8);
++	/* Read the SCR to find out if this card supports higher speeds */
++	err = esdhc_send_cmd(mmc, CMD_SEND_SCR,  mmc->card.rca << 16);
++	if (err)
++		return err;
++	err = esdhc_wait_response(mmc, response);
++	if (err)
++		return err;
++
++	/* read 8 bytes of scr data */
++	err = esdhc_read_data(mmc, scr, 8);
++	if (err)
++		return ERROR_ESDHC_COMMUNICATION_ERROR;
++
++	/* check version from SCR */
++	version = scr[0] & 0xF;
++	if (version <= 2)
++		mmc->card.version = sd_versions[version];
++	else
++		mmc->card.version = SD_CARD_VERSION_2_0;
++
++	/* does not support switch func */
++	if (mmc->card.version == SD_CARD_VERSION_1_0)
++		return 0;
++
++	/* read 64 bytes of status */
++	esdhc_set_data_attributes(mmc, NULL, 1, 64);
++
++	/* check the status of switch func */
++	for (count = 0; count < 4; count++) {
++		err = esdhc_send_cmd(mmc, CMD_SWITCH_FUNC,
++				SD_SWITCH_FUNC_CHECK_MODE);
++		if (err)
++			return err;
++		err = esdhc_wait_response(mmc, response);
++		if (err)
++			return err;
++		/* read 64 bytes of scr data */
++		err = esdhc_read_data(mmc, status, 64);
++		if (err)
++			return ERROR_ESDHC_COMMUNICATION_ERROR;
++
++		if (!(status[29] & SD_SWITCH_FUNC_HIGH_SPEED))
++			break;
++	}
++
++	if (!(status[13] & SD_SWITCH_FUNC_HIGH_SPEED))
++		return 0;
++
++	/* SWITCH */
++	esdhc_set_data_attributes(mmc, NULL, 1, 64);
++	err = esdhc_send_cmd(mmc, CMD_SWITCH_FUNC, SD_SWITCH_FUNC_SWITCH_MODE);
++	if (err)
++		return err;
++	err = esdhc_wait_response(mmc, response);
++	if (err)
++		return err;
++
++	err = esdhc_read_data(mmc, status, 64);
++	if (err)
++		return ERROR_ESDHC_COMMUNICATION_ERROR;
++
++	if ((status[16]) == 0x01)
++		mmc->card.bus_freq = SD_HS_50MHZ;
++
++	return 0;
++}
++
++/***************************************************************************
++ * Function    :    change_state_to_transfer_state
++ * Arguments   :    mmc - Pointer to mmc struct
++ * Return      :    SUCCESS or Error Code
++ * Description :    1. Send CMD7 (CMD_SELECT_CARD) to toggles the card
++ *                     between stand-by and transfer state
++ *                  2. Send CMD13 (CMD_SEND_STATUS) to check state as
++ *                     Transfer State
++ ***************************************************************************/
++static int change_state_to_transfer_state(struct mmc *mmc)
++{
++	int error = 0;
++	uint32_t response[4];
++	unsigned long start_time;
++
++	/*
++	 * Command CMD_SELECT_CARD/CMD7 toggles the card between stand-by
++	 * and transfer states
++	 */
++	error = esdhc_send_cmd(mmc, CMD_SELECT_CARD, mmc->card.rca << 16);
++	if (error)
++		return error;
++	error = esdhc_wait_response(mmc, response);
++	if (error)
++		return error;
++
++	start_time = ls_get_timer(0);
++	while (ls_get_timer(start_time) < SD_TIMEOUT_HIGH) {
++		/* send CMD13 to check card status */
++		error = esdhc_send_cmd(mmc, CMD_SEND_STATUS, mmc->card.rca << 16);
++		if (error)
++			return error;
++		error = esdhc_wait_response(mmc, response);
++		if (error || (response[0] & R1_ERROR))
++			return error;
++
++		/* Check for the present state of card */
++		if (((response[0] >> 9) & 0xF) == STATE_TRAN)
++			break;
++	}
++	if (((response[0] >> 9) & 0xF) == STATE_TRAN)
++		return 0;
++	else
++		return ERROR_ESDHC_COMMUNICATION_ERROR;
++}
++
++/***************************************************************************
++ * Function    :    get_cid_rca_csd
++ * Arguments   :    mmc - Pointer to mmc struct
++ * Return      :    SUCCESS or Error Code
++ * Description :    1. Send CMD2 (CMD_ALL_SEND_CID)
++ *                  2. get RCA for SD cards, set rca for mmc cards
++ *                     Send CMD3 (CMD_SEND_RELATIVE_ADDR)
++ *                  3. Send CMD9 (CMD_SEND_CSD)
++ *                  4. Get MMC Version from CSD
++ ***************************************************************************/
++static int get_cid_rca_csd(struct mmc *mmc)
++{
++	int err;
++	uint32_t version;
++	uint32_t response[4];
++	uint32_t mmc_version[] = {MMC_CARD_VERSION_1_2, MMC_CARD_VERSION_1_4,
++		MMC_CARD_VERSION_2_X, MMC_CARD_VERSION_3_X,
++		MMC_CARD_VERSION_4_X};
++
++	err = esdhc_send_cmd(mmc, CMD_ALL_SEND_CID, 0);
++	if (err)
++		return err;
++	err = esdhc_wait_response(mmc, response);
++	if (err)
++		return err;
++
++	/* get RCA for SD cards, set rca for mmc cards */
++	mmc->card.rca = SD_MMC_CARD_RCA;
++
++	/* send RCA cmd */
++	err = esdhc_send_cmd(mmc, CMD_SEND_RELATIVE_ADDR, mmc->card.rca << 16);
++	if (err)
++		return err;
++	err = esdhc_wait_response(mmc, response);
++	if (err)
++		return err;
++
++	/* for SD, get the the RCA */
++	if (mmc->card.type == SD_CARD)
++		mmc->card.rca = (response[0] >> 16) & 0xFFFF;
++
++	/* Get the CSD (card specific data) from card. */
++	err = esdhc_send_cmd(mmc, CMD_SEND_CSD, mmc->card.rca << 16);
++	if (err)
++		return err;
++	err = esdhc_wait_response(mmc, response);
++	if (err)
++		return err;
++
++	version = (response[3] >> 18) & 0xF;
++	if (mmc->card.type == MMC_CARD) {
++		if (version <= MMC_CARD_VERSION_4_X)
++			mmc->card.version = mmc_version[version];
++		else
++			mmc->card.version = MMC_CARD_VERSION_4_X;
++	}
++
++	mmc->card.block_len = 1 << ((response[2] >> 8) & 0xF);
++
++	if (mmc->card.block_len > BLOCK_LEN_512)
++		mmc->card.block_len = BLOCK_LEN_512;
++
++	return 0;
++}
++
++/***************************************************************************
++ * Function    :    identify_mmc_card
++ * Arguments   :    mmc - Pointer to mmc struct
++ * Return      :    SUCCESS or Error Code
++ * Description :    1. Send Reset Command
++ *                  2. Send CMD1 with args to set voltage range and Sector
++ *                     Mode. (Voltage Args = 0xFF8)
++ *                  3. Check the OCR Response
++ ***************************************************************************/
++static int identify_mmc_card(struct mmc *mmc)
++{
++	unsigned long start_time;
++	uint32_t resp[4];
++	int ret;
++	uint32_t args;
++
++	/* card reset */
++	ret = esdhc_send_cmd(mmc, CMD_GO_IDLE_STATE, 0);
++	if (ret)
++		return ret;
++	ret = esdhc_wait_response(mmc, resp);
++	if (ret)
++		return ret;
++
++	/*
++	 * Send CMD1 to get the ocr value repeatedly till the card
++	 * busy is clear. timeout = 20sec
++	 */
++
++	start_time = ls_get_timer(0);
++	do {
++		/* set the bits for the voltage ranges supported by host */
++		args = mmc->voltages_caps | MMC_OCR_SECTOR_MODE;
++		ret = esdhc_send_cmd(mmc, CMD_MMC_SEND_OP_COND, args);
++		if (ret)
++			return ret;
++		ret = esdhc_wait_response(mmc, resp);
++		if (ret)
++			return ERROR_ESDHC_UNUSABLE_CARD;
++	} while ((!(resp[0] & MMC_OCR_BUSY)) &&
++			(ls_get_timer(start_time) < SD_TIMEOUT_HIGH));
++
++	if (ls_get_timer(start_time) > SD_TIMEOUT_HIGH)
++		return ERROR_ESDHC_UNUSABLE_CARD;
++
++	if ((resp[0] & MMC_OCR_CCS) == MMC_OCR_CCS)
++		mmc->card.is_high_capacity = 1;
++
++	return MMC_CARD;
++}
++
++/***************************************************************************
++ * Function    :    check_for_sd_card
++ * Arguments   :    mmc - Pointer to mmc struct
++ * Return      :    SUCCESS or Error Code
++ * Description :    1. Send Reset Command
++ *                  2. Send CMD8 with pattern 0xAA (to check for SD 2.0)
++ *                  3. Send ACMD41 with args to set voltage range and HCS
++ *                     HCS is set only for SD Card > 2.0
++ *                     Voltage Caps = 0xFF8
++ *                  4. Check the OCR Response
++ ***************************************************************************/
++static int check_for_sd_card(struct mmc *mmc)
++{
++	unsigned long start_time;
++	uint32_t args;
++	int  ret;
++	uint32_t resp[4];
++
++	/*  Send reset command */
++	ret = esdhc_send_cmd(mmc, CMD_GO_IDLE_STATE, 0);
++	if (ret)
++		return ret;
++	ret = esdhc_wait_response(mmc, resp);
++	if (ret)
++		return ret;
++
++	/* send CMD8 with  pattern 0xAA */
++	args = MMC_VDD_HIGH_VOLTAGE | 0xAA;
++	ret = esdhc_send_cmd(mmc, CMD_SEND_IF_COND, args);
++	if (ret)
++		return ret;
++	ret = esdhc_wait_response(mmc, resp);
++	if (ret == RESP_TIMEOUT) /* sd ver 1.x or not sd */
++		mmc->card.is_high_capacity = 0;
++	else if ((resp[0] & 0xFF) == 0xAA) /* ver 2.0 or later */
++		mmc->card.version = SD_CARD_VERSION_2_0;
++	else
++		return  NOT_SD_CARD;
++
++	/*
++	 * Send Application command-55 to get the ocr value repeatedly till
++	 * the card busy is clear. timeout = 20sec
++	 */
++
++	start_time = ls_get_timer(0);
++	do {
++		ret = esdhc_send_cmd(mmc, CMD_APP_CMD, 0);
++		if (ret)
++			return ret;
++		ret = esdhc_wait_response(mmc, resp);
++		if (ret == COMMAND_ERROR)
++			return ERROR_ESDHC_UNUSABLE_CARD;
++
++		/* set the bits for the voltage ranges supported by host */
++		args = mmc->voltages_caps;
++		if (mmc->card.version == SD_CARD_VERSION_2_0)
++			args |= SD_OCR_HCS;
++
++		/* Send ACMD41 to set voltage range */
++		ret = esdhc_send_cmd(mmc, CMD_SD_SEND_OP_COND, args);
++		if (ret)
++			return ret;
++		ret = esdhc_wait_response(mmc, resp);
++		if (ret == COMMAND_ERROR)
++			return ERROR_ESDHC_UNUSABLE_CARD;
++		else if (ret == RESP_TIMEOUT)
++			return NOT_SD_CARD;
++	} while ((!(resp[0] & MMC_OCR_BUSY)) &&
++			(ls_get_timer(start_time) < SD_TIMEOUT_HIGH));
++
++	if (ls_get_timer(start_time) > SD_TIMEOUT_HIGH) {
++		INFO("SD_TIMEOUT_HIGH\n");
++		return ERROR_ESDHC_UNUSABLE_CARD;
++	}
++
++	/* bit set in card capacity status */
++	if ((resp[0] & MMC_OCR_CCS) == MMC_OCR_CCS)
++		mmc->card.is_high_capacity = 1;
++
++	return SD_CARD;
++}
++
++/***************************************************************************
++ * Function    :    esdhc_emmc_init
++ * Arguments   :    mmc - Pointer to mmc struct
++ *                  src_emmc - Flag to Indicate SRC as emmc
++ * Return      :    SUCCESS or Error Code (< 0)
++ * Description :    Base Function called from sd_mmc_init or emmc_init
++ ***************************************************************************/
++int esdhc_emmc_init(struct mmc *mmc, uint32_t src_emmc)
++{
++	int error = 0;
++	int ret = 0;
++
++	error = esdhc_init(mmc, src_emmc);
++	if (error)
++		return error;
++
++	mmc->card.bus_freq = CARD_IDENTIFICATION_FREQ;
++	mmc->card.rca = 0;
++	mmc->card.is_high_capacity = 0;
++	mmc->card.type = ERROR_ESDHC_UNUSABLE_CARD;
++
++	/*
++	 * Set Voltage caps as FF8 i.e all supported
++	 * high voltage bits 2.7 - 3.6
++	 */
++	mmc->voltages_caps = MMC_OCR_VDD_FF8;
++
++#ifdef SD_DMA_CAPABILITY
++	/* Getting host DMA capabilities. */
++	mmc->dma_support = esdhc_in32(&mmc->esdhc_regs->hostcapblt) &
++					ESDHC_HOSTCAPBLT_DMAS;
++#else
++	mmc->dma_support = 0;
++#endif
++
++	ret = NOT_SD_CARD;
++	/* If SRC is not EMMC, check for SD or MMC */
++	if (src_emmc == 0)
++		ret = check_for_sd_card(mmc);
++	switch (ret) {
++	case SD_CARD:
++		mmc->card.type = SD_CARD;
++		break;
++
++	case NOT_SD_CARD:
++		/* try for MMC card */
++		if (identify_mmc_card(mmc) == MMC_CARD)
++			mmc->card.type = MMC_CARD;
++		else
++			return ERROR_ESDHC_UNUSABLE_CARD;
++		break;
++
++	default:
++		return ERROR_ESDHC_UNUSABLE_CARD;
++	}
++
++	/* get CID, RCA and CSD. For MMC, set the rca */
++	error = get_cid_rca_csd(mmc);
++	if (error)
++		return ERROR_ESDHC_COMMUNICATION_ERROR;
++
++	/* change state to Transfer mode */
++	error = change_state_to_transfer_state(mmc);
++	if (error)
++		return ERROR_ESDHC_COMMUNICATION_ERROR;
++
++	/* change to high frequency if supported */
++	if (mmc->card.type == SD_CARD)
++		error = sd_switch_to_high_freq(mmc);
++	else
++		error = mmc_switch_to_high_frquency(mmc);
++	if (error)
++		return ERROR_ESDHC_COMMUNICATION_ERROR;
++
++	/*
++	 * mmc: 20000000, 26000000, 52000000
++	 * sd: 25000000, 50000000
++	 */
++	set_speed(mmc, mmc->card.bus_freq);
++
++	return 0;
++}
++
++/***************************************************************************
++ * Function    :    sd_mmc_init
++ * Arguments   :    mmc - Pointer to mmc struct
++ * Return      :    SUCCESS or Error Code
++ * Description :    Base Function called via hal_init for SD/MMC
++ *                  initialization
++ ***************************************************************************/
++int sd_mmc_init(void)
++{
++	struct mmc *mmc = NULL;
++	uint32_t src_emmc = 0;
++	int ret;
++
++	mmc = &mmc_drv_data;
++	memset(mmc, 0, sizeof(struct mmc));
++	mmc->esdhc_regs = (struct esdhc_regs *)ESDHC_BASE_ADDR;
++
++	ret = esdhc_emmc_init(mmc, src_emmc);
++	return ret;
++}
++
++/***************************************************************************
++ * Function    :    emmc_init
++ * Arguments   :    mmc - Pointer to mmc struct
++ * Return      :    SUCCESS or Error Code
++ * Description :    Base Function called via hal_init for eMMC
++ *                  initialization
++ ***************************************************************************/
++int emmc_init(void *b)
++{
++	struct mmc *mmc = NULL;
++	uint32_t src_emmc = 1;
++	int ret;
++
++	mmc = (struct mmc *)b;
++	memset(mmc, 0, sizeof(struct mmc));
++	mmc->esdhc_regs = (struct esdhc_regs *)ESDHC_BASE_ADDR;
++
++	ret = esdhc_emmc_init(mmc, src_emmc);
++	return ret;
++}
++
++/***************************************************************************
++ * Function    :    esdhc_read_block
++ * Arguments   :    mmc - Pointer to mmc struct
++ *                  dst - Destination Pointer
++ *                  block - Block Number
++ * Return      :    SUCCESS or Error Code
++ * Description :    Read a Single block to Destination Pointer
++ *                  1. Send CMD16 (CMD_SET_BLOCKLEN) with args as blocklen
++ *                  2. Send CMD17 (CMD_READ_SINGLE_BLOCK) with args offset
++ ***************************************************************************/
++static int esdhc_read_block(struct mmc *mmc, void *dst, uint32_t block)
++{
++	uint32_t offset;
++	int err;
++
++	/* send cmd16 to set the block size. */
++	err = esdhc_send_cmd(mmc, CMD_SET_BLOCKLEN, mmc->card.block_len);
++	if (err)
++		return err;
++	err = esdhc_wait_response(mmc, NULL);
++	if (err)
++		return ERROR_ESDHC_COMMUNICATION_ERROR;
++
++	if (mmc->card.is_high_capacity)
++		offset = block;
++	else
++		offset = block * mmc->card.block_len;
++
++	esdhc_set_data_attributes(mmc, dst, 1, mmc->card.block_len);
++	err = esdhc_send_cmd(mmc, CMD_READ_SINGLE_BLOCK, offset);
++	if (err)
++		return err;
++	err = esdhc_wait_response(mmc, NULL);
++	if (err)
++		return err;
++
++	err = esdhc_read_data(mmc, dst, mmc->card.block_len);
++
++	return err;
++}
++
++/***************************************************************************
++ * Function    :    esdhc_read
++ * Arguments   :    src_offset - offset on sd/mmc to read from. Should be block
++ *		    size aligned
++ *                  dst - Destination Pointer
++ *                  size - Length of Data ( Multiple of block size)
++ * Return      :    SUCCESS or Error Code
++ * Description :    Calls esdhc_read_block repeatedly for reading the
++ *                  data.
++ ***************************************************************************/
++int esdhc_read(uint32_t src_offset, uint8_t *dst, uint32_t size)
++{
++	int error = 0;
++	uint32_t blk, num_blocks;
++	struct mmc *mmc = &mmc_drv_data;
++	uint8_t *buff = dst;
++
++	mmc->esdhc_regs = (struct esdhc_regs *)ESDHC_BASE_ADDR;
++
++	/* check for size */
++	if (size == 0)
++		return 0;
++
++	if ((size % mmc->card.block_len) != 0) {
++		ERROR("Size is not block aligned\n");
++		return -1;
++	}
++
++	if ((src_offset % mmc->card.block_len) != 0) {
++		ERROR("Size is not block aligned\n");
++		return -1;
++	}
++
++	/* start block */
++	blk = src_offset / mmc->card.block_len;
++
++	/* Number of blocks to be read */
++	num_blocks = size / mmc->card.block_len;
++
++	while (num_blocks) {
++		error = esdhc_read_block(mmc, buff, blk);
++		if (error) {
++			ERROR("Read error = %x\n", error);
++			return error;
++		}
++
++		buff = buff + mmc->card.block_len;
++		blk++;
++		num_blocks--;
++	}
++
++	return error;
++}
++
++
++
++int sd_load_fip_image(void)
++{
++	uint8_t *fip_data = (uint8_t *)LOAD_FIP_IN_DDR_BASE;
++	int ret = 0;
++
++	ret = sd_mmc_init();
++	if (ret != 0) {
++		ERROR("sd_mmc_init error\n");
++		return ret;
++	}
++	memset((void *)fip_data, 0, LS_FIP_SD_BLOCK_NUMS * BLOCK_LEN_512);
++	ret = esdhc_read(BLOCK_LEN_512 * LS_FIP_SD_START_BLOCK, fip_data,
++			BLOCK_LEN_512 * LS_FIP_SD_BLOCK_NUMS);
++	if (ret != 0) {
++		ERROR("sd read error\n");
++		return ret;
++	}
++
++	return 0;
++}
+-- 
+1.7.1
+

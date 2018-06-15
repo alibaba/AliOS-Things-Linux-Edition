@@ -1,0 +1,33 @@
+From 7c171c1813651a3a02ad2cda361b42ebc7ce324d Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Sat, 12 Aug 2017 10:34:19 -0700
+Subject: [PATCH 1/2] Disable address-of-packed-member warning
+
+Clang complains so make it happy
+
+loaders/bzimage/bzimage.c:346:55: error: taking address of packed member 'base' of class or structure 'dt_addr_t' may result in an unaligned pointer value [-Werror,-Waddress-of-packed-member]
+        err = emalloc(gdt.limit, 8, (EFI_PHYSICAL_ADDRESS *)&gdt.base);
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+Upstream-Status: Pending
+
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index a955e34..ff1b79b 100644
+--- a/Makefile
++++ b/Makefile
+@@ -61,7 +61,7 @@ ifeq ($(ARCH),ia32)
+ 	endif
+ endif
+ ifeq ($(ARCH),x86_64)
+-	CFLAGS += -mno-red-zone
++	CFLAGS += -mno-red-zone -Wno-address-of-packed-member
+ endif
+ 
+ LDFLAGS=-T $(LDSCRIPT) -Bsymbolic -shared -nostdlib -znocombreloc \
+-- 
+2.14.1
+

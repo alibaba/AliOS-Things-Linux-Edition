@@ -1,0 +1,190 @@
+From 9deefc4b19b720c89dcbe60ed9a477e4685b5c95 Mon Sep 17 00:00:00 2001
+From: Pan Jiafei <Jiafei.Pan@nxp.com>
+Date: Wed, 13 Dec 2017 13:08:09 +0800
+Subject: [PATCH 3/4] layerscape: atf: move some platform feature
+ initialization to ATF
+
+This patch move some Layerscape Socs feature initialization to
+trusted firmware, includes:
+- disable data coherency with other cores in cluster
+- repartition mmu table
+- reserve 64M secure memory to ATF
+- remove A53 core errata
+
+Signed-off-by: Pan Jiafei <Jiafei.Pan@nxp.com>
+---
+ arch/arm/cpu/armv8/fsl-layerscape/Kconfig         |  4 +++-
+ arch/arm/cpu/armv8/fsl-layerscape/cpu.c           |  6 +++++-
+ arch/arm/cpu/armv8/start.S                        |  2 +-
+ arch/arm/include/asm/arch-fsl-layerscape/config.h |  5 +++++
+ arch/arm/include/asm/arch-fsl-layerscape/cpu.h    | 12 ++++++++++--
+ include/configs/ls1043a_common.h                  |  2 ++
+ 6 files changed, 26 insertions(+), 5 deletions(-)
+
+diff --git a/arch/arm/cpu/armv8/fsl-layerscape/Kconfig b/arch/arm/cpu/armv8/fsl-layerscape/Kconfig
+index 2192c21..fb8d686 100644
+--- a/arch/arm/cpu/armv8/fsl-layerscape/Kconfig
++++ b/arch/arm/cpu/armv8/fsl-layerscape/Kconfig
+@@ -15,7 +15,6 @@ config ARCH_LS1012A
+ 
+ config ARCH_LS1043A
+ 	bool
+-	select ARMV8_SET_SMPEN
+ 	select ARM_ERRATA_855873
+ 	select FSL_LSCH2
+ 	select SYS_FSL_DDR
+@@ -183,6 +182,9 @@ config ATF
+ 	  Trusted Firmware-A(TF-A) provides a reference implementation of
+ 	  secure world software for Armv7-A and Armv8-A.
+ 
++config EARLY_MMU_TABLE_BASE
++	hex
++
+ menu "Layerscape PPA"
+ config FSL_LS_PPA
+ 	bool "FSL Layerscape PPA firmware support"
+diff --git a/arch/arm/cpu/armv8/fsl-layerscape/cpu.c b/arch/arm/cpu/armv8/fsl-layerscape/cpu.c
+index 04c4736..ba99941 100644
+--- a/arch/arm/cpu/armv8/fsl-layerscape/cpu.c
++++ b/arch/arm/cpu/armv8/fsl-layerscape/cpu.c
+@@ -78,7 +78,11 @@ static inline void early_mmu_setup(void)
+ 	unsigned int el = current_el();
+ 
+ 	/* global data is already setup, no allocation yet */
++#ifdef CONFIG_ATF
++	gd->arch.tlb_addr = CONFIG_EARLY_MMU_TABLE_BASE;
++#else
+ 	gd->arch.tlb_addr = CONFIG_SYS_FSL_OCRAM_BASE;
++#endif
+ 	gd->arch.tlb_fillptr = gd->arch.tlb_addr;
+ 	gd->arch.tlb_size = EARLY_PGTABLE_SIZE;
+ 
+@@ -919,7 +923,7 @@ __weak int dram_init(void)
+ {
+ 	fsl_initdram();
+ #ifndef CONFIG_SYS_DCACHE_OFF
+-#if !defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD)
++#if (!defined(CONFIG_SPL) || defined(CONFIG_SPL_BUILD)) & !defined(CONFIG_ATF)
+ 	/* This will break-before-make MMU for DDR */
+ 	update_early_mmu_table();
+ #endif
+diff --git a/arch/arm/cpu/armv8/start.S b/arch/arm/cpu/armv8/start.S
+index ed15c7f..3db1452 100644
+--- a/arch/arm/cpu/armv8/start.S
++++ b/arch/arm/cpu/armv8/start.S
+@@ -183,7 +183,7 @@ WEAK(apply_core_errata)
+ 
+ apply_a53_core_errata:
+ 
+-#ifdef CONFIG_ARM_ERRATA_855873
++#if defined(CONFIG_ARM_ERRATA_855873) && !defined(CONFIG_ATF)
+ 	mrs	x0, midr_el1
+ 	and	x0, x0, #0xf
+ 	cmp	x0, #3
+diff --git a/arch/arm/include/asm/arch-fsl-layerscape/config.h b/arch/arm/include/asm/arch-fsl-layerscape/config.h
+index 95e2791..55b8677 100644
+--- a/arch/arm/include/asm/arch-fsl-layerscape/config.h
++++ b/arch/arm/include/asm/arch-fsl-layerscape/config.h
+@@ -16,7 +16,12 @@
+  * Reserve secure memory
+  * To be aligned with MMU block size
+  */
++#ifdef CONFIG_ATF
++/* Only reserve 64 MB secure memory for ATF */
++#define CONFIG_SYS_MEM_RESERVE_SECURE	(64 * 1024 * 1024)	/* 64MB */
++#else
+ #define CONFIG_SYS_MEM_RESERVE_SECURE	(66 * 1024 * 1024)	/* 66MB */
++#endif
+ #define SPL_TLB_SETBACK	0x1000000	/* 16MB under effective memory top */
+ 
+ #ifdef CONFIG_ARCH_LS2080A
+diff --git a/arch/arm/include/asm/arch-fsl-layerscape/cpu.h b/arch/arm/include/asm/arch-fsl-layerscape/cpu.h
+index a0dac86..9d61ac3 100644
+--- a/arch/arm/include/asm/arch-fsl-layerscape/cpu.h
++++ b/arch/arm/include/asm/arch-fsl-layerscape/cpu.h
+@@ -99,10 +99,12 @@ static struct mm_region early_map[] = {
+ 	  PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+ 	  PTE_BLOCK_NON_SHARE | PTE_BLOCK_PXN | PTE_BLOCK_UXN
+ 	},
++#if !defined(CONFIG_ATF)
+ 	{ CONFIG_SYS_FSL_OCRAM_BASE, CONFIG_SYS_FSL_OCRAM_BASE,
+ 	  SYS_FSL_OCRAM_SPACE_SIZE,
+ 	  PTE_BLOCK_MEMTYPE(MT_NORMAL) | PTE_BLOCK_NON_SHARE
+ 	},
++#endif
+ 	{ CONFIG_SYS_FSL_QSPI_BASE1, CONFIG_SYS_FSL_QSPI_BASE1,
+ 	  CONFIG_SYS_FSL_QSPI_SIZE1,
+ 	  PTE_BLOCK_MEMTYPE(MT_NORMAL) | PTE_BLOCK_NON_SHARE},
+@@ -122,7 +124,7 @@ static struct mm_region early_map[] = {
+ 	},
+ 	{ CONFIG_SYS_FSL_DRAM_BASE1, CONFIG_SYS_FSL_DRAM_BASE1,
+ 	  CONFIG_SYS_FSL_DRAM_SIZE1,
+-#if defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)
++#if (defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)) || defined(CONFIG_ATF)
+ 	  PTE_BLOCK_MEMTYPE(MT_NORMAL) |
+ #else	/* Start with nGnRnE and PXN and UXN to prevent speculative access */
+ 	  PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) | PTE_BLOCK_PXN | PTE_BLOCK_UXN |
+@@ -150,10 +152,12 @@ static struct mm_region early_map[] = {
+ 	  PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+ 	  PTE_BLOCK_NON_SHARE | PTE_BLOCK_PXN | PTE_BLOCK_UXN
+ 	},
++#if !defined(CONFIG_ATF)
+ 	{ CONFIG_SYS_FSL_OCRAM_BASE, CONFIG_SYS_FSL_OCRAM_BASE,
+ 	  SYS_FSL_OCRAM_SPACE_SIZE,
+ 	  PTE_BLOCK_MEMTYPE(MT_NORMAL) | PTE_BLOCK_NON_SHARE
+ 	},
++#endif
+ 	{ CONFIG_SYS_FSL_DCSR_BASE, CONFIG_SYS_FSL_DCSR_BASE,
+ 	  CONFIG_SYS_FSL_DCSR_SIZE,
+ 	  PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+@@ -169,7 +173,7 @@ static struct mm_region early_map[] = {
+ 	},
+ 	{ CONFIG_SYS_FSL_DRAM_BASE1, CONFIG_SYS_FSL_DRAM_BASE1,
+ 	  CONFIG_SYS_FSL_DRAM_SIZE1,
+-#if defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)
++#if (defined(CONFIG_SPL) && !defined(CONFIG_SPL_BUILD)) || defined(CONFIG_ATF)
+ 	  PTE_BLOCK_MEMTYPE(MT_NORMAL) |
+ #else	/* Start with nGnRnE and PXN and UXN to prevent speculative access */
+ 	  PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) | PTE_BLOCK_PXN | PTE_BLOCK_UXN |
+@@ -192,10 +196,12 @@ static struct mm_region final_map[] = {
+ 	  PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+ 	  PTE_BLOCK_NON_SHARE | PTE_BLOCK_PXN | PTE_BLOCK_UXN
+ 	},
++#if !defined(CONFIG_ATF)
+ 	{ CONFIG_SYS_FSL_OCRAM_BASE, CONFIG_SYS_FSL_OCRAM_BASE,
+ 	  SYS_FSL_OCRAM_SPACE_SIZE,
+ 	  PTE_BLOCK_MEMTYPE(MT_NORMAL) | PTE_BLOCK_NON_SHARE
+ 	},
++#endif
+ 	{ CONFIG_SYS_FSL_DRAM_BASE1, CONFIG_SYS_FSL_DRAM_BASE1,
+ 	  CONFIG_SYS_FSL_DRAM_SIZE1,
+ 	  PTE_BLOCK_MEMTYPE(MT_NORMAL) |
+@@ -296,10 +302,12 @@ static struct mm_region final_map[] = {
+ 	  PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+ 	  PTE_BLOCK_NON_SHARE | PTE_BLOCK_PXN | PTE_BLOCK_UXN
+ 	},
++#if !defined(CONFIG_ATF)
+ 	{ CONFIG_SYS_FSL_OCRAM_BASE, CONFIG_SYS_FSL_OCRAM_BASE,
+ 	  SYS_FSL_OCRAM_SPACE_SIZE,
+ 	  PTE_BLOCK_MEMTYPE(MT_NORMAL) | PTE_BLOCK_NON_SHARE
+ 	},
++#endif
+ 	{ CONFIG_SYS_FSL_DCSR_BASE, CONFIG_SYS_FSL_DCSR_BASE,
+ 	  CONFIG_SYS_FSL_DCSR_SIZE,
+ 	  PTE_BLOCK_MEMTYPE(MT_DEVICE_NGNRNE) |
+diff --git a/include/configs/ls1043a_common.h b/include/configs/ls1043a_common.h
+index 9cf6005..af5b6bb 100644
+--- a/include/configs/ls1043a_common.h
++++ b/include/configs/ls1043a_common.h
+@@ -41,6 +41,8 @@
+ #define CONFIG_SYS_INIT_SP_ADDR		(CONFIG_SYS_FSL_OCRAM_BASE + 0xfff0)
+ #endif
+ 
++#define CONFIG_EARLY_MMU_TABLE_BASE	0x84000000
++
+ #define CONFIG_SUPPORT_RAW_INITRD
+ 
+ #define CONFIG_SKIP_LOWLEVEL_INIT
+-- 
+1.8.3.1
+

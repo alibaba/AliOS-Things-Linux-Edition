@@ -1,0 +1,75 @@
+
+1. Feature List:
+
+This Yocto release support NXP layerscape ls1043ardb platform, it include the following features:
+1). Linux version: 4.9.49
+2). Uboot version: 2017.07
+3). Support ARM Trusted Firmware (TF-A) v1.5
+4). Support OPTee OS v2.6
+4). Support Nor boot and SD boot
+5). Support Ethernet, PCIe, USB, SD, I2C and DSPI drivers.
+
+2. How to Build Images
+
+1) untar the yocto tar ball:
+
+tar -zxvf alios-bsp-sdk-ls1043a-atf.tar.gz
+
+2) cd alios-bsp-sdk-ls1043a-atf
+
+3) Refer to meta-bsp/meta-freescale/README_ls1043ardb to build the images
+	$: . ./oe-init-build-env
+	$: cp ../meta-bsp/meta-freescale/local_ls1043ardb.conf  conf/local.conf
+	$: cp ../meta-bsp/meta-freescale/bblayers_ls1043ardb.conf conf/bblayers.conf
+	$: bitbake core-image-minimal
+
+4) Then you can get all images in the directory build/tmp/deploy/images/ls1043ardb
+   atf/atf-bl2-nor.bin		TF-A bl2 image for Nor boot.
+   atf/atf-fip-nor.bin		TF-A fip image for Nor boot, it include optee os image as bl32, and uboot image as bl33.
+   atf/atf-bl2-sd.bin		TF-A bl2 image for SD boot.
+   atf/atf-fip-sd.bin          TF-A fip image for SD boot, it include optee os image as bl32, and     uboot image as bl33.
+   itbImage-core-image-minimal-ls1043ardb.bin	ITB images includes kernel, dtb and ramdisk.
+ 
+5) Deploy images on ls1043ardb board
+
+a) Deploy TF-A images:
+
+-  Deploy TF-A images on Nor flash Alt Bank.
+
+   Power on the board and enter into the u-boot command line:
+
+   => tftp 82000000  atf-bl2-nor.bin
+   => pro off all;era 64100000 +$filesize;cp.b 82000000 64100000 $filesize
+
+   => tftp 82000000  atf-fip-nor.bin
+   => pro off all;era 64120000 +$filesize;cp.b 82000000 64120000 $filesize
+
+   Then change to Alt bank and boot up TF-A:
+
+   => cpld reset altbank
+
+
+-  Deploy TF-A images on SD card.
+
+   Power on the board and enter into the u-boot command line:
+
+   => tftp 82000000  atf-bl2-sd.bin
+   => mmc write 82000000 8 50
+   
+   => tftp 82000000  atf-fip-sd.bin
+   => mmc write 82000000 800 900
+
+   Then change to SD boot and boot up TF-A:
+
+   => cpld reset sd
+
+b) Boot up Linux OS: 
+
+   After TF-A load and boot up u-boot, in the u-boot command:
+
+   => tftp 82000000 itbImage-core-image-minimal-ls1043ardb.bin; bootm 82000000
+
+3. Limitation
+
+1) Secure boot is not supported in this release.
+2) PM feature is not supported in TF-A for this release.

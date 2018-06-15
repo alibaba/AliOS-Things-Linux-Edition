@@ -1,0 +1,40 @@
+From 09c7a5afa76530a3720d97726f2b372f72b0af08 Mon Sep 17 00:00:00 2001
+From: "Goh, Wen Sen" <wen.sen.goh@intel.com>
+Date: Wed, 22 Jun 2016 11:18:37 +0800
+Subject: [PATCH] ixgbe: src/Makefile: change make install to make
+ modules_install
+
+Per guideline from Linux Documentation at
+Documentation/kbuild/modules.txt
+the correct target is "modules_install" not "install".
+
+Upstream-Status: Inappropriate [It is tarball released by Intel Network
+driver group]
+
+---
+ src/Makefile | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 852becb..480ecee 100644
+--- a/Makefile
++++ b/Makefile
+@@ -136,7 +136,7 @@ clean:
+	@-rm -rf *.${MANSECTION}.gz *.ko
+
+ # Install the modules and manpage
+-install: default manfile
++modules_install: default manfile
+	@echo "Copying manpages..."
+	@install -D -m 644 ${DRIVER}.${MANSECTION}.gz ${INSTALL_MOD_PATH}${MANDIR}/man${MANSECTION}/${DRIVER}.${MANSECTION}.gz
+	@echo "Installing modules..."
+@@ -191,6 +191,6 @@ help:
+	@echo ' Other variables may be available for tuning make process, see'
+	@echo ' Kernel Kbuild documentation for more information'
+
+-.PHONY: default noisy clean manfile silent sparse ccc install uninstall help
++.PHONY: default noisy clean manfile silent sparse ccc modules_install uninstall help
+
+ endif	# ifneq($(KERNELRELEASE),)
+--
+2.8.3

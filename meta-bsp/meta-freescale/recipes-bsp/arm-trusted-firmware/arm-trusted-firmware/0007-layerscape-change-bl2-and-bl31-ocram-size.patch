@@ -1,0 +1,39 @@
+From f85aaee3ff8ba52198d2704dd4161a1cf0c1f687 Mon Sep 17 00:00:00 2001
+From: jiaheng.fan <jiaheng.fan@nxp.com>
+Date: Wed, 9 May 2018 14:42:00 +0800
+Subject: [PATCH 7/8] layerscape: change bl2 and bl31 ocram size
+
+Signed-off-by: jiaheng.fan <jiaheng.fan@nxp.com>
+---
+ .../layerscape/board/ls1043/include/platform_def.h |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/plat/layerscape/board/ls1043/include/platform_def.h b/plat/layerscape/board/ls1043/include/platform_def.h
+index 56ed4f7..a29116c 100644
+--- a/plat/layerscape/board/ls1043/include/platform_def.h
++++ b/plat/layerscape/board/ls1043/include/platform_def.h
+@@ -81,8 +81,8 @@
+ 					 + PLAT_LS_TRUSTED_ROM_SIZE)
+ #define PLAT_LS_FIP_BASE		0x60120000
+ 
+-#define PLAT_LS_MAX_BL31_SIZE		(64 * 1024)		/* 64K */
+-#define PLAT_LS_MAX_BL2_SIZE		(64 * 1024)		/* 64K */
++#define PLAT_LS_MAX_BL31_SIZE		(96 * 1024)		/* 96K */
++#define PLAT_LS_MAX_BL2_SIZE		(32 * 1024)		/* 32K */
+ 
+ /*
+  * Put BL31 at the start of OCRAM.
+@@ -104,8 +104,8 @@
+ #define LS_FIP_SD_START_BLOCK		0x800
+ #define LS_FIP_SD_BLOCK_NUMS		4096	/* 2M Byte */
+ 
+-#define PLAT_LS_MAX_BL31_SIZE		(64 * 1024)		/* 64K */
+-#define PLAT_LS_MAX_BL2_SIZE		(64 * 1024)		/* 64K */
++#define PLAT_LS_MAX_BL31_SIZE		(68 * 1024)		/* 68K */
++#define PLAT_LS_MAX_BL2_SIZE		(60 * 1024)		/* 60K */
+ 
+ /*
+  * Put BL2 at the start of the Trusted SRAM.
+-- 
+1.7.1
+

@@ -1,0 +1,38 @@
+From ebfdc8b8af17f9cf23c6878eb52476fde7b48e5c Mon Sep 17 00:00:00 2001
+From: Priyalee Kushwaha <priyalee.kushwaha@intel.com>
+Date: Fri, 22 Sep 2017 14:40:57 -0700
+Subject: [PATCH] lttng-modules: PKT 4.9 yocto build failed
+
+PKT 4.9 yocto kernel backports a patch from upstream and that
+changes header include/linux/ktimer.h. Since this backported
+patch is only relevant for PKT kernel, we need to carry this
+patch.
+
+Upstream-Status: Backport
+Signed-off-by: Kushwaha, Priyalee <priyalee.kushwaha@intel.com>
+---
+ instrumentation/events/lttng-module/timer.h | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/instrumentation/events/lttng-module/timer.h b/instrumentation/events/lttng-module/timer.h
+index d62fd25..59da988 100644
+--- a/instrumentation/events/lttng-module/timer.h
++++ b/instrumentation/events/lttng-module/timer.h
+@@ -16,11 +16,11 @@ struct timer_list;
+ 
+ #endif /* _TRACE_TIMER_DEF_ */
+ 
+-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0))
++#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0))
+ #define lttng_ktime_get_tv64(kt)	(kt)
+-#else /* #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0)) */
++#else /* #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)) */
+ #define lttng_ktime_get_tv64(kt)	((kt).tv64)
+-#endif /* #else #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,10,0)) */
++#endif /* #else #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0)) */
+ 
+ LTTNG_TRACEPOINT_EVENT_CLASS(timer_class,
+ 
+-- 
+2.7.4
+

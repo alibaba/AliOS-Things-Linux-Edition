@@ -1,0 +1,56 @@
+
+# How to build
+1. create your build project
+
+    `. ./oe-init-build-env`
+
+2. copy configuration for rockchip bsp
+
+    `cp ../meta-bsp/meta-rockchip/bblayers_meta-rockchip.conf conf/bblayers.conf`
+    `cp ../meta-bsp/meta-rockchip/local_rockchip-rk3308-evb.conf conf/local.conf`
+
+3. build the image
+
+    `bitbake core-image-minimal`
+
+4. Get all the images in directory tmp/deploy/images/rockchip-rk3308-evb
+
+    loader.bin
+
+    switch the maskrom mode into rockusb mode
+
+    core-image-minimal-rockchip-rk3308-evb.wic
+
+    A gpt disk image that includes idblock.img, resource.img(dtb), kernel.img,
+    u-boot-rk.img, trust.img and rootfs. It is created by definition in
+    meta-bsp/meta-rockchip/wic/generic-gptdisk.wks.
+
+
+# How to deploy
+## Deploy images on rk3308-evb board in linux host
+1. Get the rockchip deploy tool,it is in `build/tmp/work/x86_64-linux/rk-binary-native/git-r0/git/tools/upgrade_tool`
+
+2. Press long the maskrom button and reset button on rk3308-evb board, go into the maskrom mode
+
+3. Switch the maskrom mode into rockusb mode
+
+    `sudo ./upgrade_tool db loader.bin`
+
+4. In rockusb mode, deploy the fully included .wic image into flash.
+
+    `sudo ./upgrade_tool wl 0 core-image-minimal-rockchip-rk3308-evb.wic`
+
+5. Press reset button to reboot
+
+
+# How to debug
+## UART
+### In linux host
+
+    sudo minicom -D /dev/ttyUSB0 -b 1500000
+
+### In windows host
+1. Install the usb-uart driver
+
+2. Connect the serial port, e.g. COM1, set the baud rate to 1500000 in putty or secureCRT.
+

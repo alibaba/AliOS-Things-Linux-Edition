@@ -1,0 +1,31 @@
+From 58669ad764767afea4de53f8a97357773b1855ef Mon Sep 17 00:00:00 2001
+From: Saul Wold <sgw@linux.intel.com>
+Date: Tue, 25 Oct 2016 12:54:08 -0700
+Subject: [PATCH] efi/boot.c: workaround for Joule BIOS hang
+
+This patch should be removed when the BIOS is fixed
+
+Authored-by: Steve Sakoman <steve@sakoman.com>
+
+Upstream-Status: Inappropriate [machine specific workaround]
+Signed-off-by: Saul Wold <sgw@linux.intel.com>
+---
+ src/boot/efi/boot.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/boot/efi/boot.c b/src/boot/efi/boot.c
+index 3dcd9a5..3c6ed8c 100644
+--- a/src/boot/efi/boot.c
++++ b/src/boot/efi/boot.c
+@@ -649,7 +649,7 @@ static BOOLEAN menu_run(Config *config, ConfigEntry **chosen_entry, CHAR16 *load
+                         }
+ 
+                         /* timeout disabled, wait for next key */
+-                        wait = TRUE;
++                        wait = FALSE;
+                         continue;
+                 }
+ 
+-- 
+2.7.4
+

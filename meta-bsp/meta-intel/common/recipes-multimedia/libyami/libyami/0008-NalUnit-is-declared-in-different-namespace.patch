@@ -1,0 +1,31 @@
+From c54130511c91e457f1c5bb47729f5e3a0fc0cb91 Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Fri, 11 Aug 2017 18:42:28 -0700
+Subject: [PATCH 8/9] NalUnit is declared in different namespace
+
+Fixes
+vaapidecoder_h265.h:32:5: error: struct 'NalUnit' was previously declared as a class       [-Werror,-Wmismatched-tags]                                                                                    struct NalUnit;
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+Upstream-Status: Pending
+
+ decoder/vaapidecoder_h265.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/decoder/vaapidecoder_h265.h b/decoder/vaapidecoder_h265.h
+index 159e25f..674638f 100644
+--- a/decoder/vaapidecoder_h265.h
++++ b/decoder/vaapidecoder_h265.h
+@@ -29,7 +29,7 @@ namespace YamiParser {
+ namespace H265 {
+     struct SPS;
+     struct SliceHeader;
+-    struct NalUnit;
++    class NalUnit;
+     class Parser;
+ };
+ };
+-- 
+2.14.1
+

@@ -1,0 +1,23 @@
+From f74fbcd821a394dec58263fd2c2ea62eae298b2f Mon Sep 17 00:00:00 2001
+From: "Goh, Wen Sen" <wen.sen.goh@intel.com>
+Date: Sun, 26 Jun 2016 12:01:36 +0800
+Subject: [PATCH] ixgbevf patch
+
+---
+ common.mk | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/common.mk b/common.mk
+index b9b01c7..228a926 100644
+--- a/common.mk
++++ b/common.mk
+@@ -289,6 +289,7 @@ export INSTALL_MOD_DIR ?= updates/drivers/net/ethernet/intel/${DRIVER}
+ kernelbuild = ${MAKE} $(if ${GCC_I_SYS},CC="${GCC_I_SYS}") \
+                       ${CCFLAGS_VAR}="${EXTRA_CFLAGS}" \
+                       -C "${KSRC}" \
++                      CONFIG_IXGBE=m \
+                       CONFIG_${DRIVER_UPPERCASE}=m \
+                       M="${CURDIR}" \
+                       ${2} ${1};
+--
+2.8.3

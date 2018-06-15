@@ -1,0 +1,38 @@
+Currently, only one implementation of Secure Boot is available out of the box,
+which is using a single signed EFI application to directly boot the kernel with
+an optional initramfs.
+
+This can be added to your build either through local.conf, or via your own
+custom image recipe.
+
+If you are adding it via local.conf, set the following variables:
+
+IMAGE_FEATURES += "secureboot"
+WKS_FILE = "generic-bootdisk.wks.in"
+SECURE_BOOT_SIGNING_KEY = "/path/to/your/signing/key"
+SECURE_BOOT_SIGNING_CERT = "/path/to/your/signing/cert"
+IMAGE_CLASSES += "uefi-comboapp"
+
+If working with an image recipe, you can inherit uefi-comboapp directly instead
+of using the IMAGE_CLASSES variable.
+
+The signing keys and certs can be created via openssl commands. Here's an
+example:
+openssl req -new -x509 -newkey rsa:2048 -subj "/CN=your-subject/" -keyout \
+your-key.key -out your-key.crt -days 365 -nodes -sha256
+openssl x509 -in your-key.crt -out your-key.cer -outform DER
+
+The .crt file is your SECURE_BOOT_SIGNING_CERT, and the .key file is your
+SECURE_BOOT_SIGNING_KEY.
+
+You should enroll the .crt key in your firmware under the PK, KEK, and DB
+options (methods are different depending on your firmware). If a key should ever
+become invalid, enroll it under DBX to blacklist it.
+
+The comboapp can be further manipulated in a number of ways. You can modify the
+kernel command line via the APPEND variable, you can change the default UUID via
+the DISK_SIGNATURE_UUID variable, and you can modify the contents of the
+initramfs via the INITRD_IMAGE or INITRD_LIVE variables.
+
+A simple Secure Boot enabled image used for testing can be viewed at:
+common/recipes-selftest/images/secureboot-selftest-image-signed.bb

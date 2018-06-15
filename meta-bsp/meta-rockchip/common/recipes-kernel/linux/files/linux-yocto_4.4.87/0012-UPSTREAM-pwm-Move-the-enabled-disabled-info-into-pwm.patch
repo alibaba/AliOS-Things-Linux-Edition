@@ -1,0 +1,98 @@
+From 16e5a9f2474bfa1af8974a6659cc649e0d1c5f93 Mon Sep 17 00:00:00 2001
+From: Boris Brezillon <boris.brezillon@free-electrons.com>
+Date: Thu, 14 Apr 2016 21:17:39 +0200
+Subject: [PATCH 12/27] UPSTREAM: pwm: Move the enabled/disabled info into
+ pwm_state
+
+Prepare the transition to PWM atomic update by moving the enabled and
+disabled state into the pwm_state struct. This way we can easily update
+the whole PWM state by copying the new state in the ->state field.
+
+Signed-off-by: Boris Brezillon <boris.brezillon@free-electrons.com>
+Signed-off-by: Thierry Reding <thierry.reding@gmail.com>
+(cherry picked from commit 09a7e4a3d9fcb95ade2cb02167e85fbeb8315ce0)
+
+Change-Id: I38808d868c7e73f0ffd49cfb6c0b4b45fa911613
+Signed-off-by: David Wu <david.wu@rock-chips.com>
+---
+ drivers/pwm/core.c  | 13 +++++++++----
+ include/linux/pwm.h | 11 ++++++++---
+ 2 files changed, 17 insertions(+), 7 deletions(-)
+
+diff --git a/drivers/pwm/core.c b/drivers/pwm/core.c
+index d2ea7f6ef6dd..932d4f7123ea 100644
+--- a/drivers/pwm/core.c
++++ b/drivers/pwm/core.c
+@@ -502,10 +502,10 @@ int pwm_enable(struct pwm_device *pwm)
+ 	if (!pwm)
+ 		return -EINVAL;
+ 
+-	if (!test_and_set_bit(PWMF_ENABLED, &pwm->flags)) {
++	if (!pwm_is_enabled(pwm)) {
+ 		err = pwm->chip->ops->enable(pwm->chip, pwm);
+-		if (err)
+-			clear_bit(PWMF_ENABLED, &pwm->flags);
++		if (!err)
++			pwm->state.enabled = true;
+ 	}
+ 
+ 	return err;
+@@ -518,8 +518,13 @@ EXPORT_SYMBOL_GPL(pwm_enable);
+  */
+ void pwm_disable(struct pwm_device *pwm)
+ {
+-	if (pwm && test_and_clear_bit(PWMF_ENABLED, &pwm->flags))
++	if (!pwm)
++		return;
++
++	if (pwm_is_enabled(pwm)) {
+ 		pwm->chip->ops->disable(pwm->chip, pwm);
++		pwm->state.enabled = false;
++	}
+ }
+ EXPORT_SYMBOL_GPL(pwm_disable);
+ 
+diff --git a/include/linux/pwm.h b/include/linux/pwm.h
+index c17399a3b654..c8348cd12121 100644
+--- a/include/linux/pwm.h
++++ b/include/linux/pwm.h
+@@ -94,8 +94,7 @@ struct pwm_args {
+ 
+ enum {
+ 	PWMF_REQUESTED = 1 << 0,
+-	PWMF_ENABLED = 1 << 1,
+-	PWMF_EXPORTED = 1 << 2,
++	PWMF_EXPORTED = 1 << 1,
+ };
+ 
+ /*
+@@ -103,11 +102,13 @@ enum {
+  * @period: PWM period (in nanoseconds)
+  * @duty_cycle: PWM duty cycle (in nanoseconds)
+  * @polarity: PWM polarity
++ * @enabled: PWM enabled status
+  */
+ struct pwm_state {
+ 	unsigned int period;
+ 	unsigned int duty_cycle;
+ 	enum pwm_polarity polarity;
++	bool enabled;
+ };
+ 
+ /**
+@@ -146,7 +147,11 @@ static inline void pwm_get_state(const struct pwm_device *pwm,
+ 
+ static inline bool pwm_is_enabled(const struct pwm_device *pwm)
+ {
+-	return test_bit(PWMF_ENABLED, &pwm->flags);
++	struct pwm_state state;
++
++	pwm_get_state(pwm, &state);
++
++	return state.enabled;
+ }
+ 
+ static inline void pwm_set_period(struct pwm_device *pwm, unsigned int period)
+-- 
+2.11.0
+

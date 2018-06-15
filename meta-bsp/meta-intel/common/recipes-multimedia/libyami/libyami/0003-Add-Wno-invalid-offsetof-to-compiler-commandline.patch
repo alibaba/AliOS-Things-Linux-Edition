@@ -1,0 +1,29 @@
+From 533d63287e9dd8f269b137c18fbe6c19206c8668 Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Fri, 11 Aug 2017 17:49:43 -0700
+Subject: [PATCH 3/9] Add -Wno-invalid-offsetof to compiler commandline
+
+clang++ is fussy about offsetof on non-POD types
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+Upstream-Status: Pending
+
+ codecparsers/Makefile.am | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/codecparsers/Makefile.am b/codecparsers/Makefile.am
+index 720bf81..d9226b3 100644
+--- a/codecparsers/Makefile.am
++++ b/codecparsers/Makefile.am
+@@ -118,6 +118,7 @@ libyami_codecparser_cppflags = \
+ 	-Dvp8dx_start_decode=libyami_vp8dx_start_decode \
+ 	-Dvp8dx_bool_decoder_fill=libyami_vp8dx_bool_decoder_fill \
+ 	-I$(top_srcdir)/interface \
++	-Wno-invalid-offsetof \
+ 	$(extra_includes) \
+ 	$(NULL)
+ 
+-- 
+2.14.1
+

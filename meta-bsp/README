@@ -1,0 +1,17 @@
+Welcome to AliOS Things Linux Edition !!!
+
+meta-freescale
+
+    => NXP BSP.
+
+meta-intel
+
+    => Intel BSP.
+
+meta-raspberrypi
+
+    => Raspberry Pi3 BSP.
+
+meta-rockchip
+
+    => Rockchip BSP.

@@ -1,0 +1,38 @@
+From 4a8b253df69da516a59052e2de4e0fa855f9a73c Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 1 Jun 2018 14:58:34 +0800
+Subject: [PATCH 11/14] wireless: brcmfmac: Add support for brcm43455
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c | 1 +
+ include/linux/mmc/sdio_ids.h                              | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
+index 746f8c9a891d..3722f230334a 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/bcmsdh.c
+@@ -1103,6 +1103,7 @@ static const struct sdio_device_id brcmf_sdmmc_ids[] = {
+ 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_4339),
+ 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_43430),
+ 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_4345),
++	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_43455),
+ 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_4354),
+ 	BRCMF_SDIO_DEVICE(SDIO_DEVICE_ID_BROADCOM_4356),
+ 	{ /* end: all zeroes */ }
+diff --git a/include/linux/mmc/sdio_ids.h b/include/linux/mmc/sdio_ids.h
+index d43ef96bf075..71b113e1223f 100644
+--- a/include/linux/mmc/sdio_ids.h
++++ b/include/linux/mmc/sdio_ids.h
+@@ -36,6 +36,7 @@
+ #define SDIO_DEVICE_ID_BROADCOM_43362		0xa962
+ #define SDIO_DEVICE_ID_BROADCOM_43430		0xa9a6
+ #define SDIO_DEVICE_ID_BROADCOM_4345		0x4345
++#define SDIO_DEVICE_ID_BROADCOM_43455		0xa9bf
+ #define SDIO_DEVICE_ID_BROADCOM_4354		0x4354
+ #define SDIO_DEVICE_ID_BROADCOM_4356		0x4356
+ 
+-- 
+2.11.0
+

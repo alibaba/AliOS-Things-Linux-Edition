@@ -1,0 +1,32 @@
+This file contains a list of BSP maintainers for the BSPs contained in
+the meta-intel repository.
+
+The purpose of this file is to provide contact information for
+specific BSPs and other code contained within meta-intel.  You should
+address questions and patches for a particular BSP or other code to
+the appropriate maintainer listed in this file, cc'ing the meta-intel
+mailing list.  This ensures that your question or patch will be
+addressed by the appropriate person, and that it will be seen by other
+users who may be facing similar problems or questions.
+
+Please see the top-level README file for guidelines relating to the
+details of submitting patches, reporting problems, or asking questions
+about any of the BSPs or other recipes contained within meta-intel.
+
+Descriptions of section entries:
+
+	M: Mail patches to: FullName <address@domain>
+	F: Files and directories with wildcard patterns.
+	   A trailing slash includes all files and subdirectory files.
+	   F:	common/	 all files in and below common
+	   F:	common/* all files in common, but not below
+	   One pattern per line.  Multiple F: lines acceptable.
+
+Please keep this list in alphabetical order.
+
+Maintainers List (try to look for most precise areas first)
+
+		-----------------------------------
+
+M:	Saul Wold <sgw@linux.intel.com>
+F: 	*

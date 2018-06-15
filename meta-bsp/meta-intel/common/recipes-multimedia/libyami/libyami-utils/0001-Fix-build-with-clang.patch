@@ -1,0 +1,99 @@
+From b7e66182788cd925570bb4c310e21fbcd3185040 Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Sat, 12 Aug 2017 08:49:20 -0700
+Subject: [PATCH] Fix build with clang
+
+Fix errors e.g.
+error: comparison of constant -1 with expression of type 'char' is always true [-Werror,-Wtautological-constant-out-of-range-compare]error: comparison of constant -1 with expression of type 'char' is always true [-Werror,-Wtautological-constant-out-of-range-compare]
+
+and
+
+psnr.cpp:225:17: error: bool literal returned from 'main' [-Werror,-Wmain]
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+Upstream-Status: Pending
+
+ tests/decodehelp.cpp    | 2 +-
+ tests/encodehelp.h      | 2 +-
+ tests/vpp.cpp           | 2 +-
+ tests/yamitranscode.cpp | 2 +-
+ testscripts/psnr.cpp    | 4 ++--
+ 5 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/tests/decodehelp.cpp b/tests/decodehelp.cpp
+index a69eab6..2d96598 100644
+--- a/tests/decodehelp.cpp
++++ b/tests/decodehelp.cpp
+@@ -70,7 +70,7 @@ bool processCmdLine(int argc, char** argv, DecodeParameter* parameters)
+         {"capi", no_argument, NULL, 0},
+         {NULL, no_argument, NULL, 0}};
+ 
+-    char opt;
++    int opt;
+     while ((opt = getopt_long_only(argc, argv, "h:m:n:i:f:o:w:?", long_opts,&option_index)) != -1){
+         switch (opt) {
+         case 'h':
+diff --git a/tests/encodehelp.h b/tests/encodehelp.h
+index 57ccd77..76df801 100644
+--- a/tests/encodehelp.h
++++ b/tests/encodehelp.h
+@@ -107,7 +107,7 @@ static VideoRateControl string_to_rc_mode(char *str)
+ 
+ static bool process_cmdline(int argc, char *argv[])
+ {
+-    char opt;
++    int opt;
+     const struct option long_opts[] = {
+         { "help", no_argument, NULL, 'h' },
+         { "qp", required_argument, NULL, 0 },
+diff --git a/tests/vpp.cpp b/tests/vpp.cpp
+index 5a60c0a..52da43b 100644
+--- a/tests/vpp.cpp
++++ b/tests/vpp.cpp
+@@ -151,7 +151,7 @@ public:
+ private:
+     bool processCmdLine(int argc, char* argv[])
+     {
+-        char opt;
++        int opt;
+         const struct option long_opts[] = {
+             { "help", no_argument, NULL, 'h' },
+             { "sharpening", required_argument, NULL, 's' },
+diff --git a/tests/yamitranscode.cpp b/tests/yamitranscode.cpp
+index 4cb72aa..2fc6725 100755
+--- a/tests/yamitranscode.cpp
++++ b/tests/yamitranscode.cpp
+@@ -95,7 +95,7 @@ static VideoRateControl string_to_rc_mode(char *str)
+ 
+ static bool processCmdLine(int argc, char *argv[], TranscodeParams& para)
+ {
+-    char opt;
++    int opt;
+     const struct option long_opts[] = {
+         { "help", no_argument, NULL, 'h' },
+         { "qp", required_argument, NULL, 0 },
+diff --git a/testscripts/psnr.cpp b/testscripts/psnr.cpp
+index 5cc24c9..68bd668 100644
+--- a/testscripts/psnr.cpp
++++ b/testscripts/psnr.cpp
+@@ -215,14 +215,14 @@ int main(int argc, char *argv[])
+     const char* psnrresult = "average_psnr.txt";
+     int width=0,height=0;
+     int standardpsnr = NORMAL_PSNR;
+-    char opt;
++    int opt;
+     while ((opt = getopt(argc, argv, "h:W:H:i:o:s:?")) != -1)
+     {
+         switch (opt) {
+             case 'h':
+             case '?':
+                 print_help(argv[0]);
+-                return false;
++                return -1;
+             case 'i':
+                 filename1 = optarg;
+                 break;
+-- 
+2.14.1
+

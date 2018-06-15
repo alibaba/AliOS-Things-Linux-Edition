@@ -1,0 +1,6 @@
+# based off of refkit's refkit-directdisk.wks.in kickstart template
+# uses the image's boot directory to populate a vfat boot partition,
+# which works with EFI.
+bootloader --ptable gpt
+part /boot --source rootfs --rootfs-dir=${IMAGE_ROOTFS}/boot --fstype=vfat --label msdos --active --align 1024 --use-uuid
+part / --source rootfs --fstype=ext4 --label root --align 1024 --uuid ${DISK_SIGNATURE_UUID}

@@ -1,0 +1,2647 @@
+Added Intel AMT ME real time notification infra to LMS.
+
+Notification support now actively captures all the INTEL AMT ME events by plugging in to APF infra.
+These events message are in the WsMan XML format. WsMan XML is parsed to get the AlertID and Message arguments.
+A map is initialized initially by reading AMTAlerts.xml which provides alertid,messageArguements and verbose description.
+From AlertID, verbose description is obtained and then using d-bus infra verbose description is notified to the user.
+
+src/tools/utils.cpp Utils class provides static methods for string manipulation and desktop notification.
+src/tools/miniXmlParser.cpp MiniXmlParser class provide methods for parsing the xmlBuffer, validation and retreving tag/value.
+src/tools/httpParser.cpp HttpParser class provides method to parse http response buffer and populate header,body,headerfields properties.
+src/alertDescription.cpp AlertDescription class parses AMTAlerts.xml like xml to populate map of alertId-Arguments and verbose desctiption.
+src/alertIndication.cpp AlertIndication class provides binding to some xmlTags. It uses MiniXmlParse to parse xmlBuffer and provides access methods to some of the fields.
+src/defaultAlerts.cpp provides default AlertID-Description paris. This is used in absence of AMTAlerts.xml.
+src/notifyDesktop.sh is script which uses d-bus infra to pop up desktop notification. The following script can be modified based on device environment and libraries installed.
+src/LMEConnection.cpp has modified the buffer 4x times because of the size of AMT ME Xml data.
+src/Protocol.cpp [ _UNSHandler(char *data, int dataLength) ] has changes to recieve AMT ME event data, gracefully process the data and close the channel.
+
+src/tools/miniXmlParser.cpp has derived work from http://info.meshcentral.com/downloads/MeshAgentFullSource.rar microstack. Author: Bryan Y Roe <bryan.y.roe@intel.com>/Intel Corporation.
+
+Upstream-Status: Pending
+
+Signed-off-by: AnandVastrad <anand.vastrad@intel.com>
+---
+ Makefile.in                 |   2 +
+ src/AMTAlerts.xml           | 464 ++++++++++++++++++++++++++++++++++++++++++++
+ src/LMEConnection.cpp       |   2 +-
+ src/Makefile.am             |   3 +
+ src/Makefile.in             | 172 ++++++++++++++--
+ src/Makefile.inc            |  20 +-
+ src/Protocol.cpp            | 191 +++++++++++++++---
+ src/Protocol.h              |   8 +-
+ src/alertDescription.cpp    | 144 ++++++++++++++
+ src/alertDescription.h      |  45 +++++
+ src/alertIndication.cpp     |  90 +++++++++
+ src/alertIndication.h       |  54 ++++++
+ src/defaultAlerts.h         |  43 ++++
+ src/notifyDesktop.sh        |  10 +
+ src/tools/httpParser.cpp    | 101 ++++++++++
+ src/tools/httpParser.h      |  49 +++++
+ src/tools/miniXmlParser.cpp | 375 +++++++++++++++++++++++++++++++++++
+ src/tools/miniXmlParser.h   |  51 +++++
+ src/tools/utils.cpp         | 185 ++++++++++++++++++
+ src/tools/utils.h           |  57 ++++++
+ src/tools/xmlNode.cpp       |  45 +++++
+ src/tools/xmlNode.h         |  49 +++++
+ 22 files changed, 2105 insertions(+), 55 deletions(-)
+ mode change 100755 => 100644 Makefile.in
+ create mode 100755 src/AMTAlerts.xml
+ mode change 100755 => 100644 src/Makefile.in
+ create mode 100644 src/alertDescription.cpp
+ create mode 100644 src/alertDescription.h
+ create mode 100644 src/alertIndication.cpp
+ create mode 100644 src/alertIndication.h
+ create mode 100644 src/defaultAlerts.h
+ create mode 100644 src/notifyDesktop.sh
+ create mode 100644 src/tools/httpParser.cpp
+ create mode 100644 src/tools/httpParser.h
+ create mode 100644 src/tools/miniXmlParser.cpp
+ create mode 100644 src/tools/miniXmlParser.h
+ create mode 100644 src/tools/utils.cpp
+ create mode 100644 src/tools/utils.h
+ create mode 100644 src/tools/xmlNode.cpp
+ create mode 100644 src/tools/xmlNode.h
+
+diff --git a/Makefile.in b/Makefile.in
+old mode 100755
+new mode 100644
+index f90be60..e1a248b
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -133,6 +133,7 @@ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
+ PACKAGE_NAME = @PACKAGE_NAME@
+ PACKAGE_STRING = @PACKAGE_STRING@
+ PACKAGE_TARNAME = @PACKAGE_TARNAME@
++PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
+@@ -185,6 +186,7 @@ pdfdir = @pdfdir@
+ prefix = @prefix@
+ program_transform_name = @program_transform_name@
+ psdir = @psdir@
++runstatedir = @runstatedir@
+ sbindir = @sbindir@
+ sharedstatedir = @sharedstatedir@
+ sysconfdir = @sysconfdir@
+diff --git a/src/AMTAlerts.xml b/src/AMTAlerts.xml
+new file mode 100755
+index 0000000..ddb3383
+--- /dev/null
++++ b/src/AMTAlerts.xml
+@@ -0,0 +1,464 @@
++<?xml version="1.0" encoding="utf-8" standalone="no"?>
++<!-- Copyright (c) Intel Corporation, 2010 All Rights Reserved. -->
++<Alerts>
++<Alert>
++<Id>iAMT0001</Id>
++<Arg></Arg>
++<Message>System Defense Policy triggered.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0002</Id>
++<Arg></Arg>
++<Message>Agent Presence Agent not started.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0003</Id>
++<Arg></Arg>
++<Message>Agent Presence Agent stopped.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0004</Id>
++<Arg></Arg>
++<Message>Agent Presence: running.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0005</Id>
++<Arg></Arg>
++<Message>Agent Presence: expired.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0006</Id>
++<Arg></Arg>
++<Message>Agent Presence: suspended.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0007</Id>
++<Arg></Arg>
++<Message>Host software attempt to disable AMT Network link detected.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0008</Id>
++<Arg></Arg>
++<Message>Host software attempt to disable AMT Network link detected -- Host Network link blocked.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0009</Id>
++<Arg></Arg>
++<Message>AMT clock or FLASH wear-out protection disabled.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0010</Id>
++<Arg></Arg>
++<Message>Intel(R) AMT Network Interface: Heuristics defense slow threshold trespassed.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0011</Id>
++<Arg></Arg>
++<Message>Intel(R) AMT Network Interface: Heuristics defense fast threshold trespassed.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0012</Id>
++<Arg></Arg>
++<Message>Intel(R) AMT Network Interface: Heuristics defense factory defined threshold trespassed.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0013</Id>
++<Arg></Arg>
++<Message>Intel(R) AMT Network Interface: Heuristics defense Encounter timeout expired.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0014</Id>
++<Arg></Arg>
++<Message>General certificate error.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0015</Id>
++<Arg></Arg>
++<Message>Certificate expired.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0016</Id>
++<Arg></Arg>
++<Message>No trusted root certificate.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0017</Id>
++<Arg></Arg>
++<Message>Not configured to work with server certificate.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0018</Id>
++<Arg></Arg>
++<Message>Certificate revoked.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0019</Id>
++<Arg></Arg>
++<Message>RSA exponent too large.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0020</Id>
++<Arg></Arg>
++<Message>RSA modulus too large.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0021</Id>
++<Arg></Arg>
++<Message>Unsupported digest.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0022</Id>
++<Arg></Arg>
++<Message>Distinguished name too long.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0023</Id>
++<Arg></Arg>
++<Message>Key usage missing.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0024</Id>
++<Arg></Arg>
++<Message>General SSL handshake error.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0025</Id>
++<Arg></Arg>
++<Message>General 802.1x error.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0026</Id>
++<Arg></Arg>
++<Message>AMT Diagnostic AlertEAC error - General NAC error.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0027</Id>
++<Arg></Arg>
++<Message>AMT Diagnostic AlertEAC error - attempt to get a NAC posture while AMT NAC is disabled.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0028</Id>
++<Arg></Arg>
++<Message>AMT Diagnostic AlertEAC error - attempt to get a posture of an unsupported type.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0029</Id>
++<Arg></Arg>
++<Message>Audit log storage is 50% full.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0030</Id>
++<Arg></Arg>
++<Message>Audit log storage is 75% full.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0031</Id>
++<Arg></Arg>
++<Message>Audit log storage is 85% full.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0032</Id>
++<Arg></Arg>
++<Message>Audit log storage is 95% full.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0033</Id>
++<Arg></Arg>
++<Message>Audit log storage is full.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0034</Id>
++<Arg></Arg>
++<Message>Firmware Update Event - Partial.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0035</Id>
++<Arg></Arg>
++<Message>Firmware Update Event - Failure.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0036</Id>
++<Arg></Arg>
++<Message>Remote connectivity initiated.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0037</Id>
++<Arg></Arg>
++<Message>ME Presence event.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0038</Id>
++<Arg>0</Arg>
++<Message>AMT is being unprovisioned using BIOS command.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0038</Id>
++<Arg>1</Arg>
++<Message>AMT is being unprovisioned using Local MEI command.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0038</Id>
++<Arg>2</Arg>
++<Message>AMT is being unprovisioned using Local WS-MAN/SOAP command.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0038</Id>
++<Arg>3</Arg>
++<Message>AMT is being unprovisioned using Remote WS-MAN/SOAP command.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0050</Id>
++<Arg></Arg>
++<Message>User Notification Alert - General Notification.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0050</Id>
++<Arg>16</Arg>
++<Message>User Notification Alert - Circuit Breaker notification (CB Drop TX filter hit.).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0050</Id>
++<Arg>17</Arg>
++<Message>User Notification Alert - Circuit Breaker notification (CB Rate Limit TX filter hit.).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0050</Id>
++<Arg>18</Arg>
++<Message>User Notification Alert - Circuit Breaker notification (CB Drop RX filter hit.).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0050</Id>
++<Arg>19</Arg>
++<Message>User Notification Alert - Circuit Breaker notification (CB Rate Limit RX filter hit.).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0050</Id>
++<Arg>32</Arg>
++<Message>User Notification Alert - EAC notification.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0050</Id>
++<Arg>48</Arg>
++<Message>User Notification Alert - Remote diagnostics - (Remote Redirection session started - SOL).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0050</Id>
++<Arg>49</Arg>
++<Message>User Notification Alert - Remote diagnostics - (Remote Redirection session stopped - SOL).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0050</Id>
++<Arg>50</Arg>
++<Message>User Notification Alert - Remote diagnostics. (Remote Redirection session started - IDE-R).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0050</Id>
++<Arg>51</Arg>
++<Message>User Notification Alert - Remote diagnostics. (Remote Redirection session stopped - IDE-R).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0050</Id>
++<Arg>66</Arg>
++<Message>User Notification Alert - WLAN notification (Host profile mismatch - Management Interface ignored).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0050</Id>
++<Arg>67</Arg>
++<Message>User Notification Alert - WLAN notification (Management device overrides host radio).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0050</Id>
++<Arg>68</Arg>
++<Message>User Notification Alert - WLAN notification (Host profile security mismatch).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0050</Id>
++<Arg>69</Arg>
++<Message>User Notification Alert - WLAN notification (Management device relinquishes control over host Radio).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0051</Id>
++<Arg></Arg>
++<Message>User Notification Alert - SecIo event.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0051</Id>
++<Arg>0</Arg>
++<Message>User Notification Alert - SecIo event semaphore at host.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0051</Id>
++<Arg>1</Arg>
++<Message>User Notification Alert - semaphore at ME.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0051</Id>
++<Arg>2</Arg>
++<Message>User Notification Alert - SecIo event - semaphore timeout.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0052</Id>
++<Arg></Arg>
++<Message>User Notification Alert - KVM session event.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0052</Id>
++<Arg>0</Arg>
++<Message>User Notification Alert - KVM session requested.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0052</Id>
++<Arg>1</Arg>
++<Message>User Notification Alert - KVM session started.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0052</Id>
++<Arg>2</Arg>
++<Message>User Notification Alert - KVM session stopped.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0053</Id>
++<Arg></Arg>
++<Message>User Notification Alert - RCS notification.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0053</Id>
++<Arg>50</Arg>
++<Message>User Notification Alert - RCS notification (HW button pressed. Connection initiated automatically).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0053</Id>
++<Arg>52</Arg>
++<Message>User Notification Alert - RCS notification (HW button pressed. Connection wasn't initiated automatically).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0053</Id>
++<Arg>53</Arg>
++<Message>User Notification Alert - RCS notification (Contracts updated).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0054</Id>
++<Arg></Arg>
++<Message>User Notification Alert - WLAN notification. Wireless Profile sync enablement state changed.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0055</Id>
++<Arg></Arg>
++<Message>User Notification Alert - Provisioning state change notification.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0055</Id>
++<Arg>0</Arg>
++<Message>User Notification Alert - Provisioning state change notification - Pre-configuration.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0055</Id>
++<Arg>1</Arg>
++<Message>User Notification Alert - Provisioning state change notification - In configuration.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0055</Id>
++<Arg>2</Arg>
++<Message>User Notification Alert - Provisioning state change notification - Post-configuration.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0055</Id>
++<Arg>3</Arg>
++<Message>User Notification Alert - Provisioning state change notification - unprovision process has started.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0056</Id>
++<Arg></Arg>
++<Message>User Notification Alert - System Defense change notification.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0057</Id>
++<Arg></Arg>
++<Message>User Notification Alert - Network State change notification.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0058</Id>
++<Arg></Arg>
++<Message>User Notification Alert - Remote Access change notification.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0058</Id>
++<Arg>1</Arg>
++<Message>User Notification Alert - Remote Access change notification - tunnel is closed.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0058</Id>
++<Arg>1</Arg>
++<Message>User Notification Alert - Remote Access change notification - tunnel is open.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0059</Id>
++<Arg></Arg>
++<Message>User Notification Alert - KVM enabled event.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0059</Id>
++<Arg>0</Arg>
++<Message>User Notification Alert - KVM enabled event - KVM disabled.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0059</Id>
++<Arg>1</Arg>
++<Message>User Notification Alert - KVM enabled event - KVM enabled (both from MEBx and PTNI).</Message>
++</Alert>
++<Alert>
++<Id>iAMT0060</Id>
++<Arg></Arg>
++<Message>User Notification Alert - SecIO configuration event.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0061</Id>
++<Arg></Arg>
++<Message>ME FW reset occurred.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0062</Id>
++<Arg></Arg>
++<Message>User Notification Alert - IpSyncEnabled event.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0062</Id>
++<Arg>0</Arg>
++<Message>User Notification Alert - IpSyncEnabled event - IpSync disabled.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0062</Id>
++<Arg>1</Arg>
++<Message>User Notification Alert - IpSyncEnabled event - IpSync enabled.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0063</Id>
++<Arg></Arg>
++<Message>User Notification Alert - HTTP Proxy sync enabled event.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0063</Id>
++<Arg>0</Arg>
++<Message>User Notification Alert - HTTP Proxy sync enabled event - HTTP Proxy Sync disabled.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0063</Id>
++<Arg>1</Arg>
++<Message>User Notification Alert - HTTP Proxy sync enabled event - HTTP Proxy Sync enabled.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0064</Id>
++<Arg></Arg>
++<Message>User Notification Alert - User Consent event.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0064</Id>
++<Arg>1</Arg>
++<Message>User Notification Alert - User Consent event - User Consent granted.</Message>
++</Alert>
++<Alert>
++<Id>iAMT0064</Id>
++<Arg>2</Arg>
++<Message>User Notification Alert - User Consent event - User Consent ended.</Message>
++</Alert>
++</Alerts>
+diff --git a/src/LMEConnection.cpp b/src/LMEConnection.cpp
+index f3e7a2b..d192626 100755
+--- a/src/LMEConnection.cpp
++++ b/src/LMEConnection.cpp
+@@ -48,7 +48,7 @@ extern glue plugin;
+ 
+ const GUID LMEConnection::_guid = {0x6733a4db, 0x0476, 0x4e7b, {0xb3, 0xaf, 0xbc, 0xfc, 0x29, 0xbe, 0xe7, 0xa7}};
+ 
+-const UINT32 LMEConnection::RX_WINDOW_SIZE = 1024;
++const UINT32 LMEConnection::RX_WINDOW_SIZE = 4096;
+ 
+ LMEConnection::LMEConnection(bool verbose) :
+ _reqID(0),
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 42d9f47..364427b 100755
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -1,4 +1,7 @@
+ sbin_PROGRAMS=lms
++dist_bin_SCRIPTS=notifyDesktop.sh
++xml_dir=$(datadir)/xml
++xml__DATA=AMTAlerts.xml
+ 
+ SYNCLIB_SRCDIR=SyncLib/src
+ SYNCLIB_HDRDIR=SyncLib/Include
+diff --git a/src/Makefile.in b/src/Makefile.in
+old mode 100755
+new mode 100644
+index c6fe1ba..7b6cafd
+--- a/src/Makefile.in
++++ b/src/Makefile.in
+@@ -14,6 +14,8 @@
+ 
+ @SET_MAKE@
+ 
++
++
+ srcdir = @srcdir@
+ top_srcdir = @top_srcdir@
+ VPATH = @srcdir@
+@@ -37,9 +39,9 @@ POST_UNINSTALL = :
+ build_triplet = @build@
+ host_triplet = @host@
+ sbin_PROGRAMS = lms$(EXEEXT)
+-DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
+-	$(srcdir)/Makefile.inc $(srcdir)/iatshareddata.h.in \
+-	$(srcdir)/plugin.h.in
++DIST_COMMON = $(dist_bin_SCRIPTS) $(srcdir)/Makefile.am \
++	$(srcdir)/Makefile.in $(srcdir)/Makefile.inc \
++	$(srcdir)/iatshareddata.h.in $(srcdir)/plugin.h.in
+ subdir = src
+ ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+ am__aclocal_m4_deps = $(top_srcdir)/configure.ac
+@@ -48,14 +50,17 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
+ mkinstalldirs = $(install_sh) -d
+ CONFIG_HEADER = $(top_builddir)/config.h
+ CONFIG_CLEAN_FILES = plugin.h iatshareddata.h
+-am__installdirs = "$(DESTDIR)$(sbindir)"
++am__installdirs = "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(bindir)" \
++	"$(DESTDIR)$(xml_dir)"
+ sbinPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
+ PROGRAMS = $(sbin_PROGRAMS)
+ am__objects_1 = main.$(OBJEXT) LMEConnection.$(OBJEXT) \
+ 	ConfigConnection.$(OBJEXT) Protocol.$(OBJEXT) glue.$(OBJEXT) \
+-	ChannelGenerator.$(OBJEXT)
++	ChannelGenerator.$(OBJEXT) alertIndication.$(OBJEXT) \
++	alertDescription.$(OBJEXT)
+ am__objects_2 = ATVersion.$(OBJEXT) ATNetworkTool.$(OBJEXT) \
+-	daemonize.$(OBJEXT)
++	daemonize.$(OBJEXT) utils.$(OBJEXT) miniXmlParser.$(OBJEXT) \
++	xmlNode.$(OBJEXT) httpParser.$(OBJEXT)
+ am__objects_3 = MEILinux.$(OBJEXT) MNGCommand.$(OBJEXT) \
+ 	FWULCommand.$(OBJEXT) PTHICommand.$(OBJEXT)
+ am__objects_4 = EventLinux.$(OBJEXT) SemaphoreLinux.$(OBJEXT) \
+@@ -68,6 +73,8 @@ am__objects_7 = $(am__objects_6) $(am__objects_6) $(am__objects_6) \
+ am_lms_OBJECTS = $(am__objects_5) $(am__objects_7)
+ lms_OBJECTS = $(am_lms_OBJECTS)
+ lms_LDADD = $(LDADD)
++dist_binSCRIPT_INSTALL = $(INSTALL_SCRIPT)
++SCRIPTS = $(dist_bin_SCRIPTS)
+ DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
+ depcomp = $(SHELL) $(top_srcdir)/depcomp
+ am__depfiles_maybe = depfiles
+@@ -89,6 +96,14 @@ LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+ 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
+ SOURCES = $(lms_SOURCES)
+ DIST_SOURCES = $(lms_SOURCES)
++am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
++am__vpath_adj = case $$p in \
++    $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
++    *) f=$$p;; \
++  esac;
++am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
++xml_DATA_INSTALL = $(INSTALL_DATA)
++DATA = $(xml__DATA)
+ ETAGS = etags
+ CTAGS = ctags
+ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+@@ -150,6 +165,7 @@ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
+ PACKAGE_NAME = @PACKAGE_NAME@
+ PACKAGE_STRING = @PACKAGE_STRING@
+ PACKAGE_TARNAME = @PACKAGE_TARNAME@
++PACKAGE_URL = @PACKAGE_URL@
+ PACKAGE_VERSION = @PACKAGE_VERSION@
+ PATH_SEPARATOR = @PATH_SEPARATOR@
+ RANLIB = @RANLIB@
+@@ -202,10 +218,14 @@ pdfdir = @pdfdir@
+ prefix = @prefix@
+ program_transform_name = @program_transform_name@
+ psdir = @psdir@
++runstatedir = @runstatedir@
+ sbindir = @sbindir@
+ sharedstatedir = @sharedstatedir@
+ sysconfdir = @sysconfdir@
+ target_alias = @target_alias@
++dist_bin_SCRIPTS = notifyDesktop.sh
++xml_dir = $(datadir)/xml
++xml__DATA = AMTAlerts.xml
+ SYNCLIB_SRCDIR = SyncLib/src
+ SYNCLIB_HDRDIR = SyncLib/Include
+ MEI_DIR = mei
+@@ -238,11 +258,19 @@ $(MEI_DIR)/PTHICommand.cpp
+ 
+ TOOLS_HDRS = $(TOOLS_DIR)/ATVersion.h \
+ $(TOOLS_DIR)/ATNetworkTool.h \
+-$(TOOLS_DIR)/daemonize.h
++$(TOOLS_DIR)/daemonize.h \
++$(TOOLS_DIR)/utils.h \
++$(TOOLS_DIR)/miniXmlParser.h \
++$(TOOLS_DIR)/xmlNode.h \
++$(TOOLS_DIR)/httpParser.h
+ 
+ TOOLS_SRCS = $(TOOLS_DIR)/ATVersion.cpp \
+ $(TOOLS_DIR)/ATNetworkTool.cpp \
+-$(TOOLS_DIR)/daemonize.cpp
++$(TOOLS_DIR)/daemonize.cpp \
++$(TOOLS_DIR)/utils.cpp \
++$(TOOLS_DIR)/miniXmlParser.cpp \
++$(TOOLS_DIR)/xmlNode.cpp \
++$(TOOLS_DIR)/httpParser.cpp
+ 
+ MAIN_HDRS = types.h \
+ Channel.h \
+@@ -254,14 +282,18 @@ ConfigConnection.h \
+ Protocol.h \
+ glue.h \
+ version.h \
+-ChannelGenerator.h
++ChannelGenerator.h \
++alertIndication.h \
++alertDescription.h
+ 
+ MAIN_SRCS = main.cpp \
+ LMEConnection.cpp \
+ ConfigConnection.cpp \
+ Protocol.cpp \
+ glue.cpp \
+-ChannelGenerator.cpp
++ChannelGenerator.cpp \
++alertIndication.cpp \
++alertDescription.cpp
+ 
+ SRCS = $(MAIN_SRCS) \
+ $(TOOLS_SRCS) \
+@@ -342,6 +374,25 @@ clean-sbinPROGRAMS:
+ lms$(EXEEXT): $(lms_OBJECTS) $(lms_DEPENDENCIES) 
+ 	@rm -f lms$(EXEEXT)
+ 	$(CXXLINK) $(lms_LDFLAGS) $(lms_OBJECTS) $(lms_LDADD) $(LIBS)
++install-dist_binSCRIPTS: $(dist_bin_SCRIPTS)
++	@$(NORMAL_INSTALL)
++	test -z "$(bindir)" || $(mkdir_p) "$(DESTDIR)$(bindir)"
++	@list='$(dist_bin_SCRIPTS)'; for p in $$list; do \
++	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
++	  if test -f $$d$$p; then \
++	    f=`echo "$$p" | sed 's|^.*/||;$(transform)'`; \
++	    echo " $(dist_binSCRIPT_INSTALL) '$$d$$p' '$(DESTDIR)$(bindir)/$$f'"; \
++	    $(dist_binSCRIPT_INSTALL) "$$d$$p" "$(DESTDIR)$(bindir)/$$f"; \
++	  else :; fi; \
++	done
++
++uninstall-dist_binSCRIPTS:
++	@$(NORMAL_UNINSTALL)
++	@list='$(dist_bin_SCRIPTS)'; for p in $$list; do \
++	  f=`echo "$$p" | sed 's|^.*/||;$(transform)'`; \
++	  echo " rm -f '$(DESTDIR)$(bindir)/$$f'"; \
++	  rm -f "$(DESTDIR)$(bindir)/$$f"; \
++	done
+ 
+ mostlyclean-compile:
+ 	-rm -f *.$(OBJEXT)
+@@ -355,17 +406,23 @@ distclean-compile:
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ConfigConnection.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/EventLinux.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/FWULCommand.Po@am__quote@
+-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MEILinux.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/LMEConnection.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MEILinux.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/MNGCommand.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/PTHICommand.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Protocol.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/RWLock.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/SemaphoreLinux.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ThreadLinux.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/alertDescription.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/alertIndication.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/daemonize.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/glue.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/httpParser.Po@am__quote@
+ @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/miniXmlParser.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/utils.Po@am__quote@
++@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/xmlNode.Po@am__quote@
+ 
+ .cpp.o:
+ @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
+@@ -430,6 +487,62 @@ daemonize.obj: $(TOOLS_DIR)/daemonize.cpp
+ @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+ @am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o daemonize.obj `if test -f '$(TOOLS_DIR)/daemonize.cpp'; then $(CYGPATH_W) '$(TOOLS_DIR)/daemonize.cpp'; else $(CYGPATH_W) '$(srcdir)/$(TOOLS_DIR)/daemonize.cpp'; fi`
+ 
++utils.o: $(TOOLS_DIR)/utils.cpp
++@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT utils.o -MD -MP -MF "$(DEPDIR)/utils.Tpo" -c -o utils.o `test -f '$(TOOLS_DIR)/utils.cpp' || echo '$(srcdir)/'`$(TOOLS_DIR)/utils.cpp; \
++@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/utils.Tpo" "$(DEPDIR)/utils.Po"; else rm -f "$(DEPDIR)/utils.Tpo"; exit 1; fi
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(TOOLS_DIR)/utils.cpp' object='utils.o' libtool=no @AMDEPBACKSLASH@
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o utils.o `test -f '$(TOOLS_DIR)/utils.cpp' || echo '$(srcdir)/'`$(TOOLS_DIR)/utils.cpp
++
++utils.obj: $(TOOLS_DIR)/utils.cpp
++@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT utils.obj -MD -MP -MF "$(DEPDIR)/utils.Tpo" -c -o utils.obj `if test -f '$(TOOLS_DIR)/utils.cpp'; then $(CYGPATH_W) '$(TOOLS_DIR)/utils.cpp'; else $(CYGPATH_W) '$(srcdir)/$(TOOLS_DIR)/utils.cpp'; fi`; \
++@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/utils.Tpo" "$(DEPDIR)/utils.Po"; else rm -f "$(DEPDIR)/utils.Tpo"; exit 1; fi
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(TOOLS_DIR)/utils.cpp' object='utils.obj' libtool=no @AMDEPBACKSLASH@
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o utils.obj `if test -f '$(TOOLS_DIR)/utils.cpp'; then $(CYGPATH_W) '$(TOOLS_DIR)/utils.cpp'; else $(CYGPATH_W) '$(srcdir)/$(TOOLS_DIR)/utils.cpp'; fi`
++
++miniXmlParser.o: $(TOOLS_DIR)/miniXmlParser.cpp
++@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT miniXmlParser.o -MD -MP -MF "$(DEPDIR)/miniXmlParser.Tpo" -c -o miniXmlParser.o `test -f '$(TOOLS_DIR)/miniXmlParser.cpp' || echo '$(srcdir)/'`$(TOOLS_DIR)/miniXmlParser.cpp; \
++@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/miniXmlParser.Tpo" "$(DEPDIR)/miniXmlParser.Po"; else rm -f "$(DEPDIR)/miniXmlParser.Tpo"; exit 1; fi
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(TOOLS_DIR)/miniXmlParser.cpp' object='miniXmlParser.o' libtool=no @AMDEPBACKSLASH@
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o miniXmlParser.o `test -f '$(TOOLS_DIR)/miniXmlParser.cpp' || echo '$(srcdir)/'`$(TOOLS_DIR)/miniXmlParser.cpp
++
++miniXmlParser.obj: $(TOOLS_DIR)/miniXmlParser.cpp
++@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT miniXmlParser.obj -MD -MP -MF "$(DEPDIR)/miniXmlParser.Tpo" -c -o miniXmlParser.obj `if test -f '$(TOOLS_DIR)/miniXmlParser.cpp'; then $(CYGPATH_W) '$(TOOLS_DIR)/miniXmlParser.cpp'; else $(CYGPATH_W) '$(srcdir)/$(TOOLS_DIR)/miniXmlParser.cpp'; fi`; \
++@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/miniXmlParser.Tpo" "$(DEPDIR)/miniXmlParser.Po"; else rm -f "$(DEPDIR)/miniXmlParser.Tpo"; exit 1; fi
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(TOOLS_DIR)/miniXmlParser.cpp' object='miniXmlParser.obj' libtool=no @AMDEPBACKSLASH@
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o miniXmlParser.obj `if test -f '$(TOOLS_DIR)/miniXmlParser.cpp'; then $(CYGPATH_W) '$(TOOLS_DIR)/miniXmlParser.cpp'; else $(CYGPATH_W) '$(srcdir)/$(TOOLS_DIR)/miniXmlParser.cpp'; fi`
++
++xmlNode.o: $(TOOLS_DIR)/xmlNode.cpp
++@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT xmlNode.o -MD -MP -MF "$(DEPDIR)/xmlNode.Tpo" -c -o xmlNode.o `test -f '$(TOOLS_DIR)/xmlNode.cpp' || echo '$(srcdir)/'`$(TOOLS_DIR)/xmlNode.cpp; \
++@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/xmlNode.Tpo" "$(DEPDIR)/xmlNode.Po"; else rm -f "$(DEPDIR)/xmlNode.Tpo"; exit 1; fi
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(TOOLS_DIR)/xmlNode.cpp' object='xmlNode.o' libtool=no @AMDEPBACKSLASH@
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o xmlNode.o `test -f '$(TOOLS_DIR)/xmlNode.cpp' || echo '$(srcdir)/'`$(TOOLS_DIR)/xmlNode.cpp
++
++xmlNode.obj: $(TOOLS_DIR)/xmlNode.cpp
++@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT xmlNode.obj -MD -MP -MF "$(DEPDIR)/xmlNode.Tpo" -c -o xmlNode.obj `if test -f '$(TOOLS_DIR)/xmlNode.cpp'; then $(CYGPATH_W) '$(TOOLS_DIR)/xmlNode.cpp'; else $(CYGPATH_W) '$(srcdir)/$(TOOLS_DIR)/xmlNode.cpp'; fi`; \
++@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/xmlNode.Tpo" "$(DEPDIR)/xmlNode.Po"; else rm -f "$(DEPDIR)/xmlNode.Tpo"; exit 1; fi
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(TOOLS_DIR)/xmlNode.cpp' object='xmlNode.obj' libtool=no @AMDEPBACKSLASH@
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o xmlNode.obj `if test -f '$(TOOLS_DIR)/xmlNode.cpp'; then $(CYGPATH_W) '$(TOOLS_DIR)/xmlNode.cpp'; else $(CYGPATH_W) '$(srcdir)/$(TOOLS_DIR)/xmlNode.cpp'; fi`
++
++httpParser.o: $(TOOLS_DIR)/httpParser.cpp
++@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT httpParser.o -MD -MP -MF "$(DEPDIR)/httpParser.Tpo" -c -o httpParser.o `test -f '$(TOOLS_DIR)/httpParser.cpp' || echo '$(srcdir)/'`$(TOOLS_DIR)/httpParser.cpp; \
++@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/httpParser.Tpo" "$(DEPDIR)/httpParser.Po"; else rm -f "$(DEPDIR)/httpParser.Tpo"; exit 1; fi
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(TOOLS_DIR)/httpParser.cpp' object='httpParser.o' libtool=no @AMDEPBACKSLASH@
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o httpParser.o `test -f '$(TOOLS_DIR)/httpParser.cpp' || echo '$(srcdir)/'`$(TOOLS_DIR)/httpParser.cpp
++
++httpParser.obj: $(TOOLS_DIR)/httpParser.cpp
++@am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT httpParser.obj -MD -MP -MF "$(DEPDIR)/httpParser.Tpo" -c -o httpParser.obj `if test -f '$(TOOLS_DIR)/httpParser.cpp'; then $(CYGPATH_W) '$(TOOLS_DIR)/httpParser.cpp'; else $(CYGPATH_W) '$(srcdir)/$(TOOLS_DIR)/httpParser.cpp'; fi`; \
++@am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/httpParser.Tpo" "$(DEPDIR)/httpParser.Po"; else rm -f "$(DEPDIR)/httpParser.Tpo"; exit 1; fi
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	source='$(TOOLS_DIR)/httpParser.cpp' object='httpParser.obj' libtool=no @AMDEPBACKSLASH@
++@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
++@am__fastdepCXX_FALSE@	$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o httpParser.obj `if test -f '$(TOOLS_DIR)/httpParser.cpp'; then $(CYGPATH_W) '$(TOOLS_DIR)/httpParser.cpp'; else $(CYGPATH_W) '$(srcdir)/$(TOOLS_DIR)/httpParser.cpp'; fi`
++
+ MEILinux.o: $(MEI_DIR)/MEILinux.cpp
+ @am__fastdepCXX_TRUE@	if $(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT MEILinux.o -MD -MP -MF "$(DEPDIR)/MEILinux.Tpo" -c -o MEILinux.o `test -f '$(MEI_DIR)/MEILinux.cpp' || echo '$(srcdir)/'`$(MEI_DIR)/MEILinux.cpp; \
+ @am__fastdepCXX_TRUE@	then mv -f "$(DEPDIR)/MEILinux.Tpo" "$(DEPDIR)/MEILinux.Po"; else rm -f "$(DEPDIR)/MEILinux.Tpo"; exit 1; fi
+@@ -551,6 +664,23 @@ clean-libtool:
+ distclean-libtool:
+ 	-rm -f libtool
+ uninstall-info-am:
++install-xml_DATA: $(xml__DATA)
++	@$(NORMAL_INSTALL)
++	test -z "$(xml_dir)" || $(mkdir_p) "$(DESTDIR)$(xml_dir)"
++	@list='$(xml__DATA)'; for p in $$list; do \
++	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
++	  f=$(am__strip_dir) \
++	  echo " $(xml_DATA_INSTALL) '$$d$$p' '$(DESTDIR)$(xml_dir)/$$f'"; \
++	  $(xml_DATA_INSTALL) "$$d$$p" "$(DESTDIR)$(xml_dir)/$$f"; \
++	done
++
++uninstall-xml_DATA:
++	@$(NORMAL_UNINSTALL)
++	@list='$(xml__DATA)'; for p in $$list; do \
++	  f=$(am__strip_dir) \
++	  echo " rm -f '$(DESTDIR)$(xml_dir)/$$f'"; \
++	  rm -f "$(DESTDIR)$(xml_dir)/$$f"; \
++	done
+ 
+ ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
+ 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
+@@ -629,9 +759,9 @@ distdir: $(DISTFILES)
+ 	done
+ check-am: all-am
+ check: check-am
+-all-am: Makefile $(PROGRAMS)
++all-am: Makefile $(PROGRAMS) $(SCRIPTS) $(DATA)
+ installdirs:
+-	for dir in "$(DESTDIR)$(sbindir)"; do \
++	for dir in "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(xml_dir)"; do \
+ 	  test -z "$$dir" || $(mkdir_p) "$$dir"; \
+ 	done
+ install: install-am
+@@ -679,11 +809,11 @@ info: info-am
+ 
+ info-am:
+ 
+-install-data-am:
++install-data-am: install-xml_DATA
+ 	@$(NORMAL_INSTALL)
+ 	$(MAKE) $(AM_MAKEFLAGS) install-data-hook
+ 
+-install-exec-am: install-sbinPROGRAMS
++install-exec-am: install-dist_binSCRIPTS install-sbinPROGRAMS
+ 
+ install-info: install-info-am
+ 
+@@ -709,20 +839,22 @@ ps: ps-am
+ 
+ ps-am:
+ 
+-uninstall-am: uninstall-info-am uninstall-sbinPROGRAMS
++uninstall-am: uninstall-dist_binSCRIPTS uninstall-info-am \
++	uninstall-sbinPROGRAMS uninstall-xml_DATA
+ 
+ .PHONY: CTAGS GTAGS all all-am check check-am clean clean-generic \
+ 	clean-libtool clean-sbinPROGRAMS ctags distclean \
+ 	distclean-compile distclean-generic distclean-libtool \
+ 	distclean-tags distdir dvi dvi-am html html-am info info-am \
+ 	install install-am install-data install-data-am \
+-	install-data-hook install-exec install-exec-am install-info \
+-	install-info-am install-man install-sbinPROGRAMS install-strip \
++	install-data-hook install-dist_binSCRIPTS install-exec \
++	install-exec-am install-info install-info-am install-man \
++	install-sbinPROGRAMS install-strip install-xml_DATA \
+ 	installcheck installcheck-am installdirs maintainer-clean \
+ 	maintainer-clean-generic mostlyclean mostlyclean-compile \
+ 	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
+-	tags uninstall uninstall-am uninstall-info-am \
+-	uninstall-sbinPROGRAMS
++	tags uninstall uninstall-am uninstall-dist_binSCRIPTS \
++	uninstall-info-am uninstall-sbinPROGRAMS uninstall-xml_DATA
+ 
+ 
+ install-data-hook:
+diff --git a/src/Makefile.inc b/src/Makefile.inc
+index 079503c..8d7e7ab 100755
+--- a/src/Makefile.inc
++++ b/src/Makefile.inc
+@@ -26,11 +26,19 @@ $(MEI_DIR)/PTHICommand.cpp
+ 
+ TOOLS_HDRS=$(TOOLS_DIR)/ATVersion.h \
+ $(TOOLS_DIR)/ATNetworkTool.h \
+-$(TOOLS_DIR)/daemonize.h
++$(TOOLS_DIR)/daemonize.h \
++$(TOOLS_DIR)/utils.h \
++$(TOOLS_DIR)/miniXmlParser.h \
++$(TOOLS_DIR)/xmlNode.h \
++$(TOOLS_DIR)/httpParser.h
+ 
+ TOOLS_SRCS=$(TOOLS_DIR)/ATVersion.cpp \
+ $(TOOLS_DIR)/ATNetworkTool.cpp \
+-$(TOOLS_DIR)/daemonize.cpp
++$(TOOLS_DIR)/daemonize.cpp \
++$(TOOLS_DIR)/utils.cpp \
++$(TOOLS_DIR)/miniXmlParser.cpp \
++$(TOOLS_DIR)/xmlNode.cpp \
++$(TOOLS_DIR)/httpParser.cpp
+ 
+ MAIN_HDRS=types.h \
+ Channel.h \
+@@ -42,14 +50,18 @@ ConfigConnection.h \
+ Protocol.h \
+ glue.h \
+ version.h \
+-ChannelGenerator.h
++ChannelGenerator.h \
++alertIndication.h \
++alertDescription.h
+ 
+ MAIN_SRCS=main.cpp \
+ LMEConnection.cpp \
+ ConfigConnection.cpp \
+ Protocol.cpp \
+ glue.cpp \
+-ChannelGenerator.cpp
++ChannelGenerator.cpp \
++alertIndication.cpp \
++alertDescription.cpp
+ 
+ SRCS=$(MAIN_SRCS) \
+ $(TOOLS_SRCS) \
+diff --git a/src/Protocol.cpp b/src/Protocol.cpp
+index 3a4a9bb..c3de5cc 100755
+--- a/src/Protocol.cpp
++++ b/src/Protocol.cpp
+@@ -28,6 +28,7 @@
+  * POSSIBILITY OF SUCH DAMAGE.
+  *******************************************************************************/
+ 
++
+ #ifdef HAVE_CONFIG_H
+ #include "config.h"
+ #endif
+@@ -42,7 +43,8 @@
+ #include <fcntl.h>
+ #include <netdb.h>
+ #include <syslog.h>
+-#include "strings.h"
++#include <vector>
++#include <string.h>
+ 
+ #define _stprintf_s snprintf
+ #define strnicmp strncasecmp
+@@ -53,6 +55,11 @@
+ #include "LMS_if.h"
+ #include "Lock.h"
+ #include "ATNetworkTool.h"
++#include "utils.h"
++#include "httpParser.h"
++#include "miniXmlParser.h"
++#include "alertIndication.h"
++#include "alertDescription.h"
+ 
+ 
+ const LMEProtocolVersionMessage Protocol::MIN_PROT_VERSION(1, 0);
+@@ -99,9 +106,9 @@ bool Protocol::Init(EventLogCallback cb, void *param)
+   PRINT("Protocol::Init started\n");
+ 	_eventLog = cb;
+ 	_eventLogParam = param;
++	_UNSSenderChannel = INVALID_CHANNEL;
+ 
+ 	DeinitFull();
+-
+ 	{
+ 		Lock dl(_deinitLock);
+ 		_deinitReq = false;
+@@ -1170,10 +1177,112 @@ void Protocol::_removeFromMaps(Channel *c)
+ 	_channelToSocket.erase(c->GetSenderChannel());
+ 	_socketToChannel.erase(s);
+ }
+-void Protocol::_UNSConnection()
++
++std::string Protocol::_PACKET_BODY_LENGTH="Content-Length";
++std::string Protocol::_NOTIFICATION_HEADER="Intel Management Engine Notification";
++int Protocol::_UNSHandler(char *data, int dataLength)
+ {
+-	PRINT("UNS event\n");
++	PRINT("UNS event data\n");
++	char                      *pBuffer            = NULL;
++	static char               *sBuffer            = NULL;
++	static int                 sBufferLength      = 0;
++	int                        rc                 = -1;
++	unsigned int               packetBodyLength   = 0;
++	HttpParser                 httpParser;
++	std::string                httpBody;
++	AlertIndication            alertIndication;
++
++	//printf("Processing notification message %d\n", newNotification);
++
++	//Init if new notification. Append recieved notification bytes to existing buffer otherwise.
++	if (_newNotification == true) 
++	{	if (sBuffer != NULL) {
++			delete []sBuffer;
++		}
++		sBuffer = NULL;
++		sBufferLength = 0;
++	}
++
++	if (sBuffer == NULL) {
++		sBufferLength = 0;
++		sBuffer = new char[(dataLength+1) *sizeof(char)];
++		memcpy(sBuffer, data, dataLength);
++	} else {
++		pBuffer = new char[(sBufferLength + dataLength + 1)*sizeof(char)];
++		memcpy(pBuffer, sBuffer, sBufferLength);
++		memcpy(pBuffer+sBufferLength, data, dataLength);
++		delete []sBuffer;
++		sBuffer = pBuffer;
++	}
++
++	sBufferLength += dataLength;
++	sBuffer[sBufferLength] = '\0';
++
++	do {
++		
++		if (httpParser.parse(sBuffer) != 0) {
++			break;
++		}
++		
++		if (httpParser.getHeaderField(_PACKET_BODY_LENGTH).empty()) {
++			break;
++		}
++
++		packetBodyLength = stoi(httpParser.getHeaderField(_PACKET_BODY_LENGTH));
++
++		if (packetBodyLength == 0) {
++			break;
++		}
++		
++		httpBody = httpParser.getBody();
++		if (httpBody.size() < packetBodyLength) {
++			break;
++		}
++
++		if (alertIndication.initFromXml((char*)httpBody.c_str(), httpBody.size())) {
++			break;
++		}
++		
++		std::string alertIDString(alertIndication.getMessageID().data, alertIndication.getMessageID().dataLength);
++		if (alertIDString.empty()) {
++			break;
++		}
++
++		/*Check if we have match only with ID, if fails then use MessageArguments and checkagain */
++		std::string alertDescription;
++		std::string _alertDescription;
++		std::string notificationBody;
++		std::string messageArguments;
++		alertDescription =  AlertDescription::getAlertDescription(alertIDString);
++		messageArguments = std::string(alertIndication.getMessageArguments().data, alertIndication.getMessageArguments().dataLength);
++
++		if (alertDescription.empty()) {
++			alertIDString += "-" + messageArguments;
++			alertDescription = AlertDescription::getAlertDescription(alertIDString);
++		} else {
++			_alertDescription = messageArguments;
++		}
++
++		notificationBody = std::string(alertIndication.getIndicationTime().data, alertIndication.getIndicationTime().dataLength);
++		if (alertDescription.empty()) {
++			notificationBody += " " + alertIDString;
++		} else {
++			if (_alertDescription.empty()) {
++				notificationBody += " " + alertDescription;
++			} else {  
++				notificationBody += " : " + _alertDescription + " : " +  alertDescription;
++			}
++		}
++		
++		Utils::notifyDesktop(_NOTIFICATION_HEADER, notificationBody, true);
++		rc = 0;
++
++	} while(0);
++
++	return rc;
++
+ }
++
+ int Protocol::_sendHostFQDN()
+ {
+ 	char localName[FQDN_MAX_SIZE] = "\0";
+@@ -1195,12 +1304,15 @@ void Protocol::_apfChannelOpen(LMEChannelOpenRequestMessage *chOpenMsg, int *sta
+ 		" Recipient channel %d for address %s, port %d.\n",
+ 		chOpenMsg->SenderChannel,
+ 		chOpenMsg->Address.c_str(), chOpenMsg->Port);
++
+ 	if(chOpenMsg->Port==0)
+ 	{
+-			_UNSConnection();
+-			_sendHostFQDN();
+-			return;
++		_UNSSenderChannel = chOpenMsg->SenderChannel;
++	        _lme.ChannelOpenReplySuccess(_UNSSenderChannel, _UNSRecipientChannel);
++		_newNotification = true;
++		return;
+ 	}
++
+ 	SOCKET s = ATNetworkTool::Connect(chOpenMsg->Address.c_str(),
+ 					  chOpenMsg->Port, error, PF_UNSPEC);
+ 	if (s == INVALID_SOCKET) {
+@@ -1282,33 +1394,41 @@ PortForwardRequest *Protocol::_apfChannelClose(LMEChannelCloseMessage *chClMsg)
+ 	Lock l(_channelsLock);
+ 	PRINT("_apfChannelClose: RecipientChannel=%d\n",chClMsg->RecipientChannel);
+ 
+-
+-	ChannelToSocketMap::iterator it = _channelToSocket.find(chClMsg->RecipientChannel);
+-	if (it != _channelToSocket .end()) 
+-	{
+-	        SOCKET s = it->second;
+-		Channel *c = _socketToChannel[s];
+-		switch(c->GetStatus()) {
+-		case Channel::OPEN:
+-			c->SetStatus(Channel::CLOSED);
+-			
+-			_lme.ChannelClose(c->GetRecipientChannel(), c->GetSenderChannel());
+-			PRINT("Channel %d was closed by Intel AMT.\n", c->GetSenderChannel());
++	do {
++		if (chClMsg->RecipientChannel == _UNSRecipientChannel) 
++		{
++			//UNS event channel close.
++			//We have not created a channel on LMS side, hence ignore
+ 			break;
++		}
+ 
+-		case Channel::WAITING_CLOSE:
+-			PRINT("Received reply by Intel AMT on closing channel %d.\n", c->GetSenderChannel());
+-			break;
++		ChannelToSocketMap::iterator it = _channelToSocket.find(chClMsg->RecipientChannel);
++		if (it != _channelToSocket .end()) 
++		{
++	        	SOCKET s = it->second;
++			Channel *c = _socketToChannel[s];
++			switch(c->GetStatus()) {
++			case Channel::OPEN:
++				c->SetStatus(Channel::CLOSED);
++				
++				_lme.ChannelClose(c->GetRecipientChannel(), c->GetSenderChannel());
++				PRINT("Channel %d was closed by Intel AMT.\n", c->GetSenderChannel());
++				break;
+ 
+-		case Channel::CLOSED:
+-		case Channel::NOT_OPENED:
+-			break;
+-		}
++			case Channel::WAITING_CLOSE:
++				PRINT("Received reply by Intel AMT on closing channel %d.\n", c->GetSenderChannel());
++				break;
+ 
+-		_removeFromMaps(c);
+-		clPFwdReq = _closeMChannel(c);
++			case Channel::CLOSED:
++			case Channel::NOT_OPENED:
++				break;
++			}
++	
++			_removeFromMaps(c);
++			clPFwdReq = _closeMChannel(c);
+ 
+-	}
++		}
++	} while(0);
+ 
+ 	_channelGenerator.FreeChannel(chClMsg->RecipientChannel);
+ 	
+@@ -1320,6 +1440,18 @@ PortForwardRequest *Protocol::_apfChannelData(LMEChannelDataMessage *chDMsg, int
+ 	PortForwardRequest *clPFwdReq = NULL;
+ 
+ 	do {
++		if (chDMsg->RecipientChannel == _UNSRecipientChannel) 
++
++		{
++			if (_UNSHandler((char*)chDMsg->Data, chDMsg->DataLength) == 0)
++			{
++				_lme.ChannelClose(_UNSSenderChannel, _UNSRecipientChannel);
++			}
++			_newNotification = false;
++			//UNS event data handle.
++			//We have not created a channel on LMS side, hence break  
++			break;
++		}
+ 		Lock l(_channelsLock);
+ 
+ 	        ChannelToSocketMap::iterator it = _channelToSocket.find(chDMsg->RecipientChannel);
+@@ -1341,6 +1473,7 @@ PortForwardRequest *Protocol::_apfChannelData(LMEChannelDataMessage *chDMsg, int
+ 		int senderr = 0;
+ 		int count = _send(channel->GetSocket(), (char *)chDMsg->Data,
+ 				chDMsg->DataLength, senderr);
++
+ 		PRINT("Sent %d bytes of %d from Intel AMT to channel %d with socket %d.\n",
+ 			count, chDMsg->DataLength, chDMsg->RecipientChannel,
+ 			channel->GetSocket());
+diff --git a/src/Protocol.h b/src/Protocol.h
+index a4ef419..858cb78 100755
+--- a/src/Protocol.h
++++ b/src/Protocol.h
+@@ -46,6 +46,7 @@
+ 
+ #define SOCKET int
+ #define INVALID_SOCKET  (SOCKET)(~0)
++#define INVALID_CHANNEL -1
+ #define SOCKET_ERROR            (-1)
+ 
+ 
+@@ -120,7 +121,7 @@ private:
+ 	PortForwardRequest *_apfChannelData(LMEChannelDataMessage *chDMsg, int *status);
+ 	void _LmeReceive(void *buffer, unsigned int len, int *status);
+ 	void _signalSelect();
+-	void _UNSConnection();
++	int _UNSHandler(char *buffer, int len);
+ 	bool _acceptConnection(SOCKET s, unsigned int port);
+ 	int _rxFromSocket(SOCKET s);
+ 	int _handleFQDNChange(const char *fqdn);
+@@ -192,6 +193,11 @@ private:
+ 	typedef std::set<unsigned int> listenPortSet;
+ 	listenPortSet _listenFailReported;
+ 	ChannelGenerator _channelGenerator;
++	static const unsigned int _UNSRecipientChannel = 55555;
++	unsigned int _UNSSenderChannel;
++	bool _newNotification;
++	static std::string _PACKET_BODY_LENGTH;
++	static std::string _NOTIFICATION_HEADER;
+ };
+ 
+ #endif
+diff --git a/src/alertDescription.cpp b/src/alertDescription.cpp
+new file mode 100644
+index 0000000..f05f940
+--- /dev/null
++++ b/src/alertDescription.cpp
+@@ -0,0 +1,144 @@
++/*******************************************************************************
++ * Copyright (C) 2017 Intel Corporation. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ *  - Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ *
++ *  - Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ *  - Neither the name of Intel Corporation. nor the names of its
++ *    contributors may be used to endorse or promote products derived from this
++ *    software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS IS''
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED. IN NO EVENT SHALL Intel Corporation. OR THE CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ *******************************************************************************/
++#include "alertDescription.h"
++#include "miniXmlParser.h"
++#include <sstream>
++#include <fstream>
++#include "defaultAlerts.h"
++#include "types.h"
++
++bool AlertDescription::classInited = false;
++std::string AlertDescription::alertXmlFile = "/usr/local/share/xml/AMTAlerts.xml";
++std::string AlertDescription::alertXmlFile1 = "/usr/share/xml/AMTAlerts.xml";
++std::map<std::string,std::string> AlertDescription::alertDescriptionMap;
++
++void AlertDescription::initAlertDescription() {
++
++	char               *value       = NULL;
++	unsigned int       valueLength  = 0;
++	bool               fromFile     = false;
++	std::string        alertIdArg;
++	std::stringstream  ss;
++	std::string        xmlData;
++	CDataLen           id;
++	CDataLen           arg; 
++	CDataLen           description;
++	MiniXmlParser      xmlParser;
++	std::list<CDataLen>defaultAlertsList;
++	std::list<CDataLen>::iterator it;
++
++	do {
++		if (classInited) {
++			break;
++		}
++
++		std::ifstream is(alertXmlFile, std::ifstream::in);
++		if (is.good()) {
++			ss << is.rdbuf();
++			xmlData = ss.str();
++			fromFile = true;
++		} else {
++			std::ifstream _is(alertXmlFile1, std::ifstream::in);
++			if (_is.good()) { 
++				ss << _is.rdbuf();
++				xmlData = ss.str();
++				fromFile = true;
++			} 
++			_is.close();
++		}
++		is.close();
++
++		/* Parse alert descriptions from xml file, if file is absent use the default ones  */
++		if (fromFile) {
++			/* From xml file */
++			if (xmlParser.parse((char*)xmlData.c_str(), xmlData.size()) == 0) {
++				/* Process alert xml of form
++				 * <Alerts><Alert><Id>iAMT0052</Id><Arg>1</Arg></Alert> <Alert>...</Alert> ...<Alerts> 
++				 */
++				if (xmlParser.getXmlTagValue(xmlParser.getRootNode(), "Alerts", 6, NULL, 0, &value, &valueLength) == 0 ) {
++					while (xmlParser.getXmlTagValue(NULL, "Alert", 5, NULL, 0, &value, &valueLength) == 0) { 
++						xmlParser.getXmlTagValue(NULL, "Id", 2, NULL, 0, &value, &valueLength);
++						id.data = value;
++						id.dataLength = valueLength;
++	
++						xmlParser.getXmlTagValue(NULL, "Arg", 3, NULL, 0, &value, &valueLength);
++						arg.data = value;
++						arg.dataLength = valueLength;
++	
++						alertIdArg = std::string(id.data, id.dataLength) + "-" + std::string(arg.data, arg.dataLength);
++
++						xmlParser.getXmlTagValue(NULL, "Message", 7, NULL, 0, &value, &valueLength);
++						alertDescriptionMap.insert(std::pair<std::string, std::string>(alertIdArg, std::string(value, valueLength)));
++					}
++					classInited = true;
++				}
++			} else {
++				PRINT("Failed to parse XML\n");
++			}
++		} else {
++			/* Using default XML alerts descriptions */
++			defaultAlertsList = Utils::split(DEFAULT_ALERTS , DEFAULT_ALERTS_LENGTH , ";", 1);
++			for (CDataLen alert: defaultAlertsList) {
++				std::list<CDataLen> alertIdDescription = Utils::split(alert.data, alert.dataLength, ":", 1);
++				if (alertIdDescription.size() >= 2) {
++					it = alertIdDescription.begin();
++					id.data = it->data;
++					id.dataLength = it->dataLength;
++					it++;
++					description.data = it->data;
++					description.dataLength = it->dataLength;
++					/* Add to std::map for faster retreival */ 
++					alertDescriptionMap.insert(std::pair<std::string, std::string>(std::string(id.data, id.dataLength), 
++											std::string(description.data, description.dataLength)));
++				}
++			}
++			classInited = true;
++		}
++	} while(0);
++}
++	
++
++std::string AlertDescription::getAlertDescription(std::string alert) { 
++	CDataLen alertDescription;
++	std::map<std::string, std::string>::iterator it;
++	
++	if (classInited == false) {
++		initAlertDescription();
++	}
++	
++	if (classInited && alertDescriptionMap.empty() == false) {
++ 		it = alertDescriptionMap.find(alert);
++		if (it != alertDescriptionMap.end()) {
++			return it->second;
++		}
++	}
++
++	return "";
++};
+diff --git a/src/alertDescription.h b/src/alertDescription.h
+new file mode 100644
+index 0000000..6413f2a
+--- /dev/null
++++ b/src/alertDescription.h
+@@ -0,0 +1,45 @@
++/*******************************************************************************
++ * Copyright (C) 2017 Intel Corporation. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ *  - Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ *
++ *  - Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ *  - Neither the name of Intel Corporation. nor the names of its
++ *    contributors may be used to endorse or promote products derived from this
++ *    software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS IS''
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED. IN NO EVENT SHALL Intel Corporation. OR THE CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ *******************************************************************************/
++#ifndef _ALERTDESCRIPTION_H
++#define _AlERTDESCRIPTION_H
++#include "utils.h"
++#include <string>
++#include <map>
++class AlertDescription {
++	protected:
++	static bool classInited;
++	static std::string alertXmlFile;
++	static std::string alertXmlFile1;
++	static void initAlertDescription();
++	static std::map<std::string, std::string> alertDescriptionMap;
++	public:
++	static std::string getAlertDescription(std::string alert);
++};
++#endif
+diff --git a/src/alertIndication.cpp b/src/alertIndication.cpp
+new file mode 100644
+index 0000000..ed14abd
+--- /dev/null
++++ b/src/alertIndication.cpp
+@@ -0,0 +1,90 @@
++/*******************************************************************************
++ * Copyright (C) 2017 Intel Corporation. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ *  - Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ *
++ *  - Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ *  - Neither the name of Intel Corporation. nor the names of its
++ *    contributors may be used to endorse or promote products derived from this
++ *    software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS IS''
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED. IN NO EVENT SHALL Intel Corporation. OR THE CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ *******************************************************************************/
++#include "miniXmlParser.h"
++#include "alertIndication.h"
++#include <string.h>
++
++const char* AlertIndication::CLASS_URI = "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/CIM_AlertIndication";
++void AlertIndication::initAlertIndication(char *ns, unsigned int nsLen) {
++	
++	char *value          = NULL;
++	unsigned int valueLen= 0;
++
++	if (xmlParser.getXmlTagValue(xmlParser.getRootNode(), "MessageID", strlen("MessageID"), ns, nsLen, &value, &valueLen) == 0) {
++		messageID.data = value;
++		messageID.dataLength = valueLen;
++	}
++
++	if (xmlParser.getXmlTagValue(xmlParser.getRootNode(), "MessageArguments", strlen("MessageArguments"), ns, nsLen, &value, &valueLen) == 0) {
++		messageArguments.data = value;
++		messageArguments.dataLength = valueLen;
++	}
++
++	if (xmlParser.getXmlTagValue(xmlParser.getRootNode(), "IndicationTime", strlen("IndicationTime"), ns, nsLen, &value, &valueLen) == 0) {
++		if (xmlParser.getXmlTagValue(NULL, "Datetime", strlen("Datetime"), NULL, 0, &value, &valueLen) == 0) {
++			indicationTime.data = value;
++			indicationTime.dataLength = valueLen;
++		}
++	}
++}
++
++int AlertIndication::initFromXml(char *buffer, unsigned int bufferLen) {
++
++	char *nsPrefix    = NULL;
++	int   rc          = 0;
++	unsigned int nsPrefixLen = 0;
++
++	do {
++		if (buffer == NULL || bufferLen == 0) {
++			rc = -1;
++			break;
++		}
++
++		if (xmlParser.parse(buffer, bufferLen)) {
++			rc = -1;
++			break;
++		}
++
++		if (xmlParser.getNSPrefix(xmlParser.getRootNode(), (char*)CLASS_URI, CLASS_URI_LEN, &nsPrefix, &nsPrefixLen)) {
++			rc = -1;
++			break;
++		}
++	
++		initAlertIndication(nsPrefix, nsPrefixLen);
++		
++	} while(0);
++
++	return rc;
++}
++
++CDataLen AlertIndication::getMessageArguments() { return messageArguments; };
++CDataLen AlertIndication::getIndicationTime() { return indicationTime; };
++CDataLen AlertIndication::getMessageID() { return messageID; };
++
+diff --git a/src/alertIndication.h b/src/alertIndication.h
+new file mode 100644
+index 0000000..cf6dc51
+--- /dev/null
++++ b/src/alertIndication.h
+@@ -0,0 +1,54 @@
++/*******************************************************************************
++ * Copyright (C) 2017 Intel Corporation. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ *  - Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ *
++ *  - Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ *  - Neither the name of Intel Corporation. nor the names of its
++ *    contributors may be used to endorse or promote products derived from this
++ *    software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS IS''
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED. IN NO EVENT SHALL Intel Corporation. OR THE CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ *******************************************************************************/
++#ifndef __ALERTINDICATION_H
++#define __ALERTINDICATION_H
++
++#include "utils.h"
++#include <map>
++
++class AlertIndication {
++	private:
++	MiniXmlParser xmlParser;
++        CDataLen messageArguments;
++	CDataLen indicationTime;
++	CDataLen messageID;
++	void initAlertIndication(char *ns, unsigned int nsLen);
++
++	public:
++	static const char* CLASS_URI;
++	static const int CLASS_URI_LEN = 69;
++	int initFromXml(char *buffer, unsigned int bufferLen);
++	CDataLen getMessageArguments();
++	CDataLen getMessageID();
++	CDataLen getIndicationTime();
++
++};
++
++#endif
+diff --git a/src/defaultAlerts.h b/src/defaultAlerts.h
+new file mode 100644
+index 0000000..23283f8
+--- /dev/null
++++ b/src/defaultAlerts.h
+@@ -0,0 +1,43 @@
++#ifndef _DEFAULTALERTS_H
++#define _DEFAULTALERTS_H
++#define DEFAULT_ALERTS_LENGTH 6257
++#define DEFAULT_ALERTS "iAMT0001-:System Defense Policy triggered.;iAMT0002-:Agent Presence Agent not started.;iAMT0003-:Agent Presence Agent stopped.;iAMT0004-:Agent Presence: running.;\
++iAMT0005-:Agent Presence: expired.;iAMT0006-:Agent Presence: suspended.;iAMT0007-:Host software attempt to disable AMT Network link detected.;\
++iAMT0008-:Host software attempt to disable AMT Network link detected -- Host Network link blocked.;iAMT0009-:AMT clock or FLASH wear-out protection disabled.;\
++iAMT0010-:Intel(R) AMT Network Interface: Heuristics defense slow threshold trespassed.;iAMT0011-:Intel(R) AMT Network Interface: Heuristics defense fast threshold trespassed.;\
++iAMT0012-:Intel(R) AMT Network Interface: Heuristics defense factory defined threshold trespassed.;iAMT0013-:Intel(R) AMT Network Interface: Heuristics defense Encounter timeout expired.;\
++iAMT0014-:General certificate error.;iAMT0015-:Certificate expired.;iAMT0016-:No trusted root certificate.;iAMT0017-:Not configured to work with server certificate.;iAMT0018-:Certificate revoked.;\
++iAMT0019-:RSA exponent too large.;iAMT0020-:RSA modulus too large.;iAMT0021-:Unsupported digest.;iAMT0022-:Distinguished name too long.;iAMT0023-:Key usage missing.;\
++iAMT0024-:General SSL handshake error.;iAMT0025-:General 802.1x error.;iAMT0026-:AMT Diagnostic AlertEAC error - General NAC error.;\
++iAMT0027-:AMT Diagnostic AlertEAC error - attempt to get a NAC posture while AMT NAC is disabled.;iAMT0028-:AMT Diagnostic AlertEAC error - attempt to get a posture of an unsupported type.;\
++iAMT0029-:Audit log storage is 50% full.;iAMT0030-:Audit log storage is 75% full.;iAMT0031-:Audit log storage is 85% full.;iAMT0032-:Audit log storage is 95% full.;\
++iAMT0033-:Audit log storage is full.;iAMT0034-:Firmware Update Event - Partial.;iAMT0035-:Firmware Update Event - Failure.;iAMT0036-:Remote connectivity initiated.;\
++iAMT0037-:ME Presence event.;iAMT0038-0:AMT is being unprovisioned using BIOS command.;iAMT0038-1:AMT is being unprovisioned using Local MEI command.;\
++iAMT0038-2:AMT is being unprovisioned using Local WS-MAN/SOAP command.;iAMT0038-3:AMT is being unprovisioned using Remote WS-MAN/SOAP command.;\
++iAMT0050-:User Notification Alert - General Notification.;iAMT0050-16:User Notification Alert - Circuit Breaker notification (CB Drop TX filter hit.).;\
++iAMT0050-17:User Notification Alert - Circuit Breaker notification (CB Rate Limit TX filter hit.).;iAMT0050-18:User Notification Alert - Circuit Breaker notification (CB Drop RX filter hit.).;\
++iAMT0050-19:User Notification Alert - Circuit Breaker notification (CB Rate Limit RX filter hit.).;iAMT0050-32:User Notification Alert - EAC notification.;\
++iAMT0050-48:User Notification Alert - Remote diagnostics - (Remote Redirection session started - SOL).;iAMT0050-49:User Notification Alert - Remote diagnostics - (Remote Redirection session stopped - SOL).;\
++iAMT0050-50:User Notification Alert - Remote diagnostics. (Remote Redirection session started - IDE-R).;iAMT0050-51:User Notification Alert - Remote diagnostics. (Remote Redirection session stopped - IDE-R).;\
++iAMT0050-66:User Notification Alert - WLAN notification (Host profile mismatch - Management Interface ignored).;\
++iAMT0050-67:User Notification Alert - WLAN notification (Management device overrides host radio).;iAMT0050-68:User Notification Alert - WLAN notification (Host profile security mismatch).;\
++iAMT0050-69:User Notification Alert - WLAN notification (Management device relinquishes control over host Radio).;iAMT0051-:User Notification Alert - SecIo event.;\
++iAMT0051-0:User Notification Alert - SecIo event semaphore at host.;iAMT0051-1:User Notification Alert - semaphore at ME.;iAMT0051-2:User Notification Alert - SecIo event - semaphore timeout.;\
++iAMT0052-:User Notification Alert - KVM session event.;iAMT0052-0:User Notification Alert - KVM session requested.;iAMT0052-1:User Notification Alert - KVM session started.;\
++iAMT0052-2:User Notification Alert - KVM session stopped.;iAMT0053-:User Notification Alert - RCS notification.;\
++iAMT0053-50:User Notification Alert - RCS notification (HW button pressed. Connection initiated automatically).;\
++iAMT0053-52:User Notification Alert - RCS notification (HW button pressed. Connection wasn't initiated automatically).;iAMT0053-53:User Notification Alert - RCS notification (Contracts updated).;\
++iAMT0054-:User Notification Alert - WLAN notification. Wireless Profile sync enablement state changed.;iAMT0055-:User Notification Alert - Provisioning state change notification.;\
++iAMT0055-0:User Notification Alert - Provisioning state change notification - Pre-configuration.;iAMT0055-1:User Notification Alert - Provisioning state change notification - In configuration.;\
++iAMT0055-2:User Notification Alert - Provisioning state change notification - Post-configuration.;\
++iAMT0055-3:User Notification Alert - Provisioning state change notification - unprovision process has started.;iAMT0056-:User Notification Alert - System Defense change notification.;\
++iAMT0057-:User Notification Alert - Network State change notification.;iAMT0058-:User Notification Alert - Remote Access change notification.;\
++iAMT0058-1:User Notification Alert - Remote Access change notification - tunnel is closed.;iAMT0058-1:User Notification Alert - Remote Access change notification - tunnel is open.;\
++iAMT0059-:User Notification Alert - KVM enabled event.;iAMT0059-0:User Notification Alert - KVM enabled event - KVM disabled.;\
++iAMT0059-1:User Notification Alert - KVM enabled event - KVM enabled (both from MEBx and PTNI).;iAMT0060-:User Notification Alert - SecIO configuration event.;iAMT0061-:ME FW reset occurred.;\
++iAMT0062-:User Notification Alert - IpSyncEnabled event.;iAMT0062-0:User Notification Alert - IpSyncEnabled event - IpSync disabled.;\
++iAMT0062-1:User Notification Alert - IpSyncEnabled event - IpSync enabled.;iAMT0063-:User Notification Alert - HTTP Proxy sync enabled event.;\
++iAMT0063-0:User Notification Alert - HTTP Proxy sync enabled event - HTTP Proxy Sync disabled.;iAMT0063-1:User Notification Alert - HTTP Proxy sync enabled event - HTTP Proxy Sync enabled.;\
++iAMT0064-:User Notification Alert - User Consent event.;iAMT0064-1:User Notification Alert - User Consent event - User Consent granted.;\
++iAMT0064-2:User Notification Alert - User Consent event - User Consent ended.;"
++#endif
+diff --git a/src/notifyDesktop.sh b/src/notifyDesktop.sh
+new file mode 100644
+index 0000000..06bfd97
+--- /dev/null
++++ b/src/notifyDesktop.sh
+@@ -0,0 +1,10 @@
++#!/bin/sh
++# get list of current users
++for x in $(who | sort -u -k1,1 | awk '{print $1}'); do
++  # send message to anyone on display 0
++  dbus_session_file=$(eval echo "~$x")/.dbus/session-bus/$(cat /var/lib/dbus/machine-id)-0
++  if [ -e "$dbus_session_file" ]; then
++    su -l "$x" -c "source '$dbus_session_file'; export DISPLAY=:0; notify-send -u critical -t 2000 '$1' '$2'"
++  fi
++done
++
+diff --git a/src/tools/httpParser.cpp b/src/tools/httpParser.cpp
+new file mode 100644
+index 0000000..38d2901
+--- /dev/null
++++ b/src/tools/httpParser.cpp
+@@ -0,0 +1,101 @@
++/*******************************************************************************
++ * Copyright (C) 2017 Intel Corporation. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ *  - Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ *
++ *  - Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ *  - Neither the name of Intel Corporation. nor the names of its
++ *    contributors may be used to endorse or promote products derived from this
++ *    software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS IS''
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED. IN NO EVENT SHALL Intel Corporation. OR THE CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ *******************************************************************************/
++#include "httpParser.h"
++#include "utils.h"
++#include "types.h"
++
++int HttpParser::parse(char *buffer) {
++
++	std::vector<std::string> headerBody;
++	std::vector<std::string> header;
++	int rc = 0;
++	do {
++		if (buffer == NULL) {
++			rc = -1;
++			break;
++		}
++
++		headerBody = Utils::split(buffer, "\r\n\r\n"); 
++		if (headerBody.size() < 2)
++		{
++			PRINT("Failed to process httpHeader\n");
++			rc = -1;
++			break;
++		}
++
++		/* Entries in Header are seperated by \r\n */
++	 	header = Utils::split((char*)headerBody[0].c_str(), "\r\n");
++
++		/* First line in header is the the header line
++		 * e.g. POST <path> HTTP/1.1
++		 * e.g  GET <path> HTTP/1.1
++		 */
++		headerLine = header[0];
++
++		/* After headerline are the Fields
++		 * e.g Content-Length:2204
++		 */
++		for (unsigned int i=1; i< header.size(); i++) {
++			std::vector<std::string> field = Utils::split((char*)header[i].c_str(), ":");
++			if (field.size() < 2) {
++				rc = -1;
++				break;
++			}
++			headerFields.insert(std::pair<std::string, std::string>(field[0], field[1]));
++		}
++
++		if (rc) break;	
++
++		body = headerBody[1];
++	} while(0);
++
++	return rc;
++}
++
++std::string HttpParser::getHeaderLine() {
++	return headerLine;
++}
++
++std::string HttpParser::getHeaderField(std::string field) {
++	std::map<std::string,std::string>::iterator it;
++	std::string fieldValue = ""; 
++ 
++	it = headerFields.find(field);
++	if (it != headerFields.end())
++	{
++		fieldValue = it->second;
++	}
++
++	return fieldValue;
++}
++
++std::string HttpParser::getBody() {
++	return body;
++}
+diff --git a/src/tools/httpParser.h b/src/tools/httpParser.h
+new file mode 100644
+index 0000000..a82d82a
+--- /dev/null
++++ b/src/tools/httpParser.h
+@@ -0,0 +1,49 @@
++/*******************************************************************************
++ * Copyright (C) 2017 Intel Corporation. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ *  - Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ *
++ *  - Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ *  - Neither the name of Intel Corporation. nor the names of its
++ *    contributors may be used to endorse or promote products derived from this
++ *    software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS IS''
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED. IN NO EVENT SHALL Intel Corporation. OR THE CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ *******************************************************************************/
++#ifndef _HTTPPARSER_H
++#define _HTTPPARSER_H
++#include <vector>
++#include <map>
++#include <string>
++
++class HttpParser {
++	
++	public:
++	int parse(char *buffer);
++	std::string getHeaderLine();
++	std::string getHeaderField(std::string field);
++	std::string getBody();
++	private:
++	std::string headerLine;
++	std::map<std::string, std::string> headerFields;
++	std::string body;
++
++};
++#endif
+diff --git a/src/tools/miniXmlParser.cpp b/src/tools/miniXmlParser.cpp
+new file mode 100644
+index 0000000..f1f0503
+--- /dev/null
++++ b/src/tools/miniXmlParser.cpp
+@@ -0,0 +1,375 @@
++/*******************************************************************************
++ * Copyright (C) 2017 Intel Corporation. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ *  - Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ *
++ *  - Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ *  - Neither the name of Intel Corporation. nor the names of its
++ *    contributors may be used to endorse or promote products derived from this
++ *    software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS IS''
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED. IN NO EVENT SHALL Intel Corporation. OR THE CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ *******************************************************************************/
++#include "miniXmlParser.h"
++#include "utils.h"
++#include <string.h>
++#include <list>
++#include <stack>
++#include "types.h"
++
++MiniXmlParser::MiniXmlParser() {
++	rootNode = NULL;
++}
++
++MiniXmlParser::~MiniXmlParser() {
++	if (rootNode) {
++		deleteXmlTree(rootNode);
++		rootNode = NULL;	
++	}
++}
++
++void MiniXmlParser::deleteXmlTree(XMLNode* rootNode) {
++	XMLNode* node     = rootNode;
++	XMLNode* tempNode = NULL;
++
++	while (node != NULL) {
++		tempNode = node->childNode;
++		delete node;
++		node = tempNode;
++	}
++}
++
++int MiniXmlParser::validateXML(XMLNode const* rootNode) {
++	int rc = 0;
++	XMLNode* current = (XMLNode *)rootNode;
++	XMLNode* temp    = NULL;
++	std::stack<XMLNode*> tagStack;
++
++	while (current != NULL) {
++		if (current->tagName == NULL) { 
++			PRINT("ValidateXML failed, foung a empty tag\n");
++			rc = -1;
++			break;
++		}
++
++		if (memcmp(current->tagName, "!", 1) == 0) {
++			temp = current;
++			current = tagStack.empty()?NULL:tagStack.top();
++			if (current != NULL) {
++				current->childNode = temp->childNode;
++			} else {
++				current = temp;
++			}
++		} else if (current->startTag) {
++			current->parentNode = tagStack.empty()?NULL:tagStack.top();
++			tagStack.push(current);
++		} else {
++			if (tagStack.empty() == false) {
++				temp = tagStack.top(); 
++				tagStack.pop(); 
++			} else {
++				temp = NULL;
++			}
++			if (temp != NULL) {
++				if (temp->tagLength == current->tagLength && memcmp(temp->tagName, current->tagName, current->tagLength) == 0) {
++					if (current->childNode != NULL) {
++						if (current->childNode->startTag != 0) {
++							temp->siblingNode = current->childNode;
++						}
++					}
++					temp->closingTag = current;
++					current->startingTag = temp;
++				} else {
++					PRINT("ValidateXML failed, Illegal tag\n");
++					rc = -1;
++					break;
++				}
++			} else {
++				PRINT("ValidateXML failed, Illegal closing tag\n");
++				rc = -1;
++				break;
++			}
++		}
++		current = current->childNode;
++	}
++
++	if (tagStack.empty() == false) {
++		PRINT("ValidateXML failed, Incomplete XML\n");
++		rc = -1;
++	}
++
++	return rc;
++}
++
++int MiniXmlParser::parse(char* buffer, unsigned int bufferLength) {
++	int      validXml  = -1;
++	XMLNode* node      = NULL;
++
++	node = _parse(buffer, bufferLength);
++	if (node) {
++		validXml = validateXML(node);
++	}
++	rootNode = node;
++	return validXml;
++}
++
++XMLNode* MiniXmlParser::_parse(char const* buffer, unsigned int bufferLength) {
++
++	char* tagName      = NULL;
++	char* nsTag        = NULL;
++	char* CommentEnd   = NULL;
++
++	int   tagLength    = 0;
++	int   startTag     = 0;
++	int   emptyTag     = 0;
++	int   nsLength     = 0;
++	int   i            = 0;
++	int   CommentIndex = 0;
++
++	std::list<CDataLen> xmlFields;
++	std::list<CDataLen> temp2;
++	std::list<CDataLen> tagValue;
++
++	XMLNode *rootNode = NULL;;
++	XMLNode *current  = NULL;
++	XMLNode *newNode  = NULL;
++	std::list<CDataLen>::iterator it;
++
++	if (buffer == NULL || bufferLength == 0) {
++		return NULL; 
++	}
++
++	xmlFields = Utils::split(buffer, bufferLength, "<", 1);
++	for (CDataLen xmlField: xmlFields) {
++		if (xmlField.dataLength != 0 && memcmp(xmlField.data, "?", 1) != 0 && (xmlField.data > CommentEnd)) {
++			/*Parse XML comments and ignore it.*/
++			if (xmlField.dataLength > 3 && memcmp(xmlField.data, "!--", 3)==0) {
++				CommentIndex = 3;
++				while (((xmlField.data + CommentIndex) < (buffer + bufferLength)) && memcmp(xmlField.data + CommentIndex, "-->", 3) != 0) {
++					CommentIndex++;
++				}
++				CommentEnd = xmlField.data + CommentIndex;
++				continue;
++			} else {
++				emptyTag = 0;
++				/*if the first char is / after < then its ending tag, otherwise starting tag. ("</....") */
++				if (memcmp(xmlField.data, "/", 1) == 0) {
++					startTag = 0;
++					xmlField.data = xmlField.data + 1;
++					xmlField.dataLength -= 1;
++					temp2 = Utils::split(xmlField.data, xmlField.dataLength, ">", 1);
++				} else {
++					
++					startTag = 1;
++					temp2 = Utils::split(xmlField.data, xmlField.dataLength, ">", 1);
++					if (temp2.front().dataLength > 0 && *(char*)(temp2.front().data-1) == '/') {
++						//".../>"  are empty tags
++						emptyTag = 1;
++					}
++				}
++			}
++			/*split on ":" to get namespace:tagName*/
++			tagValue = Utils::split(temp2.front().data, temp2.front().dataLength, ":", 1);
++			if (tagValue.size() == 1) {
++				nsTag = NULL;
++				nsLength = 0;
++				tagName = tagValue.front().data;
++				tagLength = tagValue.front().dataLength;
++			} else {
++				it = tagValue.begin();
++				nsTag = it->data;
++				nsLength = it->dataLength;
++				it++;
++				tagName = it->data;
++				tagLength = it->dataLength;
++			}
++			tagValue.clear();
++			temp2.clear();
++
++			/*Parse for multiple ns:tags and recompute the first tagLength*/
++			for(i=0; i<tagLength; i++) {
++				if ((tagName[i] == ' ')||(tagName[i] == '/')||(tagName[i] == '>')||(tagName[i] == '\t')||(tagName[i] == '\r')||(tagName[i] == '\n')) {
++					if (i != 0) {
++						if (tagName[i]=='/') {
++							emptyTag = 1;
++						}
++						tagLength = i;
++						break;
++					}
++				}
++			}
++
++			/*Create XML Node, populate properties and add it to the list*/
++			if (tagLength != 0) {
++				newNode = new XMLNode();	
++				newNode->tagName = tagName;
++				newNode->tagLength = tagLength;
++				newNode->startTag = startTag;
++				newNode->nsTag = nsTag;
++				newNode->nsLength = nsLength;				
++
++
++				if (rootNode == NULL) {
++					rootNode = newNode;
++				}
++				else {
++					current->childNode = newNode;
++				}
++				current = newNode;
++
++				if (emptyTag) {
++					newNode = new XMLNode();	
++					newNode->tagName = tagName;
++					newNode->tagLength = tagLength;
++					newNode->nsTag = nsTag;
++					newNode->nsLength = nsLength;
++
++					current->emptyTag = 1;
++					current->childNode = newNode;
++					current = newNode;
++				}
++			}
++
++		}
++	}
++
++	xmlFields.clear();
++	return rootNode;
++}
++
++/*
++ * Parse the XML Tree from rootNode and retrive value of a given key.
++ * If rootNode is passed as NULL, parsing resumes from last key retrieved node.
++ * Return 0 on Success , -1 otherwise.
++ * Inputs : XMLNode *rootNode, char *tag, unsigned int tagLen, char *ns, unsigned int nsLen
++ * Outputs: char** value, unsigned int *valueLen 
++ */
++int MiniXmlParser::getXmlTagValue(XMLNode const* rootNode, char const* tag, unsigned int tagLen, char const* ns, unsigned int nsLen, char** value, unsigned int *valueLen)
++{
++
++	static XMLNode *cur    = (XMLNode*) rootNode;
++	static XMLNode *pcur   = cur;
++	char           *pValue = NULL;
++	bool           found   = false;
++
++	if (tag == NULL) {
++		return -1;
++	}
++
++	if (rootNode != NULL) {
++		cur  = (XMLNode *) rootNode;
++		pcur = cur;
++	}
++
++	while (cur != NULL) {
++		while (pcur != NULL) {
++			if (pcur->closingTag && memcmp((pcur->tagName), tag, tagLen) == 0) {
++				if (ns) {
++					if (memcmp(pcur->nsTag, ns, pcur->nsLength) == 0) {
++						found = true;
++					}
++				} else {
++					found = true;
++				}
++
++				if (found) {
++					pValue = strstr(pcur->tagName, ">") + 1;
++					if (pcur->closingTag->nsLength) {
++						*valueLen = pcur->closingTag->nsTag - pValue - 2;
++					} else {
++						*valueLen = pcur->closingTag->tagName - pValue - 2;
++					}
++					*value = pValue;
++					pcur = pcur->childNode;
++					return 0;
++				}
++			}
++			pcur = pcur->childNode;
++		}
++		cur = cur->siblingNode;
++		pcur = cur;
++	}
++
++	return -1;
++}
++
++/* Returns Namespace prefix of given URI namespace
++ * Inputs : XMLNode *node, char *uri, unsigned int uriLen
++ * Outputs: char **nsPrefix, unsigned int *nsPrefixLen
++ */
++int MiniXmlParser::getNSPrefix(XMLNode const* node, char const* uri, unsigned int uriLen, char **nsPrefix, unsigned int *nsPrefixLen) {
++
++	bool foundNS = false;;
++	char *tagEnd = NULL;
++	int  rc      = 0;
++	CDataLen tempNS;
++	CDataLen tempURI;
++	std::list<CDataLen> tags;
++	std::list<CDataLen> temp;
++	std::list<CDataLen> temp2;
++	std::list<CDataLen>::iterator it;
++
++	if (node == NULL || uri == NULL) {
++		rc = -1;
++		return rc;
++	}
++
++	tagEnd = strstr(node->tagName, ">");
++	if (tagEnd && nsPrefix != NULL && nsPrefixLen != NULL) {
++		tags = Utils::split(node->tagName, tagEnd - node->tagName, " ", 1);
++		for (CDataLen tag: tags) {
++			temp = Utils::split(tag.data, tag.dataLength, ":", 1);
++			if (temp.size() >= 2) {
++				it = temp.begin();
++				tempNS.data = it->data;
++				tempNS.dataLength = it->dataLength;
++				it++;
++				
++				if (memcmp(tempNS.data, "xmlns", 5) == 0) {
++					temp2 = Utils::split(it->data, it->dataLength, "=", 1);
++					if (temp2.size() >= 2) {
++						it = temp2.begin();
++						tempNS.data = it->data;
++						tempNS.dataLength = it->dataLength;
++						it++;
++					}
++				}
++				//Ignore if first character is " or ' 
++				if (it->data[0] == 34 || it->data[0] == 39) {
++					it->data = it->data + 1;
++				}
++
++				if (memcmp(it->data, uri, uriLen) == 0) {
++					foundNS = true;
++					break;
++				}
++			}
++		}
++	} else {
++		rc = -1;
++	}
++	
++	if (rc == 0 && foundNS) {
++		*nsPrefix = tempNS.data;
++		*nsPrefixLen = tempNS.dataLength;
++	}
++	
++	return rc;
++}
+diff --git a/src/tools/miniXmlParser.h b/src/tools/miniXmlParser.h
+new file mode 100644
+index 0000000..ae0d234
+--- /dev/null
++++ b/src/tools/miniXmlParser.h
+@@ -0,0 +1,51 @@
++/*******************************************************************************
++ * Copyright (C) 2017 Intel Corporation. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ *  - Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ *
++ *  - Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ *  - Neither the name of Intel Corporation. nor the names of its
++ *    contributors may be used to endorse or promote products derived from this
++ *    software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS IS''
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED. IN NO EVENT SHALL Intel Corporation. OR THE CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ *******************************************************************************/
++#ifndef _MINIXMLPARSER_H
++#define _MINIXMLPARSER_H
++#include <iostream>
++#include "xmlNode.h"
++
++class MiniXmlParser {
++	public:
++	MiniXmlParser();
++	~MiniXmlParser();
++	int parse(char* buffer, unsigned int bufferLength);
++	XMLNode* getRootNode() { return rootNode; };
++	int getXmlTagValue(XMLNode const* rootNode, char const *tag, unsigned int tagLen, char const* ns, unsigned int nsLen, char** value, unsigned int *valueLen);
++	int getNSPrefix(XMLNode const* nonde, char const* uri, unsigned int uriLen, char **nsPrefix, unsigned int *nsPrefixLen);
++
++	private:
++	XMLNode* rootNode;
++	XMLNode* _parse(char const* buffer, unsigned int bufferLength);
++	/* Validates if the XML is well formed and sets up parent sibling pointers */
++	int validateXML(XMLNode const* rootNode);
++	void deleteXmlTree(XMLNode *root);
++};
++#endif
+diff --git a/src/tools/utils.cpp b/src/tools/utils.cpp
+new file mode 100644
+index 0000000..ec20b28
+--- /dev/null
++++ b/src/tools/utils.cpp
+@@ -0,0 +1,185 @@
++/*******************************************************************************
++ * Copyright (C) 2017 Intel Corporation. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ *  - Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ *
++ *  - Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ *  - Neither the name of Intel Corporation. nor the names of its
++ *    contributors may be used to endorse or promote products derived from this
++ *    software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS IS''
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED. IN NO EVENT SHALL Intel Corporation. OR THE CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ *******************************************************************************/
++#include <string.h>
++#include "utils.h"
++#include <syslog.h>
++#include <unistd.h>
++
++std::vector<std::string> Utils::split(char const * str, char const * delim) {
++	char* tok = (char*)str;
++	char* ptok = tok;
++	int delimLength = 0;
++	std::vector<std::string> splittedStrings;
++	
++	do {
++		if (str == NULL) {
++			break;
++		}
++
++		if (delim == NULL) {
++			splittedStrings.push_back(std::string(str));
++			break;
++		}
++
++		delimLength = strlen(delim);
++		tok = strstr(ptok, delim);
++		while (tok) {
++			if (ptok != tok) {
++				splittedStrings.push_back(std::string(ptok, tok-ptok));
++			}
++			ptok = tok + delimLength;
++			tok = strstr(ptok, delim);
++		}
++
++		if (ptok != str+strlen(str)) {
++			splittedStrings.push_back(std::string(ptok, strlen(ptok)));
++		}
++	} while(0);
++	return splittedStrings;
++}
++
++
++char* Utils::strnstr(char const* haystack, unsigned int haystackLength, char const* needle, unsigned int needleLength) {
++
++	char* needleInHaystack = NULL;
++	unsigned int  j;
++	do {
++		if (haystack == NULL || needle == NULL) {
++			break;
++		}
++
++		for (unsigned int i = 0; i < haystackLength; i++) {
++			if (haystack[i] == '\0' || ((haystackLength - i) < needleLength)) {
++				break;
++			}
++		
++			for (j = 0; j < needleLength; j++) {
++				if (haystack[i + j] != needle[j]) {
++					break;
++				}
++			}
++
++			if (j == needleLength) {
++				//Found needle in haystack
++				needleInHaystack = (char*)&haystack[i];
++				break;
++			}
++		}
++	} while(0);
++	return needleInHaystack;
++}
++
++std::list<CDataLen> Utils::split(char const* str, unsigned int strLength, char const* delim, unsigned int delimLength) {
++        char* tok = (char*)str;
++        char* ptok = tok;
++        std::list<CDataLen> splittedStrings;
++	CDataLen dataLen;
++
++	do {
++		if (str == NULL) {
++			break;
++		}
++
++		if (delim == NULL) {
++			dataLen.data = (char*)str;
++			dataLen.dataLength = strLength;
++			splittedStrings.push_back(dataLen);
++			break;
++		}
++
++		tok = Utils::strnstr(str, strLength, delim, delimLength);
++		while (tok) {
++			dataLen.data = ptok;	
++			dataLen.dataLength = tok-ptok;
++			if (ptok!=tok) {
++				splittedStrings.push_back(dataLen);
++			}
++			ptok = tok + delimLength;
++			tok = Utils::strnstr(ptok, (str + strLength - ptok), delim, delimLength);
++		}
++
++		if (ptok != (str + strLength)) {
++			dataLen.data = ptok;	
++			dataLen.dataLength = str + strLength - ptok;
++			splittedStrings.push_back(dataLen);
++		}
++	} while (0);
++	return splittedStrings;
++}
++
++std::string Utils::DEFAULT_NOTIFY_CMD="export DISPLAY=:0; notify-send -u critical -t 2000 ";
++std::string Utils::NOTIFY_DESKTOP_SCRIPT="/usr/local/bin/notifyDesktop.sh";
++std::string Utils::NOTIFY_DESKTOP_SCRIPT1="/usr/bin/notifyDesktop.sh";
++
++void Utils::notifyDesktop(std::string header, std::string body, bool logInSyslog) {
++
++	std::string notifyCMD;
++	
++	if (! access (NOTIFY_DESKTOP_SCRIPT.c_str(), X_OK)) {
++		notifyCMD = NOTIFY_DESKTOP_SCRIPT + " '" + header + "' '" + body + "'";
++	} else if (! access (NOTIFY_DESKTOP_SCRIPT1.c_str(), X_OK)) {
++		notifyCMD = NOTIFY_DESKTOP_SCRIPT1 + " '" + header + "' '" + body + "'";
++	} else {
++		notifyCMD = DEFAULT_NOTIFY_CMD + " '" + header + "' '" + body + "'"; 
++	}
++
++	if (logInSyslog) {
++		syslog(LOG_INFO, "%s %s\n", header.c_str(), body.c_str());
++	}
++
++	system(notifyCMD.c_str());
++}
++
++
++std::string Utils::format(const char *format , ...) {
++	char*   buffer        = NULL;
++	int     bufferLength  = 512;
++	int     _bufferLength = 0;
++	va_list vl;
++	std::string formattedString("");
++
++	buffer = new char[bufferLength];
++	if (buffer) {
++		va_start(vl, format);
++
++		_bufferLength = vsnprintf(buffer, bufferLength, format, vl);
++		if (bufferLength <= _bufferLength) { 
++			delete[] buffer;
++			buffer = new char[_bufferLength + 1];
++			_bufferLength = vsnprintf(buffer, _bufferLength, format, vl);
++		}
++
++		formattedString = std::string(buffer);
++		va_end(vl);
++		delete[] buffer;
++	}
++
++	return formattedString;
++}
+diff --git a/src/tools/utils.h b/src/tools/utils.h
+new file mode 100644
+index 0000000..a7568fa
+--- /dev/null
++++ b/src/tools/utils.h
+@@ -0,0 +1,57 @@
++/*******************************************************************************
++ * Copyright (C) 2017 Intel Corporation. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ *  - Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ *
++ *  - Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ *  - Neither the name of Intel Corporation. nor the names of its
++ *    contributors may be used to endorse or promote products derived from this
++ *    software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS IS''
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED. IN NO EVENT SHALL Intel Corporation. OR THE CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ *******************************************************************************/
++
++#ifndef __UTILS_H
++#define __UTILS_H
++#include <iostream>
++#include <vector>
++#include <list>
++#include <string>
++#include <cstdarg>
++
++class CDataLen {
++	public:
++	char* data;
++	int dataLength;
++	CDataLen() { data = NULL; dataLength = 0; };
++};
++
++class Utils {
++	public:
++	static std::string NOTIFY_DESKTOP_SCRIPT;
++	static std::string NOTIFY_DESKTOP_SCRIPT1;
++	static std::string DEFAULT_NOTIFY_CMD;
++	static std::vector<std::string> split(char const* str, char const * delim);
++	static std::list<CDataLen> split(char const* str, unsigned int strLength, char const* delim, unsigned int delimLength);
++	static char* strnstr(char const* haystack, unsigned int haystackLength, char const* needle, unsigned int needleLength);
++	static void notifyDesktop(std::string header, std::string body, bool logInSyslog); 
++	static std::string format(const char *format , ...);
++};
++#endif
+diff --git a/src/tools/xmlNode.cpp b/src/tools/xmlNode.cpp
+new file mode 100644
+index 0000000..827cd3f
+--- /dev/null
++++ b/src/tools/xmlNode.cpp
+@@ -0,0 +1,45 @@
++/*******************************************************************************
++ * Copyright (C) 2017 Intel Corporation. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ *  - Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ *
++ *  - Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ *  - Neither the name of Intel Corporation. nor the names of its
++ *    contributors may be used to endorse or promote products derived from this
++ *    software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS IS''
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED. IN NO EVENT SHALL Intel Corporation. OR THE CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ *******************************************************************************/
++#include "xmlNode.h"
++#include <iostream>
++XMLNode::XMLNode() {
++	tagName = NULL;	
++	nsTag = NULL;
++	tagLength = 0;
++	nsLength = 0;
++	startTag = 0;
++	emptyTag = 0;
++
++	closingTag = NULL;		
++	startingTag = NULL;
++	parentNode = NULL;
++	childNode = NULL;
++	siblingNode = NULL;
++}
+diff --git a/src/tools/xmlNode.h b/src/tools/xmlNode.h
+new file mode 100644
+index 0000000..4a6c91e
+--- /dev/null
++++ b/src/tools/xmlNode.h
+@@ -0,0 +1,49 @@
++/*******************************************************************************
++ * Copyright (C) 2017 Intel Corporation. All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ *
++ *  - Redistributions of source code must retain the above copyright notice,
++ *    this list of conditions and the following disclaimer.
++ *
++ *  - Redistributions in binary form must reproduce the above copyright notice,
++ *    this list of conditions and the following disclaimer in the documentation
++ *    and/or other materials provided with the distribution.
++ *
++ *  - Neither the name of Intel Corporation. nor the names of its
++ *    contributors may be used to endorse or promote products derived from this
++ *    software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS ``AS IS''
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED. IN NO EVENT SHALL Intel Corporation. OR THE CONTRIBUTORS
++ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ *******************************************************************************/
++#ifndef __XMLNODE_H
++#define __XMLNODE_H
++class XMLNode {
++
++	public:
++	char* tagName;	
++	char* nsTag;
++	int tagLength;
++	int nsLength;
++	int startTag;
++	int emptyTag;
++
++	XMLNode* closingTag;		
++	XMLNode* startingTag;
++	XMLNode* parentNode;
++	XMLNode* childNode;
++	XMLNode* siblingNode;
++	XMLNode();
++};
++#endif
+-- 
+2.9.3
+

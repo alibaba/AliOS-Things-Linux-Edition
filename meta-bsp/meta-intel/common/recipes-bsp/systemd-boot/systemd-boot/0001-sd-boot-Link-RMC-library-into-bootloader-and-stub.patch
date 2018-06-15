@@ -1,0 +1,39 @@
+From fe1c2fdfe81f2ac2b41fe8543ba07f1911770d26 Mon Sep 17 00:00:00 2001
+From: Jianxun Zhang <jianxun.zhang@linux.intel.com>
+Date: Sat, 21 May 2016 18:52:07 -0700
+Subject: [PATCH] sd-boot: Link RMC library into bootloader and stub
+
+Add RMC library into bootloader binary and stub.
+
+Upstream-Status: Pending
+
+Signed-off-by: Jianxun Zhang <jianxun.zhang@linux.intel.com>
+---
+ Makefile.am | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile.am b/Makefile.am
+index 305099ab6..9fb6f9b7b 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -2802,7 +2802,7 @@ $(top_builddir)/src/boot/efi/%.o: $(top_srcdir)/src/boot/efi/%.c $(addprefix $(t
+ 
+ $(systemd_boot_solib): $(systemd_boot_objects)
+ 	$(AM_V_CCLD)$(LD) $(efi_ldflags) $(systemd_boot_objects) \
+-		-o $@ -lefi -lgnuefi $(shell $(CC) -print-libgcc-file-name); \
++		-o $@ -lefi -lgnuefi -lrmcefi $(shell $(CC) -print-libgcc-file-name); \
+ 	nm -D -u $@ | grep ' U ' && exit 1 || :
+ 
+ $(systemd_boot): $(systemd_boot_solib)
+@@ -2852,7 +2852,7 @@ $(top_builddir)/src/boot/efi/%.o: $(top_srcdir)/src/boot/efi/%.c $(addprefix $(t
+ 
+ $(stub_solib): $(stub_objects)
+ 	$(AM_V_CCLD)$(LD) $(efi_ldflags) $(stub_objects) \
+-		-o $@ -lefi -lgnuefi $(shell $(CC) -print-libgcc-file-name); \
++		-o $@ -lefi -lgnuefi -lrmcefi $(shell $(CC) -print-libgcc-file-name); \
+ 	nm -D -u $@ | grep ' U ' && exit 1 || :
+ 
+ $(stub): $(stub_solib)
+-- 
+2.11.0
+

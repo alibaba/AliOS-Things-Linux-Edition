@@ -1,0 +1,27 @@
+From 294874b610a5b8af9b736b3afc938010af58785e Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Fri, 11 Aug 2017 17:15:45 -0700
+Subject: [PATCH 1/9] bitWriter.cpp: Delete unused CACHEBYTES
+
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+Upstream-Status: Pending
+
+ codecparsers/bitWriter.cpp | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/codecparsers/bitWriter.cpp b/codecparsers/bitWriter.cpp
+index 9bcb14d..08469bf 100644
+--- a/codecparsers/bitWriter.cpp
++++ b/codecparsers/bitWriter.cpp
+@@ -24,7 +24,6 @@
+ 
+ namespace YamiParser {
+ 
+-const uint32_t CACHEBYTES = sizeof(unsigned long int);
+ const uint32_t CACHEBITS = sizeof(unsigned long int) * 8;
+ 
+ // clip to keep lowest n bits
+-- 
+2.14.1
+
