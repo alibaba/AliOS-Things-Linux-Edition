@@ -1,0 +1,8 @@
+bitbake-cookerdaemon.log
+bitbake.lock
+cache
+conf/sanity_info
+conf/templateconf.cfg
+sstate-cache
+tmp-glibc
+tmp
