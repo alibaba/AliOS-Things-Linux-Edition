@@ -3,12 +3,9 @@
 
 int main(int argc, char **argv)
 {
-    printf("Hello World!!!\n");
-
     while (1) {
+        printf("\nHello World, Hello AliOS Things Linux Edition!\n");
         sleep(9);
-
-        printf("\n\tHello World!\n");
     }
 
     return 0;

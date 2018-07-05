@@ -1,9 +1,8 @@
 [Unit]
-Description=helloworld test
-Documentation=none
+Description=Hello World
 
 [Service]
-ExecStart=/home/root/test_systemd.sh
+ExecStart=/usr/bin/helloworld
 Type=simple
 KillMode=process
 Restart=always
