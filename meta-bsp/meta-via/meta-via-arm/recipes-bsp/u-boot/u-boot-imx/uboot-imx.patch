@@ -1,0 +1,4189 @@
+diff --git a/arch/arm/cpu/armv7/mx6/Kconfig b/arch/arm/cpu/armv7/mx6/Kconfig
+index a3bb47e..f5db033 100644
+--- a/arch/arm/cpu/armv7/mx6/Kconfig
++++ b/arch/arm/cpu/armv7/mx6/Kconfig
+@@ -211,6 +211,13 @@ config TARGET_MX6SABRESD
+ 	select DM_THERMAL
+ 	select BOARD_EARLY_INIT_F
+ 
++config TARGET_MX6ARTIGOA820
++	bool "mx6artigoa820"
++	select BOARD_LATE_INIT
++	select DM
++	select DM_THERMAL
++	select BOARD_EARLY_INIT_F
++
+ config TARGET_MX6SLEVK
+ 	bool "mx6slevk"
+ 	select SUPPORT_SPL
+@@ -515,6 +522,7 @@ source "board/toradex/apalis_imx6/Kconfig"
+ source "board/toradex/colibri_imx6/Kconfig"
+ source "board/udoo/Kconfig"
+ source "board/udoo/neo/Kconfig"
++source "board/via/mx6artigoa820/Kconfig"
+ source "board/wandboard/Kconfig"
+ source "board/warp/Kconfig"
+ source "board/freescale/mx6dqscm/Kconfig"
+diff --git a/arch/arm/dts/Makefile b/arch/arm/dts/Makefile
+index da89c23..087a558 100644
+--- a/arch/arm/dts/Makefile
++++ b/arch/arm/dts/Makefile
+@@ -337,6 +337,7 @@ dtb-$(CONFIG_MX6) += imx6ul-14x14-ddr3-arm2.dtb \
+ 	imx6dl-sabreauto-ecspi.dtb \
+ 	imx6dl-sabreauto-gpmi-weim.dtb \
+ 	imx6dl-sabresd.dtb \
++	imx6dl-artigoa820.dtb \
+ 	imx6q-arm2.dtb \
+ 	imx6q-pop-arm2.dtb \
+ 	imx6q-icore.dtb \
+diff --git a/arch/arm/dts/imx6dl-artigoa820.dts b/arch/arm/dts/imx6dl-artigoa820.dts
+new file mode 100644
+index 0000000..caca087
+--- /dev/null
++++ b/arch/arm/dts/imx6dl-artigoa820.dts
+@@ -0,0 +1,45 @@
++/*
++ * Copyright (C) 2013-2015 Freescale Semiconductor, Inc.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++/dts-v1/;
++
++#include "imx6dl.dtsi"
++#include "imx6qdl-artigoa820.dtsi"
++
++/ {
++	model = "VIA i.MX6 ARTIGO A820 Board";
++	compatible = "fsl,imx6dl-artigoa820", "fsl,imx6dl";
++};
++
++&iomuxc {
++};
++
++&i2c3 {
++};
++
++&ldb {
++	lvds-channel@0 {
++		crtc = "ipu1-di0";
++	};
++
++	lvds-channel@1 {
++		crtc = "ipu1-di1";
++	};
++};
++
++&mxcfb1 {
++	status = "okay";
++};
++
++&mxcfb2 {
++	status = "okay";
++};
++
++&pxp {
++	status = "okay";
++};
+diff --git a/arch/arm/dts/imx6qdl-artigoa820.dtsi b/arch/arm/dts/imx6qdl-artigoa820.dtsi
+new file mode 100644
+index 0000000..6a6d49e
+--- /dev/null
++++ b/arch/arm/dts/imx6qdl-artigoa820.dtsi
+@@ -0,0 +1,632 @@
++/*
++ * Copyright 2012-2016 Freescale Semiconductor, Inc.
++ * Copyright 2011 Linaro Ltd.
++ *
++ * The code contained herein is licensed under the GNU General Public
++ * License. You may obtain a copy of the GNU General Public License
++ * Version 2 or later at the following locations:
++ *
++ * http://www.opensource.org/licenses/gpl-license.html
++ * http://www.gnu.org/copyleft/gpl.html
++ */
++
++#include <dt-bindings/gpio/gpio.h>
++#include <dt-bindings/input/input.h>
++
++/ {
++	aliases {
++		mxcfb0 = &mxcfb1;
++		mxcfb1 = &mxcfb2;
++		mxcfb2 = &mxcfb3;
++		mxcfb3 = &mxcfb4;
++	};
++
++	hannstar_cabc {
++		compatible = "hannstar,cabc";
++		lvds0 {
++			gpios = <&gpio6 15 GPIO_ACTIVE_HIGH>;
++		};
++	};
++
++	chosen {
++		stdout-path = &uart2;
++	};
++
++	memory: memory {
++		reg = <0x10000000 0x40000000>;
++	};
++
++	regulators {
++		compatible = "simple-bus";
++		#address-cells = <1>;
++		#size-cells = <0>;
++
++		reg_3p3v: 3p3v {
++			compatible = "regulator-fixed";
++			regulator-name = "3P3V";
++			regulator-min-microvolt = <3300000>;
++			regulator-max-microvolt = <3300000>;
++			regulator-always-on;
++		};
++
++		reg_usb_otg_vbus: regulator@0 {
++			compatible = "regulator-fixed";
++			reg = <0>;
++			regulator-name = "usb_otg_vbus";
++			regulator-min-microvolt = <5000000>;
++			regulator-max-microvolt = <5000000>;
++			gpio = <&gpio3 22 0>;
++			enable-active-high;
++		};
++
++		reg_usb_h1_vbus: regulator@1 {
++			compatible = "regulator-fixed";
++			reg = <1>;
++			regulator-name = "usb_h1_vbus";
++			regulator-min-microvolt = <5000000>;
++			regulator-max-microvolt = <5000000>;
++			gpio = <&gpio3 0 1>; /* VAB-820 - low enable */
++		};
++
++	};
++
++	sound {
++		compatible = "fsl,imx6-vab820-sgtl5000",
++			     "fsl,imx-audio-sgtl5000";
++		model = "imx6-vab820-sgtl5000";
++		cpu-dai = <&ssi2>;
++		audio-codec = <&codec>;
++		asrc-controller = <&asrc>;
++		audio-routing =
++			"Headphone Jack", "HPOUTL",
++			"Headphone Jack", "HPOUTR",
++			"Ext Spk", "SPKOUTL",
++			"Ext Spk", "SPKOUTR",
++			"AMIC", "MICBIAS",
++			"IN3R", "AMIC",
++			"DMIC", "MICBIAS",
++			"DMICDAT", "DMIC",
++			"CPU-Playback", "ASRC-Playback",
++			"Playback", "CPU-Playback",
++			"ASRC-Capture", "CPU-Capture",
++			"CPU-Capture", "Capture";
++		mux-int-port = <2>;
++		mux-ext-port = <4>;
++		codec-master;
++	};
++
++	sound-hdmi {
++		compatible = "fsl,imx6q-audio-hdmi",
++			     "fsl,imx-audio-hdmi";
++		model = "imx-audio-hdmi";
++		hdmi-controller = <&hdmi_audio>;
++	};
++
++	mxcfb1: fb@0 {
++		compatible = "fsl,mxc_sdc_fb";
++		disp_dev = "ldb";
++		interface_pix_fmt = "RGB666";
++		default_bpp = <16>;
++		int_clk = <0>;
++		late_init = <0>;
++		status = "disabled";
++	};
++
++	mxcfb2: fb@1 {
++		compatible = "fsl,mxc_sdc_fb";
++		disp_dev = "hdmi";
++		interface_pix_fmt = "RGB24";
++		mode_str ="1920x1080M@60";
++		default_bpp = <24>;
++		int_clk = <0>;
++		late_init = <0>;
++		status = "disabled";
++	};
++
++	mxcfb3: fb@2 {
++		compatible = "fsl,mxc_sdc_fb";
++		disp_dev = "lcd";
++		interface_pix_fmt = "RGB666";
++		mode_str ="LDB-SVGA";
++		default_bpp = <16>;
++		int_clk = <0>;
++		late_init = <0>;
++		status = "disabled";
++	};
++
++	mxcfb4: fb@3 {
++		compatible = "fsl,mxc_sdc_fb";
++		disp_dev = "ldb";
++		interface_pix_fmt = "RGB666";
++		default_bpp = <16>;
++		int_clk = <0>;
++		late_init = <0>;
++		status = "disabled";
++	};
++
++/*
++	lcd@0 {
++		compatible = "fsl,lcd";
++		ipu_id = <0>;
++		disp_id = <0>;
++		default_ifmt = "RGB565";
++		pinctrl-names = "default";
++		pinctrl-0 = <&pinctrl_ipu1>;
++		status = "okay";
++	};
++*/
++
++	backlight {
++		compatible = "pwm-backlight";
++		pwms = <&pwm2 0 5000000>; /* VAB-820 */
++		brightness-levels = <0 4 8 16 32 64 128 255>;
++		default-brightness-level = <7>;
++		status = "okay";
++	};
++
++	v4l2_cap_0 {
++		compatible = "fsl,imx6q-v4l2-capture";
++		ipu_id = <0>;
++		csi_id = <0>;
++		mclk_source = <0>;
++		status = "okay";
++	};
++
++	v4l2_out {
++		compatible = "fsl,mxc_v4l2_output";
++		status = "okay";
++	};
++
++	leds {
++		compatible = "gpio-leds";
++		power {
++			power-led-gpio = <&gpio4 5 0>;
++		};
++	};
++};
++
++&audmux {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_audmux>;
++	status = "okay";
++};
++
++&clks {
++	fsl,ldb-di0-parent = <&clks IMX6QDL_CLK_PLL2_PFD0_352M>;
++	fsl,ldb-di1-parent = <&clks IMX6QDL_CLK_PLL2_PFD0_352M>;
++};
++
++&ecspi1 {
++	fsl,spi-num-chipselects = <1>;
++	cs-gpios = <&gpio4 9 0>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_ecspi1>;
++	status = "okay";
++
++	flash1_0: m25p80@0 {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		compatible = "st,sst25vf032b"; /* VAB-820 */
++		spi-max-frequency = <20000000>;
++		reg = <0>;
++	};
++
++	flash1_1: m25p80@0 {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		compatible = "winbond,w25q32";
++		spi-max-frequency = <20000000>;
++		reg = <0>; /* Chip-Select number */
++	};
++};
++
++&fec {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_enet>;
++	phy-mode = "rgmii";
++	phy-reset-gpios = <&gpio1 25 0>;
++	fsl,magic-packet;
++	status = "okay";
++};
++
++&gpc {
++	/* steven */
++	fsl,ldo-bypass = <0>;
++};
++
++&dcic1 {
++	dcic_id = <0>;
++	dcic_mux = "dcic-hdmi";
++	status = "okay";
++};
++
++&dcic2 {
++	dcic_id = <1>;
++	dcic_mux = "dcic-lvds1";
++	status = "okay";
++};
++
++&hdmi_audio {
++	status = "okay";
++};
++
++&hdmi_cec {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_hdmi_cec>;
++	status = "okay";
++};
++
++&hdmi_core {
++	ipu_id = <0>;
++	disp_id = <0>;
++	status = "okay";
++};
++
++&hdmi_video {
++	fsl,phy_reg_vlev = <0x0294>;
++	fsl,phy_reg_cksymtx = <0x800d>;
++/*	HDMI-supply = <&reg_hdmi>; VIA_dev */
++	status = "okay";
++};
++
++&i2c1 {
++	clock-frequency = <100000>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_i2c1>;
++	status = "okay";
++
++	adv7180: adv7180@21 {
++		compatible = "adv,adv7180";
++		reg = <0x21>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&pinctrl_ipu1>;
++		clocks = <&clks 201>;
++		clock-names = "csi_mclk";
++		DOVDD-supply = <&reg_3p3v>; /* 3.3v enabled via 2.8 VGEN6 */
++		AVDD-supply = <&reg_3p3v>;  /* 1.8v */
++		DVDD-supply = <&reg_3p3v>;  /* 1.8v */
++		PVDD-supply = <&reg_3p3v>;  /* 1.8v */
++		pwn-gpios = <&gpio1 16 GPIO_ACTIVE_LOW>;   /* VAB-820 */
++		rst-gpios = <&gpio1 17 GPIO_ACTIVE_LOW>;   /* VAB-820 */
++		csi_id = <0>;
++		mclk = <24000000>;
++		mclk_source = <0>;
++		cvbs = <1>;
++	};
++};
++
++&i2c2 {
++	clock-frequency = <100000>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_i2c2>;
++	status = "okay";
++
++	hdmi: edid@50 {
++		compatible = "fsl,imx6-hdmi-i2c";
++		reg = <0x50>;
++	};
++};
++
++&i2c3 {
++	clock-frequency = <100000>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_i2c3>;
++	status = "okay";
++
++	egalax_ts@04 {
++		compatible = "eeti,egalax_ts";
++		reg = <0x04>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&pinctrl_i2c3_egalax_int>;
++		interrupt-parent = <&gpio6>;
++		interrupts = <8 2>;
++		wakeup-gpios = <&gpio6 8 GPIO_ACTIVE_HIGH>;
++	};
++
++	codec: sgtl5000@0a {
++		compatible = "fsl,sgtl5000";
++		reg = <0x0a>;
++		clocks = <&clks 201>;
++		VDDA-supply = <&reg_3p3v>;
++		VDDIO-supply = <&reg_3p3v>;
++	};
++};
++
++&iomuxc {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_hog>;
++
++	imx6qdl-vab820 {
++
++		pinctrl_hog: hoggrp {
++			fsl,pins = <
++				MX6QDL_PAD_GPIO_1__GPIO1_IO01		0x80000000
++				MX6QDL_PAD_GPIO_2__GPIO1_IO02		0x80000000
++				MX6QDL_PAD_GPIO_4__GPIO1_IO04		0x80000000
++				MX6QDL_PAD_GPIO_5__GPIO1_IO05		0x80000000
++				MX6QDL_PAD_GPIO_7__GPIO1_IO07		0x80000000
++				MX6QDL_PAD_GPIO_8__GPIO1_IO08		0x80000000
++				MX6QDL_PAD_GPIO_9__GPIO1_IO09		0x80000000
++				MX6QDL_PAD_SD1_DAT0__GPIO1_IO16		0x80000000
++				MX6QDL_PAD_SD1_DAT1__GPIO1_IO17		0x80000000
++				MX6QDL_PAD_ENET_TX_EN__GPIO1_IO28	0x1b0b0
++				MX6QDL_PAD_NANDF_D2__GPIO2_IO02		0x80000000
++
++				MX6QDL_PAD_EIM_DA0__GPIO3_IO00		0x80000000
++				MX6QDL_PAD_EIM_D22__GPIO3_IO22		0x80000000
++				MX6QDL_PAD_EIM_D28__GPIO3_IO28		0x80000000
++				MX6QDL_PAD_GPIO_19__GPIO4_IO05		0x80000000
++
++				MX6QDL_PAD_NANDF_ALE__GPIO6_IO08	0x80000000
++
++				MX6QDL_PAD_NANDF_CS2__GPIO6_IO15	0x80000000
++				MX6QDL_PAD_GPIO_16__GPIO7_IO11		0x80000000
++				MX6QDL_PAD_GPIO_18__GPIO7_IO13		0x80000000
++				MX6QDL_PAD_GPIO_0__CCM_CLKO1		0x000b0		/* SGTL5000 sys_mcl: copied from boundary */
++			>;
++		};
++
++		pinctrl_audmux: audmuxgrp {
++			fsl,pins = <
++				MX6QDL_PAD_DISP0_DAT20__AUD4_TXC	0x130b0
++				MX6QDL_PAD_DISP0_DAT21__AUD4_TXD	0x110b0
++				MX6QDL_PAD_DISP0_DAT22__AUD4_TXFS	0x130b0
++				MX6QDL_PAD_DISP0_DAT23__AUD4_RXD	0x130b0
++			>;
++		};
++
++		pinctrl_ecspi1: ecspi1grp {
++			fsl,pins = <
++				MX6QDL_PAD_EIM_D17__ECSPI1_MISO		0x100b1
++				MX6QDL_PAD_EIM_D18__ECSPI1_MOSI		0x100b1
++				MX6QDL_PAD_EIM_D16__ECSPI1_SCLK		0x100b1
++				MX6QDL_PAD_EIM_D19__GPIO3_IO19		0x1b0b0
++			>;
++		};
++
++		pinctrl_i2c3_egalax_int: egalax_i2c3_intgrp {
++			fsl,pins = <
++				MX6QDL_PAD_NANDF_CLE__GPIO6_IO07 0x80000000
++			>;
++		};
++
++		pinctrl_enet: enetgrp {
++			fsl,pins = <
++				MX6QDL_PAD_ENET_MDIO__ENET_MDIO		0x1b0b0
++				MX6QDL_PAD_ENET_MDC__ENET_MDC		0x1b0b0
++				MX6QDL_PAD_RGMII_TXC__RGMII_TXC		0x1b0b0
++				MX6QDL_PAD_RGMII_TD0__RGMII_TD0		0x1b0b0
++				MX6QDL_PAD_RGMII_TD1__RGMII_TD1		0x1b0b0
++				MX6QDL_PAD_RGMII_TD2__RGMII_TD2		0x1b0b0
++				MX6QDL_PAD_RGMII_TD3__RGMII_TD3		0x1b0b0
++				MX6QDL_PAD_RGMII_TX_CTL__RGMII_TX_CTL	0x1b0b0
++				MX6QDL_PAD_ENET_REF_CLK__ENET_TX_CLK	0x1b0b0
++				MX6QDL_PAD_RGMII_RXC__RGMII_RXC		0x1b0b0
++				MX6QDL_PAD_RGMII_RD0__RGMII_RD0		0x1b0b0
++				MX6QDL_PAD_RGMII_RD1__RGMII_RD1		0x1b0b0
++				MX6QDL_PAD_RGMII_RD2__RGMII_RD2		0x1b0b0
++				MX6QDL_PAD_RGMII_RD3__RGMII_RD3		0x1b0b0
++				MX6QDL_PAD_RGMII_RX_CTL__RGMII_RX_CTL	0x1b0b0
++/*				MX6QDL_PAD_GPIO_16__ENET_REF_CLK	0x4001b0a8 VIA_dev*/
++			>;
++		};
++
++		pinctrl_hdmi_cec: hdmicecgrp {
++			fsl,pins = <
++				MX6QDL_PAD_KEY_ROW2__HDMI_TX_CEC_LINE 0x108b0
++			>;
++		};
++
++		pinctrl_i2c1: i2c1grp {
++			fsl,pins = <
++				MX6QDL_PAD_CSI0_DAT8__I2C1_SDA		0x4001b8b1
++				MX6QDL_PAD_CSI0_DAT9__I2C1_SCL		0x4001b8b1
++			>;
++		};
++
++		pinctrl_i2c2: i2c2grp {
++			fsl,pins = <
++				MX6QDL_PAD_KEY_COL3__I2C2_SCL		0x4001b8b1
++				MX6QDL_PAD_KEY_ROW3__I2C2_SDA		0x4001b8b1
++			>;
++		};
++
++		pinctrl_i2c3: i2c3grp {
++			fsl,pins = <
++				MX6QDL_PAD_GPIO_3__I2C3_SCL		0x4001b8b1
++				MX6QDL_PAD_GPIO_6__I2C3_SDA		0x4001b8b1
++			>;
++		};
++
++		pinctrl_ipu1: ipu1grp {
++			fsl,pins = <
++				MX6QDL_PAD_CSI0_DAT12__IPU1_CSI0_DATA12		0x80000000
++				MX6QDL_PAD_CSI0_DAT13__IPU1_CSI0_DATA13		0x80000000
++				MX6QDL_PAD_CSI0_DAT14__IPU1_CSI0_DATA14		0x80000000
++				MX6QDL_PAD_CSI0_DAT15__IPU1_CSI0_DATA15		0x80000000
++				MX6QDL_PAD_CSI0_DAT16__IPU1_CSI0_DATA16		0x80000000
++				MX6QDL_PAD_CSI0_DAT17__IPU1_CSI0_DATA17		0x80000000
++				MX6QDL_PAD_CSI0_DAT18__IPU1_CSI0_DATA18		0x80000000
++				MX6QDL_PAD_CSI0_DAT19__IPU1_CSI0_DATA19		0x80000000
++				MX6QDL_PAD_CSI0_PIXCLK__IPU1_CSI0_PIXCLK	0x80000000
++				MX6QDL_PAD_CSI0_MCLK__IPU1_CSI0_HSYNC		0x80000000
++				MX6QDL_PAD_CSI0_VSYNC__IPU1_CSI0_VSYNC		0x80000000
++			>;
++		};
++
++		pinctrl_pcie: pciegrp {
++			fsl,pins = <
++				MX6QDL_PAD_GPIO_17__GPIO7_IO12	0x1b0b0
++			>;
++		};
++
++		pinctrl_pcie_reg: pciereggrp {
++			fsl,pins = <
++				MX6QDL_PAD_EIM_D19__GPIO3_IO19	0x1b0b0
++			>;
++		};
++
++		pinctrl_pwm2: pwm2grp {
++			fsl,pins = <
++				MX6QDL_PAD_DISP0_DAT9__PWM2_OUT		0x1b0b1
++			>;
++		};
++
++		pinctrl_uart1: uart1grp {
++			fsl,pins = <
++				MX6QDL_PAD_SD3_DAT6__UART1_TX_DATA	0x80000000
++				MX6QDL_PAD_SD3_DAT7__UART1_RX_DATA	0x80000000
++			>;
++		};
++
++		pinctrl_uart2: uart2grp {
++			fsl,pins = <
++				MX6QDL_PAD_EIM_D26__UART2_TX_DATA	0x1b0b1
++				MX6QDL_PAD_EIM_D27__UART2_RX_DATA	0x1b0b1
++			>;
++		};
++
++		pinctrl_usbotg: usbotggrp {
++			fsl,pins = <
++				MX6QDL_PAD_ENET_RX_ER__USB_OTG_ID	0x17059
++			>;
++		};
++
++		pinctrl_usdhc2: usdhc2grp {
++			fsl,pins = <
++				MX6QDL_PAD_SD2_CMD__SD2_CMD		0x17059
++				MX6QDL_PAD_SD2_CLK__SD2_CLK		0x10059
++				MX6QDL_PAD_SD2_DAT0__SD2_DATA0		0x17059
++				MX6QDL_PAD_SD2_DAT1__SD2_DATA1		0x17059
++				MX6QDL_PAD_SD2_DAT2__SD2_DATA2		0x17059
++				MX6QDL_PAD_SD2_DAT3__SD2_DATA3		0x17059
++			>;
++		};
++
++		pinctrl_usdhc4: usdhc4grp {
++			fsl,pins = <
++				MX6QDL_PAD_SD4_CMD__SD4_CMD		0x17059
++				MX6QDL_PAD_SD4_CLK__SD4_CLK		0x10059
++				MX6QDL_PAD_SD4_DAT0__SD4_DATA0		0x17059
++				MX6QDL_PAD_SD4_DAT1__SD4_DATA1		0x17059
++				MX6QDL_PAD_SD4_DAT2__SD4_DATA2		0x17059
++				MX6QDL_PAD_SD4_DAT3__SD4_DATA3		0x17059
++				MX6QDL_PAD_SD4_DAT4__SD4_DATA4		0x17059
++				MX6QDL_PAD_SD4_DAT5__SD4_DATA5		0x17059
++				MX6QDL_PAD_SD4_DAT6__SD4_DATA6		0x17059
++				MX6QDL_PAD_SD4_DAT7__SD4_DATA7		0x17059
++			>;
++		};
++
++		pinctrl_usbh1: usbh1grp {
++			fsl,pins = <
++				MX6QDL_PAD_EIM_D30__USB_H1_OC		0x80000000
++			>;
++		};
++
++		pinctrl_wdog: wdoggrp {
++			fsl,pins = <
++				MX6QDL_PAD_DISP0_DAT8__WDOG1_B 0x80000000
++			>;
++		};
++	};
++};
++
++&mipi_csi {
++	status = "okay";
++	ipu_id = <0>;
++	csi_id = <1>;
++	v_channel = <0>;
++	lanes = <2>;
++};
++
++&pcie {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_pcie>;
++	reset-gpio = <&gpio7 12 GPIO_ACTIVE_LOW>;
++	status = "okay";
++};
++
++&pwm2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_pwm2>;
++	status = "okay";
++};
++
++&snvs_poweroff {
++	status = "okay";
++};
++
++&ssi2 {
++	status = "okay";
++};
++
++&uart1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_uart1>;
++	status = "okay";
++	fsl,dte-mode;
++};
++
++&uart2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_uart2>;
++	status = "okay";
++};
++
++&usbh1 {
++	vbus-supply = <&reg_usb_h1_vbus>;
++	pinctrl-1 = <&pinctrl_usbh1>;
++	status = "okay";
++};
++
++&usbotg {
++	vbus-supply = <&reg_usb_otg_vbus>;
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_usbotg>;
++	disable-over-current;
++	srp-disable;
++	hnp-disable;
++	adp-disable;
++	status = "okay";
++};
++
++&usbphy1 {
++	tx-d-cal = <0x5>;
++};
++
++&usbphy2 {
++	tx-d-cal = <0x5>;
++};
++
++&usdhc2 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_usdhc2>;
++	bus-width = <4>;
++	cd-gpios = <&gpio2 2 GPIO_ACTIVE_LOW>;
++	no-1-8-v;
++	keep-power-in-suspend;
++	enable-sdio-wakeup;
++	status = "okay";
++};
++
++&usdhc4 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_usdhc4>;
++	bus-width = <8>;
++	non-removable;
++	no-1-8-v;
++	keep-power-in-suspend;
++	status = "okay";
++};
++
++&wdog1 {
++	pinctrl-names = "default";
++	pinctrl-0 = <&pinctrl_wdog>;
++	fsl,wdog_b;
++	status = "okay";
++};
++
++&wdog2 {
++	status = "disabled";
++};
+diff --git a/board/via/common/clock.c b/board/via/common/clock.c
+new file mode 100644
+index 0000000..c367648
+--- /dev/null
++++ b/board/via/common/clock.c
+@@ -0,0 +1,176 @@
++#include <asm/io.h>
++#include <linux/types.h>
++#include <asm/arch/crm_regs.h>
++#include "via.h"
++
++/* via_cpu_speed */
++#define HW_ANADIG_PLL_SYS	(0x00000000)
++#define HW_ANADIG_PLL_SYS_SET	(0x00000004)
++#define HW_ANADIG_PLL_SYS_CLR	(0x00000008)
++#define HW_ANADIG_PLL_528	(0x00000030)
++#define HW_ANADIG_PLL_528_SET	(0x00000034)
++#define HW_ANADIG_PLL_528_CLR	(0x00000038)
++
++#define REG_RD(base, reg) \
++	(*(volatile unsigned int *)((base) + (reg)))
++#define REG_WR(base, reg, value) \
++	((*(volatile unsigned int *)((base) + (reg))) = (value))
++#define REG_SET(base, reg, value) \
++	((*(volatile unsigned int *)((base) + (reg ## _SET))) = (value))
++#define REG_CLR(base, reg, value) \
++	((*(volatile unsigned int *)((base) + (reg ## _CLR))) = (value))
++
++/*!
++ * This is to calculate divider based on reference clock and
++ * targeted clock based on the equation for each PLL.
++ *
++ * @param pll		pll number
++ * @param ref		reference clock freq in Hz
++ * @param target	targeted clock in Hz
++ *
++ * @return		divider if successful; -1 otherwise.
++ */
++static int calc_pll_divider(enum pll_clocks pll, u32 ref, u32 target)
++{
++	int i, div;
++
++	switch (pll) {
++		case CPU_PLL1:
++			if(target < PLL1_FREQ_MIN || target > PLL1_FREQ_MAX){
++				printf("PLL1 frequency should be"
++				"within [%d - %d] MHz \n", PLL1_FREQ_MIN / SZ_DEC_1M,
++					PLL1_FREQ_MAX / SZ_DEC_1M);
++				return -1;
++			}
++			for(i = 51, div = i; i < 109; i++){
++				if((ref * (i >> 1)) > target)
++					break;
++				div = i;
++			}
++			break;
++		case BUS_PLL2:
++			if(target < PLL2_FREQ_MIN || target > PLL2_FREQ_MAX){
++				printf("PLL2 frequency should be"
++				"within [%d - %d] MHz\n", PLL2_FREQ_MIN / SZ_DEC_1M,
++					PLL2_FREQ_MAX / SZ_DEC_1M);
++				return -1;
++			}
++			for(i = 0, div = i; i< 2; i++){
++				if(ref * (20 + (i << 1)) > target)
++					break;
++				div = i;
++			}
++		default:
++			printf("Changing this PLL not supported\n");
++			return -1;
++			break;
++	}
++	return div;
++}
++
++static int config_pll_clk(enum pll_clocks pll, u32 divider)
++{
++	u32 ccsr = readl(CCM_BASE_ADDR + CLKCTL_CCSR);
++
++	switch (pll){
++		case CPU_PLL1:
++			/* Switch ARM to PLL2 clock */
++			writel(ccsr | 0x4, CCM_BASE_ADDR + CLKCTL_CCSR);
++
++			REG_CLR(ANATOP_BASE_ADDR, HW_ANADIG_PLL_SYS,
++				BM_ANADIG_PLL_SYS_DIV_SELECT);
++			REG_SET(ANATOP_BASE_ADDR, HW_ANADIG_PLL_SYS,
++				BF_ANADIG_PLL_SYS_DIV_SELECT(divider));
++			/* Enable CPU PLL1 */
++			REG_SET(ANATOP_BASE_ADDR, HW_ANADIG_PLL_SYS,
++				BM_ANADIG_PLL_SYS_ENABLE);
++			/* Wait for PLL lock */
++			while(REG_RD(ANATOP_BASE_ADDR, HW_ANADIG_PLL_SYS) &
++				BM_ANADIG_PLL_SYS_LOCK)
++				udelay(10);
++			/* Clear bypass bit */
++			REG_CLR(ANATOP_BASE_ADDR, HW_ANADIG_PLL_SYS,
++				BM_ANADIG_PLL_SYS_BYPASS);
++
++			/* Switch back */
++			writel(ccsr & ~0x4, CCM_BASE_ADDR + CLKCTL_CCSR);
++			break;
++
++		case BUS_PLL2:
++			/* Switch to pll2 bypass clock */
++			writel(ccsr | 0x2, CCM_BASE_ADDR + CLKCTL_CCSR);
++
++			REG_CLR(ANATOP_BASE_ADDR, HW_ANADIG_PLL_528,
++			  BM_ANADIG_PLL_528_DIV_SELECT);
++			REG_SET(ANATOP_BASE_ADDR, HW_ANADIG_PLL_528,
++			  divider);
++			/* Enable CPU PLL2 */
++			REG_SET(ANATOP_BASE_ADDR, HW_ANADIG_PLL_528,
++			  BM_ANADIG_PLL_528_ENABLE);
++			/* Wait for PLL lock */
++			while(REG_RD(ANATOP_BASE_ADDR, HW_ANADIG_PLL_528) &
++			    BM_ANADIG_PLL_528_LOCK)
++			  udelay(10);
++			/* Clear bypass bit */
++			REG_CLR(ANATOP_BASE_ADDR, HW_ANADIG_PLL_528,
++			  BM_ANADIG_PLL_528_BYPASS);
++
++			/* Switch back */
++			writel(ccsr & ~0x2, CCM_BASE_ADDR + CLKCTL_CCSR);
++			break;
++		default:
++			return -1;
++	}
++	return 0;
++}
++
++static int config_core_clk(u32 ref, u32 freq)
++{
++	int div = calc_pll_divider(CPU_PLL1, ref, freq);
++	if(div < 0){
++		printf("Can't find pll parameters\n");
++		return div;
++	}
++	return config_pll_clk(CPU_PLL1, div);
++}
++
++/*!
++ * This function assumes the expected core clock has to be changed by
++ * modifying the PLL. This is NOT true always but for most of the times,
++ * it is. So ti assumes the PLL output freq is the same as the expected
++ * core clock (arm_podf=0) unless the core clock is less than PLL_FREQ_MIN.
++ *
++ * @param ref		Pll input reference clock (24MHz)
++ * @param freq		targeted freq in Hz
++ * @param clk_type	clock type, e.g CPU_CLK, DDR_CLK, etc.
++ * @return		0 if successful; non-zero therwise
++ */
++
++int clk_config(u32 ref, u32 freq, u32 clk_type)
++{
++	freq *= SZ_DEC_1M;
++
++	switch(clk_type){
++		case CPU_CLK:
++			if(config_core_clk(ref, freq))
++				return -1;
++			break;
++/*  CPU_CLK only*/
++/*		case PERIPH_CLK:
++			if(config_periph_clk(ref, freq))
++				return -1;
++			break;
++		case DDR_CLK:
++			if(config_ddr_clk(freq))
++				return -1;
++			break;
++		case NFC_CLK:
++			if(config_nfc_clk(freq))
++				return -1;
++			break;*/
++		default:
++			printf("Unsupported or invalid clock type! : (\n)");
++			return -1;
++	}
++	return 0;
++}
+diff --git a/board/via/common/cmd.c b/board/via/common/cmd.c
+new file mode 100644
+index 0000000..8abfcc9
+--- /dev/null
++++ b/board/via/common/cmd.c
+@@ -0,0 +1,146 @@
++#include <asm/io.h>
++#include <common.h>
++#include <asm/arch/sys_proto.h>
++#include "via.h"
++
++static int sTextAttribute = 0;
++
++enum { taNormal=0, taBold=1, taUnderscore=4, taBlink=5};
++
++static void text_attribute(int textAttribute)
++{
++	sTextAttribute = textAttribute;
++}
++
++enum {
++	clNone=0, clRed=31, clGreen, clYellow, clBlue, clMagenta, clCyan=36
++};
++
++static void color_print(const char* p, int color)
++{
++	printf("\x1b[%d;%dm%s\x1b[0m", sTextAttribute, color, p);
++}
++
++static int do_viatools(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
++{
++	int ch;
++
++	printf("\n\n");
++
++	while(1)
++	{
++		text_attribute(taBold);
++		color_print("VIA tools\n", clCyan);
++		text_attribute(taNormal);
++		printf("===================================\n");
++		printf("1. hardware information\n");
++		printf("others. exit\n");
++		printf("===================================\n");
++		printf("choose : ");
++		ch = getc(); printf("%c\n", ch);
++		//printf("your input = %c, 0x%x\n", ch, ch);
++		switch (ch) {
++			case '1':
++				show_hw_info();
++				break;
++			default:
++				return 0;
++		}
++	}
++	return 0;
++}
++
++/* 0: imx6q, 1: imx6dl, 2: imx6qp */
++static int cpu_detect(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
++{
++	int nCpu = 0; /* default: imx6q */
++	if (is_mx6dqp())
++		nCpu = 2;
++	else if (is_mx6sdl())
++		nCpu = 1;
++	/* printf("%d\n", nCpu); */
++	setenv_hex("cpu_type", nCpu);
++	return nCpu;
++}
++
++#if defined(CONFIG_CMD_SAVEENV) && !defined(CONFIG_ENV_IS_NOWHERE)
++#include <environment.h>
++static int bDestroyEnv = 0;
++
++int in_destroyenv(void)
++{
++	return bDestroyEnv;
++}
++
++static int do_destroyenv(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
++{
++	int nResult;
++
++	bDestroyEnv = 1;
++	/* printf("invalidate the CRC\n"); */
++	printf("write invalidate enviroment data to storage\n");
++	nResult = saveenv() ? 1 : 0;
++	bDestroyEnv = 0;
++
++	return nResult;
++}
++#endif
++
++#ifdef CONFIG_TARGET_MX6QVAB820
++static void adv_power(void) {
++	/* CSI0_PWN = SD1_DAT0 = GPIO1_IO16 */
++	gpio_direction_output(IMX_GPIO_NR(1, 16), 0);
++}
++
++static void adv_reset(void) {
++	/* CSI0_RST_B = SD1_DAT1 = GPIO1_IO17 */
++	gpio_direction_output(IMX_GPIO_NR(1, 17), 0);
++    udelay(500);
++    gpio_direction_output(IMX_GPIO_NR(1, 17), 1);
++}
++
++static int do_adv7180(cmd_tbl_t *cmdtp, int flag, int argc, char * const argv[])
++{
++	if(argc > 1){
++		if(strcmp(argv[1], "power") == 0){
++			adv_power();
++		}else if(strcmp(argv[1], "reset") == 0){
++			adv_reset();
++		}
++	}
++	return 0;
++}
++#endif
++
++U_BOOT_CMD(
++	viatools, CONFIG_SYS_MAXARGS, 0, do_viatools,
++	"VIA tools",
++	"- some useful tools"
++);
++
++U_BOOT_CMD(
++	cpudetect, 1, 0, cpu_detect,
++	"detect cpu type and then set value to environment 'cpu_type'",
++	"[cpu_type] 0: iMX6DQ; 1: iMX6DL; 2: iMX6QP"
++);
++
++#if defined(CONFIG_CMD_SAVEENV) && !defined(CONFIG_ENV_IS_NOWHERE)
++U_BOOT_CMD(
++	destroyenv, CONFIG_SYS_MAXARGS, 0, do_destroyenv,
++	"destroy enviroment variables stored in medium",
++	"\n	- destroy all environment variables in medium"
++	"\n	  after reset the default settings will be used"
++);
++#endif
++
++#ifdef CONFIG_TARGET_MX6QVAB820
++/*
++U_BOOT_CMD(
++	adv7180, CONFIG_SYS_MAXARGS, 0, do_adv7180,
++	"control adv7180",
++	"{power|reset}"
++	"\n	power = power on adv7180"
++	"\n	reset = reset adv7180"
++);
++*/
++#endif
+diff --git a/board/via/common/info.c b/board/via/common/info.c
+new file mode 100644
+index 0000000..34d382f
+--- /dev/null
++++ b/board/via/common/info.c
+@@ -0,0 +1,131 @@
++#include <asm/io.h>
++#include <asm/gpio.h>
++#include <common.h>
++#include <mmc.h>
++#include <asm/arch/sys_proto.h>
++#include <asm/arch/clock.h>
++#include "via.h"
++
++#if defined(CONFIG_TARGET_MX6QVAB820) || defined(CONFIG_TARGET_MX6ARTIGOA820)
++#define	RAMSIZE_IO0			IMX_GPIO_NR(2, 0)
++#define	RAMSIZE_IO1			IMX_GPIO_NR(2, 1)
++#elif defined(CONFIG_TARGET_MX6QSM8Q60)
++/* QSM-8Q60: GPIO6_IO09 & GPIO6_IO10 for RAM size */
++#define	RAMSIZE_IO0		IMX_GPIO_NR(6, 9)
++#define	RAMSIZE_IO1		IMX_GPIO_NR(6, 10)
++#endif
++
++unsigned via_ddr_size(void)
++{
++	unsigned nRamSize;
++
++	if(!gpio_get_value(RAMSIZE_IO1) && gpio_get_value(RAMSIZE_IO0))	// 4GB: 01
++	{
++		/* 3.75GB */
++		nRamSize = (3840u * 1024 * 1024) - 4096;
++		/* 3.5GB */
++		//nRamSize = (3584u * 1024 * 1024);
++	}
++	else if(gpio_get_value(RAMSIZE_IO1) && !gpio_get_value(RAMSIZE_IO0))	// 2GB: 10
++		nRamSize = (2u * 1024 * 1024 * 1024);
++	else	// 1GB: 11
++		nRamSize = (1u * 1024 * 1024 * 1024);
++
++	return nRamSize;
++}
++
++static void show_cpu(void)
++{
++	u32 cpurev;
++
++	cpurev = get_cpu_rev();
++
++#if defined(CONFIG_MX6)
++	if (is_mx6dqp()) {
++		printf("CPU:   Freescale i.MX%sP rev%d.%d at %d MHz\n",
++			get_imx_type((cpurev & 0xFF000) >> 12),
++			((cpurev & 0x000F0) >> 4) - 1,
++			(cpurev & 0x0000F) >> 0,
++			mxc_get_clock(MXC_ARM_CLK) / 1000000);
++
++	} else
++#endif
++	{
++		printf("CPU:   Freescale i.MX%s rev%d.%d at %d MHz\n",
++			get_imx_type((cpurev & 0xFF000) >> 12),
++			(cpurev & 0x000F0) >> 4,
++			(cpurev & 0x0000F) >> 0,
++			mxc_get_clock(MXC_ARM_CLK) / 1000000);
++	}
++}
++
++static void show_ram(void)
++{
++	puts("DRAM:  ");
++	print_size(via_ddr_size(), "");
++	putc('\n');
++}
++
++static void show_samsung_emmc_info(struct mmc *mmc)
++{
++	printf("Samsung, ");
++
++	switch (mmc->cid[1]) {
++		case 0x34473146: /* 1st ID = 0x4d */
++			 printf("eMMC 4.4, 4GB\n");
++			 break;
++		case 0x594d4433: /* 1st ID = 0x34 */
++			printf("eMMC 5.0, 4GB\n");
++			break;
++		case 0x38473147: /* 1st ID = 0x4d */
++			printf("eMMC 5.0, 8GB\n");
++			break;
++		default:
++			printf("Unknown Product Name = 0x%08x\n", mmc->cid[1]);
++			break;
++	}
++}
++
++static void show_hynix_emmc_info(struct mmc *mmc)
++{
++	printf("Hynix, ");
++
++	switch (mmc->cid[1]) {
++		case 0x38473264: /* 1st ID = 0x48 */
++			printf("eMMC 4.4, 8GB\n");
++			break;
++		default:
++			printf("Unknown Product Name = 0x%08x\n", mmc->cid[1]);
++			break;
++	}
++}
++
++static void show_emmc(void)
++{
++	struct mmc *mmc = find_mmc_device(1);
++
++	mmc_init(mmc);
++	printf("eMMC: ");
++
++	switch (mmc->cid[0] >> 24) {
++		case 0x15:
++			show_samsung_emmc_info(mmc);
++			break;
++		case 0x90:
++			show_hynix_emmc_info(mmc);
++			break;
++		default:
++			printf("Unknown Manufacturer ID = 0x%x, Product Name = 0x%08x\n", mmc->cid[0] >> 24, mmc->cid[1]);
++			break;
++	}
++}
++
++void show_hw_info(void)
++{
++	printf("\n\n");
++	show_cpu();
++	show_ram();
++	show_emmc();
++	run_command("sf probe", 0);
++	printf("\n\n");
++}
+diff --git a/board/via/common/phy.c b/board/via/common/phy.c
+new file mode 100644
+index 0000000..23fe7e5
+--- /dev/null
++++ b/board/via/common/phy.c
+@@ -0,0 +1,44 @@
++#include <linux/types.h>
++#include <micrel.h>
++#include "via.h"
++
++/* support KSZ9031 */
++int ksz9031_rgmii_rework(struct phy_device *phydev)
++{
++	phy_write(phydev, MDIO_DEVAD_NONE, MII_CTRL1000, 0x1c00);
++
++	/* control data pad skew - devaddr = 0x02, register = 0x04 */
++	ksz9031_phy_extended_write(phydev, 0x02,
++				   MII_KSZ9031_EXT_RGMII_CTRL_SIG_SKEW,
++				   MII_KSZ9031_MOD_DATA_NO_POST_INC, 0x0000);
++	/* rx data pad skew - devaddr = 0x02, register = 0x05 */
++	ksz9031_phy_extended_write(phydev, 0x02,
++				   MII_KSZ9031_EXT_RGMII_RX_DATA_SKEW,
++				   MII_KSZ9031_MOD_DATA_NO_POST_INC, 0x0000);
++	/* tx data pad skew - devaddr = 0x02, register = 0x05 */
++	ksz9031_phy_extended_write(phydev, 0x02,
++				   MII_KSZ9031_EXT_RGMII_TX_DATA_SKEW,
++				   MII_KSZ9031_MOD_DATA_NO_POST_INC, 0x0000);
++	/* gtx and rx clock pad skew - devaddr = 0x02, register = 0x08 */
++	ksz9031_phy_extended_write(phydev, 0x02,
++				   MII_KSZ9031_EXT_RGMII_CLOCK_SKEW,
++				   MII_KSZ9031_MOD_DATA_NO_POST_INC, 0x03FF);
++
++	return 0;
++}
++
++/* support KSZ9021 */
++int ksz9021_rgmii_rework(struct phy_device *phydev)
++{
++	/* min rx data delay */
++	ksz9021_phy_extended_write(phydev,
++			MII_KSZ9021_EXT_RGMII_RX_DATA_SKEW, 0x0);
++	/* min tx data delay */
++	ksz9021_phy_extended_write(phydev,
++			MII_KSZ9021_EXT_RGMII_TX_DATA_SKEW, 0x0);
++	/* max rx/tx clock delay, min rx/tx control */
++	ksz9021_phy_extended_write(phydev,
++			MII_KSZ9021_EXT_RGMII_CLOCK_SKEW, 0xf0f0);
++
++	return 0;
++}
+diff --git a/board/via/common/via.h b/board/via/common/via.h
+new file mode 100644
+index 0000000..3b1c9f0
+--- /dev/null
++++ b/board/via/common/via.h
+@@ -0,0 +1,51 @@
++#ifndef __VIA_H_
++#define __VIA_H_
++
++#include <miiphy.h>
++
++unsigned via_ddr_size(void);
++
++void show_hw_info(void);
++
++int ksz9031_rgmii_rework(struct phy_device *phydev);
++
++int ksz9021_rgmii_rework(struct phy_device *phydev);
++
++int clk_config(u32 ref, u32 freq, u32 clk_type);
++
++enum {
++	CPU_CLK = 0,
++	PERIPH_CLK,
++	AHB_CLK,
++	IPG_CLK,
++	IPG_PERCLK,
++	UART_CLK,
++	CSPI_CLK,
++	DDR_CLK,
++	NFC_CLK,
++	ALL_CLK,
++};
++
++enum pll_clocks {
++	CPU_PLL1,	/* System PLL */
++	BUS_PLL2,	/* System Bus PLL */
++	USBOTG_PLL3,	/* OTG USB PLL */
++	AUD_PLL4,	/* Audio PLL */
++	VID_PLL5,	/* Video PLL */
++#ifndef CONFIG_MX6SL
++	MLB_PLL6,	/* MLB PLL */
++	USBHOST_PLL7,	/* Host USB PLL */
++#endif
++	ENET_PLL8,	/* ENET PLL */
++};
++
++#define PLL1_FREQ_MAX	1300000000
++#define PLL1_FREQ_MIN	650000000
++#define PLL2_FREQ_MAX	528000000
++#define PLL2_FREQ_MIN	480000000
++#define SZ_DEC_1M	1000000
++#define CONFIG_MX6_HCLK_FREQ	24000000
++#define CONFIG_REF_CLK_FREQ	24000000
++#define CLKCTL_CCSR	0x0C
++
++#endif	/* __VIA_H_ */
+diff --git a/board/via/mx6artigoa820/Kconfig b/board/via/mx6artigoa820/Kconfig
+new file mode 100644
+index 0000000..959f520
+--- /dev/null
++++ b/board/via/mx6artigoa820/Kconfig
+@@ -0,0 +1,15 @@
++if TARGET_MX6ARTIGOA820
++
++config SYS_BOARD
++	default "mx6artigoa820"
++
++config SYS_VENDOR
++	default "via"
++
++config SYS_SOC
++	default "mx6"
++
++config SYS_CONFIG_NAME
++	default "mx6artigoa820"
++
++endif
+diff --git a/board/via/mx6artigoa820/Makefile b/board/via/mx6artigoa820/Makefile
+new file mode 100644
+index 0000000..c190f92
+--- /dev/null
++++ b/board/via/mx6artigoa820/Makefile
+@@ -0,0 +1,13 @@
++#
++# Copyright (C) 2007, Guennadi Liakhovetski <lg@denx.de>
++#
++# (C) Copyright 2011 Freescale Semiconductor, Inc.
++#
++# SPDX-License-Identifier:	GPL-2.0+
++#
++
++obj-y  := mx6artigoa820.o ../common/clock.o ../common/phy.o ../common/info.o ../common/cmd.o
++
++extra-$(CONFIG_USE_PLUGIN) :=  plugin.bin
++$(obj)/plugin.bin: $(obj)/plugin.o
++	$(OBJCOPY) -O binary --gap-fill 0xff $< $@
+diff --git a/board/via/mx6artigoa820/artigoa820_dram.cfg b/board/via/mx6artigoa820/artigoa820_dram.cfg
+new file mode 100644
+index 0000000..fe31d69
+--- /dev/null
++++ b/board/via/mx6artigoa820/artigoa820_dram.cfg
+@@ -0,0 +1,163 @@
++/*
++ * Copyright (C) 2014-2016 Freescale Semiconductor, Inc.
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ *
++ * Refer doc/README.imximage for more details about how-to configure
++ * and create imximage boot image
++ *
++ * The syntax is taken as close as possible with the kwbimage
++ */
++
++#define __ASSEMBLY__
++#include <config.h>
++/* image version */
++IMAGE_VERSION 2
++
++/*
++ * Boot Device : one of spi, sd, sata
++ * the board has no nand and eimnor
++ * spinor: flash_offset: 0x0400
++ * sata:   flash_offset: 0x0400
++ * sd/mmc: flash_offset: 0x0400
++ */
++
++/* the same flash_offset as sd */
++BOOT_FROM      sd
++
++#ifdef CONFIG_USE_PLUGIN
++/*PLUGIN    plugin-binary-file    IRAM_FREE_START_ADDR*/
++PLUGIN	board/via/mx6artigoa820/plugin.bin 0x00907000
++#else
++
++#ifdef CONFIG_SECURE_BOOT
++CSF 0x2000
++#endif
++
++/*
++ * Device Configuration Data (DCD)
++ *
++ * Each entry must have the format:
++ * Addr-type           Address        Value
++ *
++ * where:
++ *      Addr-type register length (1,2 or 4 bytes)
++ *      Address   absolute address of the register
++ *      value     value to be stored in the register
++ */
++
++/* Chris: vab820 mx6q_1gb DRAM setting */
++DATA 4, 0x020e0798, 0x000C0000
++DATA 4, 0x020e0758, 0x00000000
++DATA 4, 0x020e0588, 0x00000028
++DATA 4, 0x020e0594, 0x00000028
++DATA 4, 0x020e056c, 0x00000028
++DATA 4, 0x020e0578, 0x00000028
++DATA 4, 0x020e074c, 0x00000028
++DATA 4, 0x020e057c, 0x00000028
++DATA 4, 0x020e058c, 0x00000000
++DATA 4, 0x020e059c, 0x00000028
++DATA 4, 0x020e05a0, 0x00000028
++DATA 4, 0x020e078c, 0x00000028
++DATA 4, 0x020e0750, 0x00020000
++DATA 4, 0x020e05a8, 0x00000028
++DATA 4, 0x020e05b0, 0x00000028
++DATA 4, 0x020e0524, 0x00000028
++DATA 4, 0x020e051c, 0x00000028
++DATA 4, 0x020e0518, 0x00000028
++DATA 4, 0x020e050c, 0x00000028
++DATA 4, 0x020e05b8, 0x00000028
++DATA 4, 0x020e05c0, 0x00000028
++DATA 4, 0x020e0774, 0x00020000
++DATA 4, 0x020e0784, 0x00000028
++DATA 4, 0x020e0788, 0x00000028
++DATA 4, 0x020e0794, 0x00000028
++DATA 4, 0x020e079c, 0x00000028
++DATA 4, 0x020e07a0, 0x00000028
++DATA 4, 0x020e07a4, 0x00000028
++DATA 4, 0x020e07a8, 0x00000028
++DATA 4, 0x020e0748, 0x00000028
++DATA 4, 0x020e05ac, 0x00000028
++DATA 4, 0x020e05b4, 0x00000028
++DATA 4, 0x020e0528, 0x00000028
++DATA 4, 0x020e0520, 0x00000028
++DATA 4, 0x020e0514, 0x00000028
++DATA 4, 0x020e0510, 0x00000028
++DATA 4, 0x020e05bc, 0x00000028
++DATA 4, 0x020e05c4, 0x00000028
++DATA 4, 0x021b0800, 0xA1380003
++DATA 4, 0x021b080c, 0x001C0013
++DATA 4, 0x021b0810, 0x0022001C
++DATA 4, 0x021b480c, 0x00160025
++DATA 4, 0x021b4810, 0x000C001C
++DATA 4, 0x021b083c, 0x03340348
++DATA 4, 0x021b0840, 0x0236032C
++DATA 4, 0x021b483c, 0x03340344
++DATA 4, 0x021b4840, 0x032C0300
++DATA 4, 0x021b0848, 0x32282E30
++DATA 4, 0x021b4848, 0x302A283A
++DATA 4, 0x021b0850, 0x3A363E38
++DATA 4, 0x021b4850, 0x40303E36
++DATA 4, 0x021b081c, 0x33333333
++DATA 4, 0x021b0820, 0x33333333
++DATA 4, 0x021b0824, 0x33333333
++DATA 4, 0x021b0828, 0x33333333
++DATA 4, 0x021b481c, 0x33333333
++DATA 4, 0x021b4820, 0x33333333
++DATA 4, 0x021b4824, 0x33333333
++DATA 4, 0x021b4828, 0x33333333
++DATA 4, 0x021b08b8, 0x00000800
++DATA 4, 0x021b48b8, 0x00000800
++DATA 4, 0x021b0004, 0x00020036
++DATA 4, 0x021b0008, 0x09444040
++DATA 4, 0x021b000c, 0x54597974
++DATA 4, 0x021b0010, 0xDB538F64
++DATA 4, 0x021b0014, 0x01FF00DB
++DATA 4, 0x021b0018, 0x00001740
++DATA 4, 0x021b001c, 0x00008000
++DATA 4, 0x021b002c, 0x000026D2
++DATA 4, 0x021b0030, 0x00591023
++DATA 4, 0x021b0040, 0x00000027
++DATA 4, 0x021b0000, 0x831A0000
++DATA 4, 0x021b001c, 0x02088032
++DATA 4, 0x021b001c, 0x00008033
++DATA 4, 0x021b001c, 0x00048031
++DATA 4, 0x021b001c, 0x09308030
++DATA 4, 0x021b001c, 0x04008040
++DATA 4, 0x021b0020, 0x00007800
++DATA 4, 0x021b0818, 0x00022227
++DATA 4, 0x021b4818, 0x00022227
++DATA 4, 0x021b0004, 0x00020036
++DATA 4, 0x021b0404, 0x00011006
++DATA 4, 0x021b001c, 0x00000000
++
++/* not edit */
++/* set the default clock gate to save power */
++DATA 4, 0x020c4068, 0x00C03F3F
++DATA 4, 0x020c406c, 0x0030FC03
++DATA 4, 0x020c4070, 0x0FFFC000
++DATA 4, 0x020c4074, 0x3FF00000
++DATA 4, 0x020c4078, 0x00FFF300
++DATA 4, 0x020c407c, 0x0F0000F3
++DATA 4, 0x020c4080, 0x000003FF
++
++/* enable AXI cache for VDOA/VPU/IPU */
++
++DATA 4, 0x020e0010, 0xF00000CF
++
++/* set IPU AXI-id0 Qos=0xf(bypass) AXI-id1 Qos=0x7 */
++
++DATA 4, 0x020e0018, 0x007F007F
++DATA 4, 0x020e001c, 0x007F007F
++
++/*
++ * Setup CCM_CCOSR register as follows:
++ *
++ * cko1_en  = 1	   --> CKO1 enabled
++ * cko1_div = 111  --> divide by 8
++ * cko1_sel = 1011 --> ahb_clk_root
++ *
++ * This sets CKO1 at ahb_clk_root/8 = 132/8 = 16.5 MHz
++ */
++DATA 4, 0x020c4060, 0x000000fb
++#endif
+diff --git a/board/via/mx6artigoa820/artigoa820_mx6dl_1g.cfg b/board/via/mx6artigoa820/artigoa820_mx6dl_1g.cfg
+new file mode 100644
+index 0000000..eec9fc6
+--- /dev/null
++++ b/board/via/mx6artigoa820/artigoa820_mx6dl_1g.cfg
+@@ -0,0 +1,121 @@
++
++
++// imx6dl_1g_ram
++# IOMUXC_BASE_ADDR  = 0x20e0000
++# DDR IO TYPE
++MXC_DCD_ITEM(1, IOMUXC_BASE_ADDR + 0x774, 0x000c0000)
++MXC_DCD_ITEM(2, IOMUXC_BASE_ADDR + 0x754, 0x00000000)
++# Clock
++MXC_DCD_ITEM(3, IOMUXC_BASE_ADDR + 0x4ac, 0x00000028)
++MXC_DCD_ITEM(4, IOMUXC_BASE_ADDR + 0x4b0, 0x00000028)
++# Address
++MXC_DCD_ITEM(5, IOMUXC_BASE_ADDR + 0x464, 0x00000028)
++MXC_DCD_ITEM(6, IOMUXC_BASE_ADDR + 0x490, 0x00000028)
++MXC_DCD_ITEM(7, IOMUXC_BASE_ADDR + 0x74c, 0x00000028)
++# Control
++MXC_DCD_ITEM(8, IOMUXC_BASE_ADDR + 0x494, 0x00000028)
++
++MXC_DCD_ITEM(9, IOMUXC_BASE_ADDR + 0x4a0, 0x00000000)
++
++MXC_DCD_ITEM(10, IOMUXC_BASE_ADDR + 0x4b4, 0x00000028)
++MXC_DCD_ITEM(11, IOMUXC_BASE_ADDR + 0x4b8, 0x00000028)
++MXC_DCD_ITEM(12, IOMUXC_BASE_ADDR + 0x76c, 0x00000028)
++# Data Strobe
++MXC_DCD_ITEM(13, IOMUXC_BASE_ADDR + 0x750, 0x00020000)
++
++MXC_DCD_ITEM(14, IOMUXC_BASE_ADDR + 0x4bc, 0x00000028)
++MXC_DCD_ITEM(15, IOMUXC_BASE_ADDR + 0x4c0, 0x00000028)
++MXC_DCD_ITEM(16, IOMUXC_BASE_ADDR + 0x4c4, 0x00000028)
++MXC_DCD_ITEM(17, IOMUXC_BASE_ADDR + 0x4c8, 0x00000028)
++MXC_DCD_ITEM(18, IOMUXC_BASE_ADDR + 0x4cc, 0x00000028)
++MXC_DCD_ITEM(19, IOMUXC_BASE_ADDR + 0x4d0, 0x00000028)
++MXC_DCD_ITEM(20, IOMUXC_BASE_ADDR + 0x4d4, 0x00000028)
++MXC_DCD_ITEM(21, IOMUXC_BASE_ADDR + 0x4d8, 0x00000028)
++
++MXC_DCD_ITEM(22, IOMUXC_BASE_ADDR + 0x760, 0x00020000)
++
++MXC_DCD_ITEM(23, IOMUXC_BASE_ADDR + 0x764, 0x00000028)
++MXC_DCD_ITEM(24, IOMUXC_BASE_ADDR + 0x770, 0x00000028)
++MXC_DCD_ITEM(25, IOMUXC_BASE_ADDR + 0x778, 0x00000028)
++MXC_DCD_ITEM(26, IOMUXC_BASE_ADDR + 0x77c, 0x00000028)
++MXC_DCD_ITEM(27, IOMUXC_BASE_ADDR + 0x780, 0x00000028)
++MXC_DCD_ITEM(28, IOMUXC_BASE_ADDR + 0x784, 0x00000028)
++MXC_DCD_ITEM(29, IOMUXC_BASE_ADDR + 0x78c, 0x00000028)
++MXC_DCD_ITEM(30, IOMUXC_BASE_ADDR + 0x748, 0x00000028)
++
++MXC_DCD_ITEM(31, IOMUXC_BASE_ADDR + 0x470, 0x00000028)
++MXC_DCD_ITEM(32, IOMUXC_BASE_ADDR + 0x474, 0x00000028)
++MXC_DCD_ITEM(33, IOMUXC_BASE_ADDR + 0x478, 0x00000028)
++MXC_DCD_ITEM(34, IOMUXC_BASE_ADDR + 0x47c, 0x00000028)
++MXC_DCD_ITEM(35, IOMUXC_BASE_ADDR + 0x480, 0x00000028)
++MXC_DCD_ITEM(36, IOMUXC_BASE_ADDR + 0x484, 0x00000028)
++MXC_DCD_ITEM(37, IOMUXC_BASE_ADDR + 0x488, 0x00000028)
++MXC_DCD_ITEM(38, IOMUXC_BASE_ADDR + 0x48c, 0x00000028)
++
++# MMDC_P0_BASE_ADDR = 0x021b0000
++# MMDC_P1_BASE_ADDR = 0x021b4000
++# Calibrations
++# ZQ
++MXC_DCD_ITEM(39, MMDC_P0_BASE_ADDR + 0x800, 0xa1390003)
++
++# write leveling
++MXC_DCD_ITEM(40, MMDC_P0_BASE_ADDR + 0x80c, 0x00550055)
++MXC_DCD_ITEM(41, MMDC_P0_BASE_ADDR + 0x810, 0x00490053)
++MXC_DCD_ITEM(42, MMDC_P1_BASE_ADDR + 0x80c, 0x00230023)
++MXC_DCD_ITEM(43, MMDC_P1_BASE_ADDR + 0x810, 0x0028003A)
++# DQS gating, read delay, write delay calibration values
++# based on calibration compare of 0x00ffff00
++MXC_DCD_ITEM(44, MMDC_P0_BASE_ADDR + 0x83c, 0x02540258)
++MXC_DCD_ITEM(45, MMDC_P0_BASE_ADDR + 0x840, 0x023C023C)
++MXC_DCD_ITEM(46, MMDC_P1_BASE_ADDR + 0x83C, 0x02240230)
++MXC_DCD_ITEM(47, MMDC_P1_BASE_ADDR + 0x840, 0x02200224)
++
++MXC_DCD_ITEM(48, MMDC_P0_BASE_ADDR + 0x848, 0x42424C4C)
++MXC_DCD_ITEM(49, MMDC_P1_BASE_ADDR + 0x848, 0x4040443E)
++
++MXC_DCD_ITEM(50, MMDC_P0_BASE_ADDR + 0x850, 0x3A383036)
++MXC_DCD_ITEM(51, MMDC_P1_BASE_ADDR + 0x850, 0x3034362E)
++
++MXC_DCD_ITEM(52, MMDC_P0_BASE_ADDR + 0x81c, 0x33333333)
++MXC_DCD_ITEM(53, MMDC_P0_BASE_ADDR + 0x820, 0x33333333)
++MXC_DCD_ITEM(54, MMDC_P0_BASE_ADDR + 0x824, 0x33333333)
++MXC_DCD_ITEM(55, MMDC_P0_BASE_ADDR + 0x828, 0x33333333)
++MXC_DCD_ITEM(56, MMDC_P1_BASE_ADDR + 0x81c, 0x33333333)
++MXC_DCD_ITEM(57, MMDC_P1_BASE_ADDR + 0x820, 0x33333333)
++MXC_DCD_ITEM(58, MMDC_P1_BASE_ADDR + 0x824, 0x33333333)
++MXC_DCD_ITEM(59, MMDC_P1_BASE_ADDR + 0x828, 0x33333333)
++
++MXC_DCD_ITEM(60, MMDC_P0_BASE_ADDR + 0x8b8, 0x00000800)
++MXC_DCD_ITEM(61, MMDC_P1_BASE_ADDR + 0x8b8, 0x00000800)
++# MMDC init:
++# in DDR3, 64-bit mode, only MMDC0 is initiated:
++MXC_DCD_ITEM(62, MMDC_P0_BASE_ADDR + 0x004, 0x0002002D)
++MXC_DCD_ITEM(63, MMDC_P0_BASE_ADDR + 0x008, 0x00333040)
++MXC_DCD_ITEM(64, MMDC_P0_BASE_ADDR + 0x00c, 0x3F435313)
++MXC_DCD_ITEM(65, MMDC_P0_BASE_ADDR + 0x010, 0xB66E8B63)
++MXC_DCD_ITEM(66, MMDC_P0_BASE_ADDR + 0x014, 0x01FF00DB)
++MXC_DCD_ITEM(67, MMDC_P0_BASE_ADDR + 0x018, 0x00011740)
++
++MXC_DCD_ITEM(68, MMDC_P0_BASE_ADDR + 0x01c, 0x00008000)
++MXC_DCD_ITEM(69, MMDC_P0_BASE_ADDR + 0x02c, 0x000026d2)
++MXC_DCD_ITEM(70, MMDC_P0_BASE_ADDR + 0x030, 0x00431023)
++MXC_DCD_ITEM(71, MMDC_P0_BASE_ADDR + 0x040, 0x00000027)
++
++MXC_DCD_ITEM(72, MMDC_P0_BASE_ADDR + 0x000, 0x831A0000)
++
++# Initialize 1GB DDR3 - Nanya NT5CB128M16HP
++MXC_DCD_ITEM(73, MMDC_P0_BASE_ADDR + 0x01c, 0x02008032)
++MXC_DCD_ITEM(74, MMDC_P0_BASE_ADDR + 0x01c, 0x00008033)
++MXC_DCD_ITEM(75, MMDC_P0_BASE_ADDR + 0x01c, 0x00048031)
++MXC_DCD_ITEM(76, MMDC_P0_BASE_ADDR + 0x01c, 0x05208030)
++MXC_DCD_ITEM(77, MMDC_P0_BASE_ADDR + 0x01c, 0x04008040)
++
++MXC_DCD_ITEM(78, MMDC_P0_BASE_ADDR + 0x020, 0x00007800)
++
++MXC_DCD_ITEM(79, MMDC_P0_BASE_ADDR + 0x818, 0x00022227)
++MXC_DCD_ITEM(80, MMDC_P1_BASE_ADDR + 0x818, 0x00022227)
++
++MXC_DCD_ITEM(81, MMDC_P0_BASE_ADDR + 0x004, 0x0002556d)
++MXC_DCD_ITEM(82, MMDC_P0_BASE_ADDR + 0x404, 0x00011006)
++MXC_DCD_ITEM(83, MMDC_P0_BASE_ADDR + 0x01c, 0x00000000)
++
+diff --git a/board/via/mx6artigoa820/artigoa820_mx6dl_2g.cfg b/board/via/mx6artigoa820/artigoa820_mx6dl_2g.cfg
+new file mode 100644
+index 0000000..b4bd0e2
+--- /dev/null
++++ b/board/via/mx6artigoa820/artigoa820_mx6dl_2g.cfg
+@@ -0,0 +1,127 @@
++
++
++// imx6dl_2g_ram    
++# IOMUXC_BASE_ADDR  = 0x20e0000
++# DDR IO TYPE
++MXC_DCD_ITEM(1, IOMUXC_BASE_ADDR + 0x774, 0x000c0000)
++MXC_DCD_ITEM(2, IOMUXC_BASE_ADDR + 0x754, 0x00000000)
++# Clock
++MXC_DCD_ITEM(3, IOMUXC_BASE_ADDR + 0x4ac, 0x00000028)
++MXC_DCD_ITEM(4, IOMUXC_BASE_ADDR + 0x4b0, 0x00000028)
++# Address
++MXC_DCD_ITEM(5, IOMUXC_BASE_ADDR + 0x464, 0x00000028)
++MXC_DCD_ITEM(6, IOMUXC_BASE_ADDR + 0x490, 0x00000028)
++MXC_DCD_ITEM(7, IOMUXC_BASE_ADDR + 0x74c, 0x00000028)
++# Control
++MXC_DCD_ITEM(8, IOMUXC_BASE_ADDR + 0x494, 0x00000028)
++
++MXC_DCD_ITEM(9, IOMUXC_BASE_ADDR + 0x4a0, 0x00000000)
++
++MXC_DCD_ITEM(10, IOMUXC_BASE_ADDR + 0x4b4, 0x00000028)
++MXC_DCD_ITEM(11, IOMUXC_BASE_ADDR + 0x4b8, 0x00000028)
++MXC_DCD_ITEM(12, IOMUXC_BASE_ADDR + 0x76c, 0x00000028)
++# Data Strobe
++MXC_DCD_ITEM(13, IOMUXC_BASE_ADDR + 0x750, 0x00020000)
++
++MXC_DCD_ITEM(14, IOMUXC_BASE_ADDR + 0x4bc, 0x00000028)
++MXC_DCD_ITEM(15, IOMUXC_BASE_ADDR + 0x4c0, 0x00000028)
++MXC_DCD_ITEM(16, IOMUXC_BASE_ADDR + 0x4c4, 0x00000028)
++MXC_DCD_ITEM(17, IOMUXC_BASE_ADDR + 0x4c8, 0x00000028)
++MXC_DCD_ITEM(18, IOMUXC_BASE_ADDR + 0x4cc, 0x00000028)
++MXC_DCD_ITEM(19, IOMUXC_BASE_ADDR + 0x4d0, 0x00000028)
++MXC_DCD_ITEM(20, IOMUXC_BASE_ADDR + 0x4d4, 0x00000028)
++MXC_DCD_ITEM(21, IOMUXC_BASE_ADDR + 0x4d8, 0x00000028)
++
++MXC_DCD_ITEM(22, IOMUXC_BASE_ADDR + 0x760, 0x00020000)
++
++MXC_DCD_ITEM(23, IOMUXC_BASE_ADDR + 0x764, 0x00000028)
++MXC_DCD_ITEM(24, IOMUXC_BASE_ADDR + 0x770, 0x00000028)
++MXC_DCD_ITEM(25, IOMUXC_BASE_ADDR + 0x778, 0x00000028)
++MXC_DCD_ITEM(26, IOMUXC_BASE_ADDR + 0x77c, 0x00000028)
++MXC_DCD_ITEM(27, IOMUXC_BASE_ADDR + 0x780, 0x00000028)
++MXC_DCD_ITEM(28, IOMUXC_BASE_ADDR + 0x784, 0x00000028)
++MXC_DCD_ITEM(29, IOMUXC_BASE_ADDR + 0x78c, 0x00000028)
++MXC_DCD_ITEM(30, IOMUXC_BASE_ADDR + 0x748, 0x00000028)
++
++MXC_DCD_ITEM(31, IOMUXC_BASE_ADDR + 0x470, 0x00000028)
++MXC_DCD_ITEM(32, IOMUXC_BASE_ADDR + 0x474, 0x00000028)
++MXC_DCD_ITEM(33, IOMUXC_BASE_ADDR + 0x478, 0x00000028)
++MXC_DCD_ITEM(34, IOMUXC_BASE_ADDR + 0x47c, 0x00000028)
++MXC_DCD_ITEM(35, IOMUXC_BASE_ADDR + 0x480, 0x00000028)
++MXC_DCD_ITEM(36, IOMUXC_BASE_ADDR + 0x484, 0x00000028)
++MXC_DCD_ITEM(37, IOMUXC_BASE_ADDR + 0x488, 0x00000028)
++MXC_DCD_ITEM(38, IOMUXC_BASE_ADDR + 0x48c, 0x00000028)
++
++# MMDC_P0_BASE_ADDR = 0x021b0000
++# MMDC_P1_BASE_ADDR = 0x021b4000
++# Calibrations
++# ZQ
++MXC_DCD_ITEM(39, MMDC_P0_BASE_ADDR + 0x800, 0xa1390003)
++
++# write leveling
++MXC_DCD_ITEM(40, MMDC_P0_BASE_ADDR + 0x80c, 0x005B005D)
++MXC_DCD_ITEM(41, MMDC_P0_BASE_ADDR + 0x810, 0x004F005B)
++MXC_DCD_ITEM(42, MMDC_P1_BASE_ADDR + 0x80c, 0x002C002A)
++MXC_DCD_ITEM(43, MMDC_P1_BASE_ADDR + 0x810, 0x0022003E)
++# DQS gating, read delay, write delay calibration values
++# based on calibration compare of 0x00ffff00
++MXC_DCD_ITEM(44, MMDC_P0_BASE_ADDR + 0x83c, 0x0258025C)
++MXC_DCD_ITEM(45, MMDC_P0_BASE_ADDR + 0x840, 0x02440244)
++MXC_DCD_ITEM(46, MMDC_P1_BASE_ADDR + 0x83C, 0x02200230)
++MXC_DCD_ITEM(47, MMDC_P1_BASE_ADDR + 0x840, 0x0214021C)
++
++MXC_DCD_ITEM(48, MMDC_P0_BASE_ADDR + 0x848, 0x44464A48)
++MXC_DCD_ITEM(49, MMDC_P1_BASE_ADDR + 0x848, 0x42444640)
++
++MXC_DCD_ITEM(50, MMDC_P0_BASE_ADDR + 0x850, 0x36322E2E)
++MXC_DCD_ITEM(51, MMDC_P1_BASE_ADDR + 0x850, 0x32303228)
++
++MXC_DCD_ITEM(52, MMDC_P0_BASE_ADDR + 0x81c, 0x33333333)
++MXC_DCD_ITEM(53, MMDC_P0_BASE_ADDR + 0x820, 0x33333333)
++MXC_DCD_ITEM(54, MMDC_P0_BASE_ADDR + 0x824, 0x33333333)
++MXC_DCD_ITEM(55, MMDC_P0_BASE_ADDR + 0x828, 0x33333333)
++MXC_DCD_ITEM(56, MMDC_P1_BASE_ADDR + 0x81c, 0x33333333)
++MXC_DCD_ITEM(57, MMDC_P1_BASE_ADDR + 0x820, 0x33333333)
++MXC_DCD_ITEM(58, MMDC_P1_BASE_ADDR + 0x824, 0x33333333)
++MXC_DCD_ITEM(59, MMDC_P1_BASE_ADDR + 0x828, 0x33333333)
++
++MXC_DCD_ITEM(60, MMDC_P0_BASE_ADDR + 0x8b8, 0x00000800)
++MXC_DCD_ITEM(61, MMDC_P1_BASE_ADDR + 0x8b8, 0x00000800)
++# MMDC init:
++# in DDR3, 64-bit mode, only MMDC0 is initiated:
++MXC_DCD_ITEM(62, MMDC_P0_BASE_ADDR + 0x004, 0x0002002D)
++MXC_DCD_ITEM(63, MMDC_P0_BASE_ADDR + 0x008, 0x00333040)
++MXC_DCD_ITEM(64, MMDC_P0_BASE_ADDR + 0x00c, 0x676B52F3)
++MXC_DCD_ITEM(65, MMDC_P0_BASE_ADDR + 0x010, 0xB66D8B63)
++MXC_DCD_ITEM(66, MMDC_P0_BASE_ADDR + 0x014, 0x01FF00DB)
++MXC_DCD_ITEM(67, MMDC_P0_BASE_ADDR + 0x018, 0x00011740)
++
++MXC_DCD_ITEM(68, MMDC_P0_BASE_ADDR + 0x01c, 0x00008000)
++MXC_DCD_ITEM(69, MMDC_P0_BASE_ADDR + 0x02c, 0x000026D2)
++MXC_DCD_ITEM(70, MMDC_P0_BASE_ADDR + 0x030, 0x006B1023)
++MXC_DCD_ITEM(71, MMDC_P0_BASE_ADDR + 0x040, 0x00000047)
++
++MXC_DCD_ITEM(72, MMDC_P0_BASE_ADDR + 0x000, 0x841A0000)
++
++# Initialize 1GB DDR3 - Nanya NT5CB128M16HP
++MXC_DCD_ITEM(73, MMDC_P0_BASE_ADDR + 0x01c, 0x02808032)
++MXC_DCD_ITEM(74, MMDC_P0_BASE_ADDR + 0x01c, 0x00008033)
++MXC_DCD_ITEM(75, MMDC_P0_BASE_ADDR + 0x01c, 0x00048031)
++MXC_DCD_ITEM(76, MMDC_P0_BASE_ADDR + 0x01c, 0x05208030)
++MXC_DCD_ITEM(77, MMDC_P0_BASE_ADDR + 0x01c, 0x04008040)
++
++MXC_DCD_ITEM(78, MMDC_P0_BASE_ADDR + 0x020, 0x00007800)
++
++MXC_DCD_ITEM(79, MMDC_P0_BASE_ADDR + 0x818, 0x00022227)
++MXC_DCD_ITEM(80, MMDC_P1_BASE_ADDR + 0x818, 0x00022227)
++
++MXC_DCD_ITEM(81, MMDC_P0_BASE_ADDR + 0x004, 0x0002556D)
++MXC_DCD_ITEM(82, MMDC_P0_BASE_ADDR + 0x404, 0x00011006)
++MXC_DCD_ITEM(83, MMDC_P0_BASE_ADDR + 0x01c, 0x00000000)
++
++
++
++
++
++
++
+diff --git a/board/via/mx6artigoa820/artigoa820_mx6q_1g.cfg b/board/via/mx6artigoa820/artigoa820_mx6q_1g.cfg
+new file mode 100644
+index 0000000..0de0ded
+--- /dev/null
++++ b/board/via/mx6artigoa820/artigoa820_mx6q_1g.cfg
+@@ -0,0 +1,149 @@
++
++
++// imx6q_1g_ram
++// Ken modified Nanya 1G registers based on VAB-820 R.1
++
++#define VAB820_SDQSx 0x00000028
++MXC_DCD_ITEM(1, IOMUXC_BASE_ADDR + 0x5a8, VAB820_SDQSx)
++MXC_DCD_ITEM(2, IOMUXC_BASE_ADDR + 0x5b0, VAB820_SDQSx)
++MXC_DCD_ITEM(3, IOMUXC_BASE_ADDR + 0x524, VAB820_SDQSx)
++MXC_DCD_ITEM(4, IOMUXC_BASE_ADDR + 0x51c, VAB820_SDQSx)
++
++MXC_DCD_ITEM(5, IOMUXC_BASE_ADDR + 0x518, VAB820_SDQSx)
++MXC_DCD_ITEM(6, IOMUXC_BASE_ADDR + 0x50c, VAB820_SDQSx)
++MXC_DCD_ITEM(7, IOMUXC_BASE_ADDR + 0x5b8, VAB820_SDQSx)
++MXC_DCD_ITEM(8, IOMUXC_BASE_ADDR + 0x5c0, VAB820_SDQSx)
++
++#define VAB820_DQM 0x00000028
++MXC_DCD_ITEM(9, IOMUXC_BASE_ADDR + 0x5ac, VAB820_DQM)
++MXC_DCD_ITEM(10, IOMUXC_BASE_ADDR + 0x5b4, VAB820_DQM)
++MXC_DCD_ITEM(11, IOMUXC_BASE_ADDR + 0x528, VAB820_DQM)
++MXC_DCD_ITEM(12, IOMUXC_BASE_ADDR + 0x520, VAB820_DQM)
++
++MXC_DCD_ITEM(13, IOMUXC_BASE_ADDR + 0x514, VAB820_DQM)
++MXC_DCD_ITEM(14, IOMUXC_BASE_ADDR + 0x510, VAB820_DQM)
++MXC_DCD_ITEM(15, IOMUXC_BASE_ADDR + 0x5bc, VAB820_DQM)
++MXC_DCD_ITEM(16, IOMUXC_BASE_ADDR + 0x5c4, VAB820_DQM)
++
++MXC_DCD_ITEM(17, IOMUXC_BASE_ADDR + 0x56c, 0x00000028)
++MXC_DCD_ITEM(18, IOMUXC_BASE_ADDR + 0x578, 0x00000028)
++
++#define VAB820_SDCLKx 0x00000028
++MXC_DCD_ITEM(19, IOMUXC_BASE_ADDR + 0x588, VAB820_SDCLKx)
++MXC_DCD_ITEM(20, IOMUXC_BASE_ADDR + 0x594, VAB820_SDCLKx)
++
++// unknow register
++MXC_DCD_ITEM(21, IOMUXC_BASE_ADDR + 0x57c, 0x00000028)
++MXC_DCD_ITEM(22, IOMUXC_BASE_ADDR + 0x590, 0x00003000)
++MXC_DCD_ITEM(23, IOMUXC_BASE_ADDR + 0x598, 0x00003000)
++MXC_DCD_ITEM(24, IOMUXC_BASE_ADDR + 0x58c, 0x00000000)
++
++#define VAB820_SDODTx 0x00000028
++MXC_DCD_ITEM(25, IOMUXC_BASE_ADDR + 0x59c, VAB820_SDODTx)
++MXC_DCD_ITEM(26, IOMUXC_BASE_ADDR + 0x5a0, VAB820_SDODTx)
++
++#define VAB820_BxDS 0x28
++MXC_DCD_ITEM(27, IOMUXC_BASE_ADDR + 0x784, VAB820_BxDS)
++MXC_DCD_ITEM(28, IOMUXC_BASE_ADDR + 0x788, VAB820_BxDS)
++
++MXC_DCD_ITEM(29, IOMUXC_BASE_ADDR + 0x794, VAB820_BxDS)
++MXC_DCD_ITEM(30, IOMUXC_BASE_ADDR + 0x79c, VAB820_BxDS)
++MXC_DCD_ITEM(31, IOMUXC_BASE_ADDR + 0x7a0, VAB820_BxDS)
++MXC_DCD_ITEM(32, IOMUXC_BASE_ADDR + 0x7a4, VAB820_BxDS)
++
++MXC_DCD_ITEM(33, IOMUXC_BASE_ADDR + 0x7a8, VAB820_BxDS)
++MXC_DCD_ITEM(34, IOMUXC_BASE_ADDR + 0x748, VAB820_BxDS)
++
++#define VAB820_ADD_CTL_DS 0x00000028
++MXC_DCD_ITEM(35, IOMUXC_BASE_ADDR + 0x74c, VAB820_ADD_CTL_DS)
++MXC_DCD_ITEM(36, IOMUXC_BASE_ADDR + 0x750, 0x00020000)
++
++MXC_DCD_ITEM(37, IOMUXC_BASE_ADDR + 0x758, 0x00000000)
++MXC_DCD_ITEM(38, IOMUXC_BASE_ADDR + 0x774, 0x00020000)
++MXC_DCD_ITEM(39, IOMUXC_BASE_ADDR + 0x78c, VAB820_ADD_CTL_DS)
++MXC_DCD_ITEM(40, IOMUXC_BASE_ADDR + 0x798, 0x000C0000)
++
++MXC_DCD_ITEM(41, MMDC_P0_BASE_ADDR + 0x81c, 0x33333333)
++MXC_DCD_ITEM(42, MMDC_P0_BASE_ADDR + 0x820, 0x33333333)
++MXC_DCD_ITEM(43, MMDC_P0_BASE_ADDR + 0x824, 0x33333333)
++MXC_DCD_ITEM(44, MMDC_P0_BASE_ADDR + 0x828, 0x33333333)
++
++MXC_DCD_ITEM(45, MMDC_P1_BASE_ADDR + 0x81c, 0x33333333)
++MXC_DCD_ITEM(46, MMDC_P1_BASE_ADDR + 0x820, 0x33333333)
++MXC_DCD_ITEM(47, MMDC_P1_BASE_ADDR + 0x824, 0x33333333)
++MXC_DCD_ITEM(48, MMDC_P1_BASE_ADDR + 0x828, 0x33333333)
++
++MXC_DCD_ITEM(49, MMDC_P0_BASE_ADDR + 0x018, 0x00001740)
++
++MXC_DCD_ITEM(50, MMDC_P0_BASE_ADDR + 0x01c, 0x00008000)
++MXC_DCD_ITEM(51, MMDC_P0_BASE_ADDR + 0x00c, 0x54597974)
++MXC_DCD_ITEM(52, MMDC_P0_BASE_ADDR + 0x010, 0xDB538F64)
++MXC_DCD_ITEM(53, MMDC_P0_BASE_ADDR + 0x014, 0x01FF00DB)
++MXC_DCD_ITEM(54, MMDC_P0_BASE_ADDR + 0x02c, 0x000026D2)
++// MDOR
++MXC_DCD_ITEM(55, MMDC_P0_BASE_ADDR + 0x030, 0x00591023)
++MXC_DCD_ITEM(56, MMDC_P0_BASE_ADDR + 0x008, 0x09444040)
++// MDPDC
++MXC_DCD_ITEM(57, MMDC_P0_BASE_ADDR + 0x004, 0x00020036)
++// MDASP CS0_END
++MXC_DCD_ITEM(58, MMDC_P0_BASE_ADDR + 0x040, 0x00000027)
++// MDCTL
++MXC_DCD_ITEM(59, MMDC_P0_BASE_ADDR + 0x000, 0x831A0000)
++// MR2
++MXC_DCD_ITEM(60, MMDC_P0_BASE_ADDR + 0x01c, 0x02088032)
++MXC_DCD_ITEM(61, MMDC_P0_BASE_ADDR + 0x01c, 0x0288803A)
++// MR3
++MXC_DCD_ITEM(62, MMDC_P0_BASE_ADDR + 0x01c, 0x00008033)
++MXC_DCD_ITEM(63, MMDC_P0_BASE_ADDR + 0x01c, 0x0000803B)
++// MR1
++MXC_DCD_ITEM(64, MMDC_P0_BASE_ADDR + 0x01c, 0x00048031)
++MXC_DCD_ITEM(65, MMDC_P0_BASE_ADDR + 0x01c, 0x00048039)
++// MR0
++MXC_DCD_ITEM(66, MMDC_P0_BASE_ADDR + 0x01c, 0x09308030)
++MXC_DCD_ITEM(67, MMDC_P0_BASE_ADDR + 0x01c, 0x09308038)
++// ZQ calibration
++MXC_DCD_ITEM(68, MMDC_P0_BASE_ADDR + 0x01c, 0x04008040)
++MXC_DCD_ITEM(69, MMDC_P0_BASE_ADDR + 0x01c, 0x04008048)
++// ZQ
++MXC_DCD_ITEM(70, MMDC_P0_BASE_ADDR + 0x800, 0xA1380003)
++MXC_DCD_ITEM(71, MMDC_P1_BASE_ADDR + 0x800, 0xA1380003)
++//// final DDR setup
++// MMDC0_MDREF
++MXC_DCD_ITEM(72, MMDC_P0_BASE_ADDR + 0x020, 0x00007800)
++// MPODTCTRL
++MXC_DCD_ITEM(73, MMDC_P0_BASE_ADDR + 0x818, 0x00022227)
++MXC_DCD_ITEM(74, MMDC_P1_BASE_ADDR + 0x818, 0x00022227)
++//Read DQS Gating calibration
++MXC_DCD_ITEM(75, MMDC_P0_BASE_ADDR + 0x83c, 0x03340348)
++MXC_DCD_ITEM(76, MMDC_P0_BASE_ADDR + 0x840, 0x0236032C)
++MXC_DCD_ITEM(77, MMDC_P1_BASE_ADDR + 0x83c, 0x03340344)
++MXC_DCD_ITEM(78, MMDC_P1_BASE_ADDR + 0x840, 0x032C0300)
++//Read calibration
++MXC_DCD_ITEM(79, MMDC_P0_BASE_ADDR + 0x848, 0x32282E30)
++MXC_DCD_ITEM(80, MMDC_P1_BASE_ADDR + 0x848, 0x302A283A)
++//Write calibration
++MXC_DCD_ITEM(81, MMDC_P0_BASE_ADDR + 0x850, 0x3A363E38)
++MXC_DCD_ITEM(82, MMDC_P1_BASE_ADDR + 0x850, 0x40303E36)
++// MPWLDECTRLx
++MXC_DCD_ITEM(83, MMDC_P0_BASE_ADDR + 0x80c, 0x001C0013)
++MXC_DCD_ITEM(84, MMDC_P0_BASE_ADDR + 0x810, 0x0022001C)
++MXC_DCD_ITEM(85, MMDC_P1_BASE_ADDR + 0x80c, 0x00160025)
++MXC_DCD_ITEM(86, MMDC_P1_BASE_ADDR + 0x810, 0x000C001C)
++// MPMUR0
++MXC_DCD_ITEM(87, MMDC_P0_BASE_ADDR + 0x8b8, 0x00000800)
++MXC_DCD_ITEM(88, MMDC_P1_BASE_ADDR + 0x8b8, 0x00000800)
++
++MXC_DCD_ITEM(89, MMDC_P0_BASE_ADDR + 0x01c, 0x00000000)
++MXC_DCD_ITEM(90, MMDC_P0_BASE_ADDR + 0x404, 0x00011006)
++
++
++
++
++
++
++
++
++
++
++
++
+diff --git a/board/via/mx6artigoa820/artigoa820_mx6q_2g.cfg b/board/via/mx6artigoa820/artigoa820_mx6q_2g.cfg
+new file mode 100644
+index 0000000..f44334b
+--- /dev/null
++++ b/board/via/mx6artigoa820/artigoa820_mx6q_2g.cfg
+@@ -0,0 +1,131 @@
++
++
++// imx6q_2g_ram
++#define VAB820_SDQSx 0x00000028
++MXC_DCD_ITEM(1, IOMUXC_BASE_ADDR + 0x5a8, VAB820_SDQSx)
++MXC_DCD_ITEM(2, IOMUXC_BASE_ADDR + 0x5b0, VAB820_SDQSx)
++MXC_DCD_ITEM(3, IOMUXC_BASE_ADDR + 0x524, VAB820_SDQSx)
++MXC_DCD_ITEM(4, IOMUXC_BASE_ADDR + 0x51c, VAB820_SDQSx)
++MXC_DCD_ITEM(5, IOMUXC_BASE_ADDR + 0x518, VAB820_SDQSx)
++MXC_DCD_ITEM(6, IOMUXC_BASE_ADDR + 0x50c, VAB820_SDQSx)
++MXC_DCD_ITEM(7, IOMUXC_BASE_ADDR + 0x5b8, VAB820_SDQSx)
++MXC_DCD_ITEM(8, IOMUXC_BASE_ADDR + 0x5c0, VAB820_SDQSx)
++#define VAB820_DQM 0x00000028
++MXC_DCD_ITEM(9, IOMUXC_BASE_ADDR + 0x5ac, VAB820_DQM)
++MXC_DCD_ITEM(10, IOMUXC_BASE_ADDR + 0x5b4, VAB820_DQM)
++MXC_DCD_ITEM(11, IOMUXC_BASE_ADDR + 0x528, VAB820_DQM)
++MXC_DCD_ITEM(12, IOMUXC_BASE_ADDR + 0x520, VAB820_DQM)
++MXC_DCD_ITEM(13, IOMUXC_BASE_ADDR + 0x514, VAB820_DQM)
++MXC_DCD_ITEM(14, IOMUXC_BASE_ADDR + 0x510, VAB820_DQM)
++MXC_DCD_ITEM(15, IOMUXC_BASE_ADDR + 0x5bc, VAB820_DQM)
++MXC_DCD_ITEM(16, IOMUXC_BASE_ADDR + 0x5c4, VAB820_DQM)
++// CAS
++MXC_DCD_ITEM(17, IOMUXC_BASE_ADDR + 0x56c, 0x00000028)
++// RAS
++MXC_DCD_ITEM(18, IOMUXC_BASE_ADDR + 0x578, 0x00000028)
++#define VAB820_SDCLKx 0x00000028
++MXC_DCD_ITEM(19, IOMUXC_BASE_ADDR + 0x588, VAB820_SDCLKx)
++MXC_DCD_ITEM(20, IOMUXC_BASE_ADDR + 0x594, VAB820_SDCLKx)
++MXC_DCD_ITEM(21, IOMUXC_BASE_ADDR + 0x57c, 0x00000028)
++MXC_DCD_ITEM(22, IOMUXC_BASE_ADDR + 0x590, 0x00003000)
++MXC_DCD_ITEM(23, IOMUXC_BASE_ADDR + 0x598, 0x00003000)
++MXC_DCD_ITEM(24, IOMUXC_BASE_ADDR + 0x58c, 0x00000000)
++#define VAB820_SDODTx 0x00000028
++MXC_DCD_ITEM(25, IOMUXC_BASE_ADDR + 0x59c, VAB820_SDODTx)
++MXC_DCD_ITEM(26, IOMUXC_BASE_ADDR + 0x5a0, VAB820_SDODTx)
++#define VAB820_BxDS 0x28
++MXC_DCD_ITEM(27, IOMUXC_BASE_ADDR + 0x784, VAB820_BxDS)
++MXC_DCD_ITEM(28, IOMUXC_BASE_ADDR + 0x788, VAB820_BxDS)
++MXC_DCD_ITEM(29, IOMUXC_BASE_ADDR + 0x794, VAB820_BxDS)
++MXC_DCD_ITEM(30, IOMUXC_BASE_ADDR + 0x79c, VAB820_BxDS)
++MXC_DCD_ITEM(31, IOMUXC_BASE_ADDR + 0x7a0, VAB820_BxDS)
++MXC_DCD_ITEM(32, IOMUXC_BASE_ADDR + 0x7a4, VAB820_BxDS)
++MXC_DCD_ITEM(33, IOMUXC_BASE_ADDR + 0x7a8, VAB820_BxDS)
++MXC_DCD_ITEM(34, IOMUXC_BASE_ADDR + 0x748, VAB820_BxDS)
++#define VAB820_ADD_CTL_DS 0x00000028
++MXC_DCD_ITEM(35, IOMUXC_BASE_ADDR + 0x74c, VAB820_ADD_CTL_DS)
++MXC_DCD_ITEM(36, IOMUXC_BASE_ADDR + 0x750, 0x00020000)
++MXC_DCD_ITEM(37, IOMUXC_BASE_ADDR + 0x758, 0x00000000)
++MXC_DCD_ITEM(38, IOMUXC_BASE_ADDR + 0x774, 0x00020000)
++MXC_DCD_ITEM(39, IOMUXC_BASE_ADDR + 0x78c, VAB820_ADD_CTL_DS)
++MXC_DCD_ITEM(40, IOMUXC_BASE_ADDR + 0x798, 0x000C0000)
++
++MXC_DCD_ITEM(41, MMDC_P0_BASE_ADDR + 0x81c, 0x33333333)
++MXC_DCD_ITEM(42, MMDC_P0_BASE_ADDR + 0x820, 0x33333333)
++MXC_DCD_ITEM(43, MMDC_P0_BASE_ADDR + 0x824, 0x33333333)
++MXC_DCD_ITEM(44, MMDC_P0_BASE_ADDR + 0x828, 0x33333333)
++
++MXC_DCD_ITEM(45, MMDC_P1_BASE_ADDR + 0x81c, 0x33333333)
++MXC_DCD_ITEM(46, MMDC_P1_BASE_ADDR + 0x820, 0x33333333)
++MXC_DCD_ITEM(47, MMDC_P1_BASE_ADDR + 0x824, 0x33333333)
++MXC_DCD_ITEM(48, MMDC_P1_BASE_ADDR + 0x828, 0x33333333)
++// MDMISC
++MXC_DCD_ITEM(49, MMDC_P0_BASE_ADDR + 0x018, 0x00081740)
++
++MXC_DCD_ITEM(50, MMDC_P0_BASE_ADDR + 0x01c, 0x00008000)
++// MDCFG0
++MXC_DCD_ITEM(51, MMDC_P0_BASE_ADDR + 0x00c, 0x898E7955)
++// MDCFG1
++MXC_DCD_ITEM(52, MMDC_P0_BASE_ADDR + 0x010, 0xFF328F64)
++// MDCFG2
++MXC_DCD_ITEM(53, MMDC_P0_BASE_ADDR + 0x014, 0x01FF00DB)
++MXC_DCD_ITEM(54, MMDC_P0_BASE_ADDR + 0x02c, 0x000026D2)
++// MDOR
++MXC_DCD_ITEM(55, MMDC_P0_BASE_ADDR + 0x030, 0x008E1023)
++MXC_DCD_ITEM(56, MMDC_P0_BASE_ADDR + 0x008, 0x09444040)
++// MDPDC
++MXC_DCD_ITEM(57, MMDC_P0_BASE_ADDR + 0x004, 0x00020036)
++// MDASP
++MXC_DCD_ITEM(58, MMDC_P0_BASE_ADDR + 0x040, 0x00000047)
++// MDCTL
++MXC_DCD_ITEM(59, MMDC_P0_BASE_ADDR + 0x000, 0x841A0000)
++// MR2
++MXC_DCD_ITEM(60, MMDC_P0_BASE_ADDR + 0x01c, 0x04088032)
++MXC_DCD_ITEM(61, MMDC_P0_BASE_ADDR + 0x01c, 0x0408803A)
++// MR3
++MXC_DCD_ITEM(62, MMDC_P0_BASE_ADDR + 0x01c, 0x00008033)
++MXC_DCD_ITEM(63, MMDC_P0_BASE_ADDR + 0x01c, 0x0000803B)
++// MR1
++MXC_DCD_ITEM(64, MMDC_P0_BASE_ADDR + 0x01c, 0x00428031)
++MXC_DCD_ITEM(65, MMDC_P0_BASE_ADDR + 0x01c, 0x00428039)
++// MR0
++MXC_DCD_ITEM(66, MMDC_P0_BASE_ADDR + 0x01c, 0x09408030)
++MXC_DCD_ITEM(67, MMDC_P0_BASE_ADDR + 0x01c, 0x09408038)
++// ZQ calibration
++MXC_DCD_ITEM(68, MMDC_P0_BASE_ADDR + 0x01c, 0x04008040)
++MXC_DCD_ITEM(69, MMDC_P0_BASE_ADDR + 0x01c, 0x04008048)
++// ZQ
++MXC_DCD_ITEM(70, MMDC_P0_BASE_ADDR + 0x800, 0xA1390003)
++MXC_DCD_ITEM(71, MMDC_P1_BASE_ADDR + 0x800, 0xA1390003)
++//// final DDR setup
++// MMDC0_MDREF
++MXC_DCD_ITEM(72, MMDC_P0_BASE_ADDR + 0x020, 0x00005800)
++// MPODTCTRL
++MXC_DCD_ITEM(73, MMDC_P0_BASE_ADDR + 0x818, 0x00000007)
++MXC_DCD_ITEM(74, MMDC_P1_BASE_ADDR + 0x818, 0x00000007)
++//Read DQS Gating calibration
++MXC_DCD_ITEM(75, MMDC_P0_BASE_ADDR + 0x83c, 0x03200338)
++MXC_DCD_ITEM(76, MMDC_P0_BASE_ADDR + 0x840, 0x024A0314)
++MXC_DCD_ITEM(77, MMDC_P1_BASE_ADDR + 0x83c, 0x03280340)
++MXC_DCD_ITEM(78, MMDC_P1_BASE_ADDR + 0x840, 0x03280270)
++//Read calibration
++MXC_DCD_ITEM(79, MMDC_P0_BASE_ADDR + 0x848, 0x342C3232)
++MXC_DCD_ITEM(80, MMDC_P1_BASE_ADDR + 0x848, 0x342E283A)
++//Write calibration
++MXC_DCD_ITEM(81, MMDC_P0_BASE_ADDR + 0x850, 0x3E363C34)
++MXC_DCD_ITEM(82, MMDC_P1_BASE_ADDR + 0x850, 0x44344636)
++// MPWLDECTRLx
++MXC_DCD_ITEM(83, MMDC_P0_BASE_ADDR + 0x80c, 0x00190019)
++MXC_DCD_ITEM(84, MMDC_P0_BASE_ADDR + 0x810, 0x001F001D)
++MXC_DCD_ITEM(85, MMDC_P1_BASE_ADDR + 0x80c, 0x0015001F)
++MXC_DCD_ITEM(86, MMDC_P1_BASE_ADDR + 0x810, 0x00110026)
++// MPMUR0
++MXC_DCD_ITEM(87, MMDC_P0_BASE_ADDR + 0x8b8, 0x00000800)
++MXC_DCD_ITEM(88, MMDC_P1_BASE_ADDR + 0x8b8, 0x00000800)
++
++MXC_DCD_ITEM(89, MMDC_P0_BASE_ADDR + 0x01c, 0x00000000)
++MXC_DCD_ITEM(90, MMDC_P0_BASE_ADDR + 0x404, 0x00011006)
++
++
++
++
+diff --git a/board/via/mx6artigoa820/artigoa820_mx6q_4g.cfg b/board/via/mx6artigoa820/artigoa820_mx6q_4g.cfg
+new file mode 100644
+index 0000000..78e18c4
+--- /dev/null
++++ b/board/via/mx6artigoa820/artigoa820_mx6q_4g.cfg
+@@ -0,0 +1,138 @@
++
++
++// imx6q_4g_ram
++#define VAB820_SDQSx 0x00000028
++MXC_DCD_ITEM(1, IOMUXC_BASE_ADDR + 0x5a8, VAB820_SDQSx)
++MXC_DCD_ITEM(2, IOMUXC_BASE_ADDR + 0x5b0, VAB820_SDQSx)
++MXC_DCD_ITEM(3, IOMUXC_BASE_ADDR + 0x524, VAB820_SDQSx)
++MXC_DCD_ITEM(4, IOMUXC_BASE_ADDR + 0x51c, VAB820_SDQSx)
++MXC_DCD_ITEM(5, IOMUXC_BASE_ADDR + 0x518, VAB820_SDQSx)
++MXC_DCD_ITEM(6, IOMUXC_BASE_ADDR + 0x50c, VAB820_SDQSx)
++MXC_DCD_ITEM(7, IOMUXC_BASE_ADDR + 0x5b8, VAB820_SDQSx)
++MXC_DCD_ITEM(8, IOMUXC_BASE_ADDR + 0x5c0, VAB820_SDQSx)
++#define VAB820_DQM 0x00000028
++MXC_DCD_ITEM(9, IOMUXC_BASE_ADDR + 0x5ac, VAB820_DQM)
++MXC_DCD_ITEM(10, IOMUXC_BASE_ADDR + 0x5b4, VAB820_DQM)
++MXC_DCD_ITEM(11, IOMUXC_BASE_ADDR + 0x528, VAB820_DQM)
++MXC_DCD_ITEM(12, IOMUXC_BASE_ADDR + 0x520, VAB820_DQM)
++MXC_DCD_ITEM(13, IOMUXC_BASE_ADDR + 0x514, VAB820_DQM)
++MXC_DCD_ITEM(14, IOMUXC_BASE_ADDR + 0x510, VAB820_DQM)
++MXC_DCD_ITEM(15, IOMUXC_BASE_ADDR + 0x5bc, VAB820_DQM)
++MXC_DCD_ITEM(16, IOMUXC_BASE_ADDR + 0x5c4, VAB820_DQM)
++// CAS
++MXC_DCD_ITEM(17, IOMUXC_BASE_ADDR + 0x56c, 0x00000028)
++// RAS
++MXC_DCD_ITEM(18, IOMUXC_BASE_ADDR + 0x578, 0x00000028)
++#define VAB820_SDCLKx 0x00000028
++MXC_DCD_ITEM(19, IOMUXC_BASE_ADDR + 0x588, VAB820_SDCLKx)
++MXC_DCD_ITEM(20, IOMUXC_BASE_ADDR + 0x594, VAB820_SDCLKx)
++MXC_DCD_ITEM(21, IOMUXC_BASE_ADDR + 0x57c, 0x00000028)
++// steven: unknown 0x590, 0x598
++MXC_DCD_ITEM(22, IOMUXC_BASE_ADDR + 0x590, 0x00003000)
++MXC_DCD_ITEM(23, IOMUXC_BASE_ADDR + 0x598, 0x00003000)
++MXC_DCD_ITEM(24, IOMUXC_BASE_ADDR + 0x58c, 0x00000000)
++#define VAB820_SDODTx 0x00000028
++MXC_DCD_ITEM(25, IOMUXC_BASE_ADDR + 0x59c, VAB820_SDODTx)
++MXC_DCD_ITEM(26, IOMUXC_BASE_ADDR + 0x5a0, VAB820_SDODTx)
++#define VAB820_BxDS 0x28
++MXC_DCD_ITEM(27, IOMUXC_BASE_ADDR + 0x784, VAB820_BxDS)
++MXC_DCD_ITEM(28, IOMUXC_BASE_ADDR + 0x788, VAB820_BxDS)
++MXC_DCD_ITEM(29, IOMUXC_BASE_ADDR + 0x794, VAB820_BxDS)
++MXC_DCD_ITEM(30, IOMUXC_BASE_ADDR + 0x79c, VAB820_BxDS)
++MXC_DCD_ITEM(31, IOMUXC_BASE_ADDR + 0x7a0, VAB820_BxDS)
++MXC_DCD_ITEM(32, IOMUXC_BASE_ADDR + 0x7a4, VAB820_BxDS)
++MXC_DCD_ITEM(33, IOMUXC_BASE_ADDR + 0x7a8, VAB820_BxDS)
++MXC_DCD_ITEM(34, IOMUXC_BASE_ADDR + 0x748, VAB820_BxDS)
++#define VAB820_ADD_CTL_DS 0x00000028
++MXC_DCD_ITEM(35, IOMUXC_BASE_ADDR + 0x74c, VAB820_ADD_CTL_DS)
++MXC_DCD_ITEM(36, IOMUXC_BASE_ADDR + 0x750, 0x00020000)
++MXC_DCD_ITEM(37, IOMUXC_BASE_ADDR + 0x758, 0x00000000)
++MXC_DCD_ITEM(38, IOMUXC_BASE_ADDR + 0x774, 0x00020000)
++MXC_DCD_ITEM(39, IOMUXC_BASE_ADDR + 0x78c, VAB820_ADD_CTL_DS)
++MXC_DCD_ITEM(40, IOMUXC_BASE_ADDR + 0x798, 0x000C0000)
++
++MXC_DCD_ITEM(41, MMDC_P0_BASE_ADDR + 0x81c, 0x33333333)
++MXC_DCD_ITEM(42, MMDC_P0_BASE_ADDR + 0x820, 0x33333333)
++MXC_DCD_ITEM(43, MMDC_P0_BASE_ADDR + 0x824, 0x33333333)
++MXC_DCD_ITEM(44, MMDC_P0_BASE_ADDR + 0x828, 0x33333333)
++
++MXC_DCD_ITEM(45, MMDC_P1_BASE_ADDR + 0x81c, 0x33333333)
++MXC_DCD_ITEM(46, MMDC_P1_BASE_ADDR + 0x820, 0x33333333)
++MXC_DCD_ITEM(47, MMDC_P1_BASE_ADDR + 0x824, 0x33333333)
++MXC_DCD_ITEM(48, MMDC_P1_BASE_ADDR + 0x828, 0x33333333)
++// MDMISC steven 4g
++MXC_DCD_ITEM(49, MMDC_P0_BASE_ADDR + 0x018, 0x00011740)
++
++MXC_DCD_ITEM(50, MMDC_P0_BASE_ADDR + 0x01c, 0x00008000)
++// MDCFG0 steven 4g
++MXC_DCD_ITEM(51, MMDC_P0_BASE_ADDR + 0x00c, 0xB8BE7955)
++// MDCFG1
++MXC_DCD_ITEM(52, MMDC_P0_BASE_ADDR + 0x010, 0xFF328F64)
++// MDCFG2
++MXC_DCD_ITEM(53, MMDC_P0_BASE_ADDR + 0x014, 0x01FF00DB)
++MXC_DCD_ITEM(54, MMDC_P0_BASE_ADDR + 0x02c, 0x000026D2)
++// MDOR steven 4g
++MXC_DCD_ITEM(55, MMDC_P0_BASE_ADDR + 0x030, 0x00BE1023)
++MXC_DCD_ITEM(56, MMDC_P0_BASE_ADDR + 0x008, 0x09444040)
++// MDPDC
++MXC_DCD_ITEM(57, MMDC_P0_BASE_ADDR + 0x004, 0x00020036)
++// MDASP, steven: 47 -> 3F
++MXC_DCD_ITEM(58, MMDC_P0_BASE_ADDR + 0x040, 0x0000003F)
++// MDCTL steven 4g
++MXC_DCD_ITEM(59, MMDC_P0_BASE_ADDR + 0x000, 0xC41A0000)
++// MR2 steven 4g
++MXC_DCD_ITEM(60, MMDC_P0_BASE_ADDR + 0x01c, 0x04888032)
++MXC_DCD_ITEM(61, MMDC_P0_BASE_ADDR + 0x01c, 0x0488803A)
++// MR3
++MXC_DCD_ITEM(62, MMDC_P0_BASE_ADDR + 0x01c, 0x00008033)
++MXC_DCD_ITEM(63, MMDC_P0_BASE_ADDR + 0x01c, 0x0000803B)
++// MR1
++MXC_DCD_ITEM(64, MMDC_P0_BASE_ADDR + 0x01c, 0x00048031)
++MXC_DCD_ITEM(65, MMDC_P0_BASE_ADDR + 0x01c, 0x00048039)
++// MR0
++MXC_DCD_ITEM(66, MMDC_P0_BASE_ADDR + 0x01c, 0x09408030)
++MXC_DCD_ITEM(67, MMDC_P0_BASE_ADDR + 0x01c, 0x09408038)
++// ZQ calibration
++MXC_DCD_ITEM(68, MMDC_P0_BASE_ADDR + 0x01c, 0x04008040)
++MXC_DCD_ITEM(69, MMDC_P0_BASE_ADDR + 0x01c, 0x04008048)
++// ZQ
++MXC_DCD_ITEM(70, MMDC_P0_BASE_ADDR + 0x800, 0xA1390003)
++MXC_DCD_ITEM(71, MMDC_P1_BASE_ADDR + 0x800, 0xA1390003)
++//// final DDR setup
++// MMDC0_MDREF steven 4g
++MXC_DCD_ITEM(72, MMDC_P0_BASE_ADDR + 0x020, 0x00007800)
++// MPODTCTRL steven 4g
++MXC_DCD_ITEM(73, MMDC_P0_BASE_ADDR + 0x818, 0x00011117)
++MXC_DCD_ITEM(74, MMDC_P1_BASE_ADDR + 0x818, 0x00011117)
++//Read DQS Gating calibration
++MXC_DCD_ITEM(75, MMDC_P0_BASE_ADDR + 0x83c, 0x0324033C)
++MXC_DCD_ITEM(76, MMDC_P0_BASE_ADDR + 0x840, 0x0320031C)
++MXC_DCD_ITEM(77, MMDC_P1_BASE_ADDR + 0x83c, 0x03280334)
++MXC_DCD_ITEM(78, MMDC_P1_BASE_ADDR + 0x840, 0x03280264)
++//Read calibration
++MXC_DCD_ITEM(79, MMDC_P0_BASE_ADDR + 0x848, 0x48384046)
++MXC_DCD_ITEM(80, MMDC_P1_BASE_ADDR + 0x848, 0x4238364A)
++//Write calibration
++MXC_DCD_ITEM(81, MMDC_P0_BASE_ADDR + 0x850, 0x40404842)
++MXC_DCD_ITEM(82, MMDC_P1_BASE_ADDR + 0x850, 0x443A4A3A)
++// MPWLDECTRLx
++// steven: 4G no calibration
++#MXC_DCD_ITEM(83, MMDC_P0_BASE_ADDR + 0x80c, 0x00190019)
++#MXC_DCD_ITEM(84, MMDC_P0_BASE_ADDR + 0x810, 0x001F001D)
++#MXC_DCD_ITEM(85, MMDC_P1_BASE_ADDR + 0x80c, 0x0015001F)
++#MXC_DCD_ITEM(86, MMDC_P1_BASE_ADDR + 0x810, 0x00110026)
++
++MXC_DCD_ITEM(83, MMDC_P0_BASE_ADDR + 0x80c, 0x00000000)
++MXC_DCD_ITEM(84, MMDC_P0_BASE_ADDR + 0x810, 0x00000000)
++MXC_DCD_ITEM(85, MMDC_P1_BASE_ADDR + 0x80c, 0x00000000)
++MXC_DCD_ITEM(86, MMDC_P1_BASE_ADDR + 0x810, 0x00000000)
++// MPMUR0
++MXC_DCD_ITEM(87, MMDC_P0_BASE_ADDR + 0x8b8, 0x00000800)
++MXC_DCD_ITEM(88, MMDC_P1_BASE_ADDR + 0x8b8, 0x00000800)
++
++MXC_DCD_ITEM(89, MMDC_P0_BASE_ADDR + 0x01c, 0x00000000)
++MXC_DCD_ITEM(90, MMDC_P0_BASE_ADDR + 0x404, 0x00011006)
++
++
++
++
+diff --git a/board/via/mx6artigoa820/artigoa820_mx6qp_1g.cfg b/board/via/mx6artigoa820/artigoa820_mx6qp_1g.cfg
+new file mode 100644
+index 0000000..27adc09
+--- /dev/null
++++ b/board/via/mx6artigoa820/artigoa820_mx6qp_1g.cfg
+@@ -0,0 +1,145 @@
++
++
++// imx6qp_1g_ram
++# IOMUXC_BASE_ADDR  = 0x20e0000
++# DDR IO TYPE
++MXC_DCD_ITEM(1, IOMUXC_BASE_ADDR + 0x798, 0x000C0000)
++MXC_DCD_ITEM(2, IOMUXC_BASE_ADDR + 0x758, 0x00000000)
++# Clock
++MXC_DCD_ITEM(3, IOMUXC_BASE_ADDR + 0x588, 0x00000028)
++MXC_DCD_ITEM(4, IOMUXC_BASE_ADDR + 0x594, 0x00000028)
++# Address
++MXC_DCD_ITEM(5, IOMUXC_BASE_ADDR + 0x56c, 0x00000028)
++MXC_DCD_ITEM(6, IOMUXC_BASE_ADDR + 0x578, 0x00000028)
++MXC_DCD_ITEM(7, IOMUXC_BASE_ADDR + 0x74c, 0x00000028)
++# Control
++MXC_DCD_ITEM(8, IOMUXC_BASE_ADDR + 0x57c, 0x00000028)
++MXC_DCD_ITEM(9, IOMUXC_BASE_ADDR + 0x58c, 0x00000000)
++MXC_DCD_ITEM(10, IOMUXC_BASE_ADDR + 0x59c, 0x00000028)
++MXC_DCD_ITEM(11, IOMUXC_BASE_ADDR + 0x5a0, 0x00000028)
++MXC_DCD_ITEM(12, IOMUXC_BASE_ADDR + 0x78c, 0x00000028)
++# Data Strobe
++MXC_DCD_ITEM(13, IOMUXC_BASE_ADDR + 0x750, 0x00020000)
++MXC_DCD_ITEM(14, IOMUXC_BASE_ADDR + 0x5a8, 0x00000028)
++MXC_DCD_ITEM(15, IOMUXC_BASE_ADDR + 0x5b0, 0x00000028)
++MXC_DCD_ITEM(16, IOMUXC_BASE_ADDR + 0x524, 0x00000028)
++MXC_DCD_ITEM(17, IOMUXC_BASE_ADDR + 0x51c, 0x00000028)
++MXC_DCD_ITEM(18, IOMUXC_BASE_ADDR + 0x518, 0x00000028)
++MXC_DCD_ITEM(19, IOMUXC_BASE_ADDR + 0x50c, 0x00000028)
++MXC_DCD_ITEM(20, IOMUXC_BASE_ADDR + 0x5b8, 0x00000028)
++MXC_DCD_ITEM(21, IOMUXC_BASE_ADDR + 0x5c0, 0x00000028)
++
++MXC_DCD_ITEM(22, IOMUXC_BASE_ADDR + 0x534, 0x00018200)
++MXC_DCD_ITEM(23, IOMUXC_BASE_ADDR + 0x538, 0x00008000)
++MXC_DCD_ITEM(24, IOMUXC_BASE_ADDR + 0x53c, 0x00018200)
++MXC_DCD_ITEM(25, IOMUXC_BASE_ADDR + 0x540, 0x00018200)
++MXC_DCD_ITEM(26, IOMUXC_BASE_ADDR + 0x544, 0x00018200)
++MXC_DCD_ITEM(27, IOMUXC_BASE_ADDR + 0x548, 0x00018200)
++MXC_DCD_ITEM(28, IOMUXC_BASE_ADDR + 0x54c, 0x00018200)
++MXC_DCD_ITEM(29, IOMUXC_BASE_ADDR + 0x550, 0x00018200)
++# Data
++MXC_DCD_ITEM(30, IOMUXC_BASE_ADDR + 0x774, 0x00020000)
++MXC_DCD_ITEM(31, IOMUXC_BASE_ADDR + 0x784, 0x00000028)
++MXC_DCD_ITEM(32, IOMUXC_BASE_ADDR + 0x788, 0x00000028)
++MXC_DCD_ITEM(33, IOMUXC_BASE_ADDR + 0x794, 0x00000028)
++MXC_DCD_ITEM(34, IOMUXC_BASE_ADDR + 0x79c, 0x00000028)
++MXC_DCD_ITEM(35, IOMUXC_BASE_ADDR + 0x7a0, 0x00000028)
++MXC_DCD_ITEM(36, IOMUXC_BASE_ADDR + 0x7a4, 0x00000028)
++MXC_DCD_ITEM(37, IOMUXC_BASE_ADDR + 0x7a8, 0x00000028)
++MXC_DCD_ITEM(38, IOMUXC_BASE_ADDR + 0x748, 0x00000028)
++
++MXC_DCD_ITEM(39, IOMUXC_BASE_ADDR + 0x5ac, 0x00000028)
++MXC_DCD_ITEM(40, IOMUXC_BASE_ADDR + 0x5b4, 0x00000028)
++MXC_DCD_ITEM(41, IOMUXC_BASE_ADDR + 0x528, 0x00000028)
++MXC_DCD_ITEM(42, IOMUXC_BASE_ADDR + 0x520, 0x00000028)
++MXC_DCD_ITEM(43, IOMUXC_BASE_ADDR + 0x514, 0x00000028)
++MXC_DCD_ITEM(44, IOMUXC_BASE_ADDR + 0x510, 0x00000028)
++MXC_DCD_ITEM(45, IOMUXC_BASE_ADDR + 0x5bc, 0x00000028)
++MXC_DCD_ITEM(46, IOMUXC_BASE_ADDR + 0x5c4, 0x00000028)
++
++
++# MMDC_P0_BASE_ADDR = 0x021b0000
++# MMDC_P1_BASE_ADDR = 0x021b4000
++# Calibrations
++# ZQ
++MXC_DCD_ITEM(47, MMDC_P0_BASE_ADDR + 0x800, 0xA1390003)
++
++# write leveling
++MXC_DCD_ITEM(48, MMDC_P0_BASE_ADDR + 0x80c, 0x0013000C)
++MXC_DCD_ITEM(49, MMDC_P0_BASE_ADDR + 0x810, 0x001B0010)
++MXC_DCD_ITEM(50, MMDC_P1_BASE_ADDR + 0x80c, 0x000A001F)
++MXC_DCD_ITEM(51, MMDC_P1_BASE_ADDR + 0x810, 0x00000005)
++
++# Read DQS Gating calibration
++MXC_DCD_ITEM(52, MMDC_P0_BASE_ADDR + 0x83c, 0x0328033C)
++MXC_DCD_ITEM(53, MMDC_P0_BASE_ADDR + 0x840, 0x0324031C)
++MXC_DCD_ITEM(54, MMDC_P1_BASE_ADDR + 0x83c, 0x0328033C)
++MXC_DCD_ITEM(55, MMDC_P1_BASE_ADDR + 0x840, 0x03200268)
++
++# Read calibration
++MXC_DCD_ITEM(56, MMDC_P0_BASE_ADDR + 0x848, 0x4030383E)
++MXC_DCD_ITEM(57, MMDC_P1_BASE_ADDR + 0x848, 0x36302C40)
++
++# Write calibration
++MXC_DCD_ITEM(58, MMDC_P0_BASE_ADDR + 0x850, 0x343A3E3E)
++MXC_DCD_ITEM(59, MMDC_P1_BASE_ADDR + 0x850, 0x463A463C)
++
++# read data bit delay
++MXC_DCD_ITEM(60, MMDC_P0_BASE_ADDR + 0x81c, 0x33333333)
++MXC_DCD_ITEM(61, MMDC_P0_BASE_ADDR + 0x820, 0x33333333)
++MXC_DCD_ITEM(62, MMDC_P0_BASE_ADDR + 0x824, 0x33333333)
++MXC_DCD_ITEM(63, MMDC_P0_BASE_ADDR + 0x828, 0x33333333)
++MXC_DCD_ITEM(64, MMDC_P1_BASE_ADDR + 0x81c, 0x33333333)
++MXC_DCD_ITEM(65, MMDC_P1_BASE_ADDR + 0x820, 0x33333333)
++MXC_DCD_ITEM(66, MMDC_P1_BASE_ADDR + 0x824, 0x33333333)
++MXC_DCD_ITEM(67, MMDC_P1_BASE_ADDR + 0x828, 0x33333333)
++
++# imx6qp: fine tune SDCLK duty cyc to low
++MXC_DCD_ITEM(68, MMDC_P0_BASE_ADDR + 0x8c0, 0x24912489)
++MXC_DCD_ITEM(69, MMDC_P1_BASE_ADDR + 0x8c0, 0x24914452)
++
++# Complete calibration by forced measurement
++MXC_DCD_ITEM(70, MMDC_P0_BASE_ADDR + 0x8b8, 0x00000800)
++MXC_DCD_ITEM(71, MMDC_P1_BASE_ADDR + 0x8b8, 0x00000800)
++
++# MMDC init:
++# in DDR3, 64-bit mode, only MMDC0 is initiated:
++MXC_DCD_ITEM(72, MMDC_P0_BASE_ADDR + 0x004, 0x00020036)
++MXC_DCD_ITEM(73, MMDC_P0_BASE_ADDR + 0x008, 0x09444040)
++MXC_DCD_ITEM(74, MMDC_P0_BASE_ADDR + 0x00c, 0x54597955)
++MXC_DCD_ITEM(75, MMDC_P0_BASE_ADDR + 0x010, 0xFF328F64)
++MXC_DCD_ITEM(76, MMDC_P0_BASE_ADDR + 0x014, 0x01FF00DB)
++
++MXC_DCD_ITEM(77, MMDC_P0_BASE_ADDR + 0x018, 0x00011740)
++MXC_DCD_ITEM(68, MMDC_P0_BASE_ADDR + 0x01c, 0x00008000)
++MXC_DCD_ITEM(69, MMDC_P0_BASE_ADDR + 0x02c, 0x000026D2)
++MXC_DCD_ITEM(70, MMDC_P0_BASE_ADDR + 0x030, 0x00591023)
++MXC_DCD_ITEM(71, MMDC_P0_BASE_ADDR + 0x040, 0x00000027)
++
++MXC_DCD_ITEM(72, MMDC_P0_BASE_ADDR + 0x400, 0x14420000)
++MXC_DCD_ITEM(73, MMDC_P0_BASE_ADDR + 0x000, 0x831A0000)
++MXC_DCD_ITEM(74, MMDC_P0_BASE_ADDR + 0x890, 0x00400c58)
++
++# add noc DDR configuration
++MXC_DCD_ITEM(75, 0x00bb0008, 0x00000000)
++MXC_DCD_ITEM(76, 0x00bb000c, 0x2891E41A)
++MXC_DCD_ITEM(77, 0x00bb0038, 0x00000564)
++MXC_DCD_ITEM(78, 0x00bb0014, 0x00000040)
++MXC_DCD_ITEM(79, 0x00bb0028, 0x00000020)
++MXC_DCD_ITEM(80, 0x00bb002c, 0x00000020)
++
++# Mode register writes
++MXC_DCD_ITEM(81, MMDC_P0_BASE_ADDR + 0x01c, 0x02888032)
++MXC_DCD_ITEM(82, MMDC_P0_BASE_ADDR + 0x01c, 0x00008033)
++MXC_DCD_ITEM(83, MMDC_P0_BASE_ADDR + 0x01c, 0x00048031)
++MXC_DCD_ITEM(84, MMDC_P0_BASE_ADDR + 0x01c, 0x19408030)
++MXC_DCD_ITEM(85, MMDC_P0_BASE_ADDR + 0x01c, 0x04008040)
++
++MXC_DCD_ITEM(86, MMDC_P0_BASE_ADDR + 0x020, 0x00007800)
++
++MXC_DCD_ITEM(87, MMDC_P0_BASE_ADDR + 0x818, 0x00022227)
++MXC_DCD_ITEM(88, MMDC_P1_BASE_ADDR + 0x818, 0x00022227)
++
++MXC_DCD_ITEM(89, MMDC_P0_BASE_ADDR + 0x004, 0x00025576)
++MXC_DCD_ITEM(90, MMDC_P0_BASE_ADDR + 0x404, 0x00011006)
++MXC_DCD_ITEM(91, MMDC_P0_BASE_ADDR + 0x01c, 0x00000000)
+diff --git a/board/via/mx6artigoa820/artigoa820_mx6qp_2g.cfg b/board/via/mx6artigoa820/artigoa820_mx6qp_2g.cfg
+new file mode 100644
+index 0000000..7d326ad
+--- /dev/null
++++ b/board/via/mx6artigoa820/artigoa820_mx6qp_2g.cfg
+@@ -0,0 +1,145 @@
++
++
++// imx6qp_2g_ram
++# IOMUXC_BASE_ADDR  = 0x20e0000
++# DDR IO TYPE
++MXC_DCD_ITEM(1, IOMUXC_BASE_ADDR + 0x798, 0x000C0000)
++MXC_DCD_ITEM(2, IOMUXC_BASE_ADDR + 0x758, 0x00000000)
++# Clock
++MXC_DCD_ITEM(3, IOMUXC_BASE_ADDR + 0x588, 0x00000028)
++MXC_DCD_ITEM(4, IOMUXC_BASE_ADDR + 0x594, 0x00000028)
++# Address
++MXC_DCD_ITEM(5, IOMUXC_BASE_ADDR + 0x56c, 0x00000028)
++MXC_DCD_ITEM(6, IOMUXC_BASE_ADDR + 0x578, 0x00000028)
++MXC_DCD_ITEM(7, IOMUXC_BASE_ADDR + 0x74c, 0x00000028)
++# Control
++MXC_DCD_ITEM(8, IOMUXC_BASE_ADDR + 0x57c, 0x00000028)
++MXC_DCD_ITEM(9, IOMUXC_BASE_ADDR + 0x58c, 0x00000000)
++MXC_DCD_ITEM(10, IOMUXC_BASE_ADDR + 0x59c, 0x00000028)
++MXC_DCD_ITEM(11, IOMUXC_BASE_ADDR + 0x5a0, 0x00000028)
++MXC_DCD_ITEM(12, IOMUXC_BASE_ADDR + 0x78c, 0x00000028)
++# Data Strobe
++MXC_DCD_ITEM(13, IOMUXC_BASE_ADDR + 0x750, 0x00020000)
++MXC_DCD_ITEM(14, IOMUXC_BASE_ADDR + 0x5a8, 0x00000028)
++MXC_DCD_ITEM(15, IOMUXC_BASE_ADDR + 0x5b0, 0x00000028)
++MXC_DCD_ITEM(16, IOMUXC_BASE_ADDR + 0x524, 0x00000028)
++MXC_DCD_ITEM(17, IOMUXC_BASE_ADDR + 0x51c, 0x00000028)
++MXC_DCD_ITEM(18, IOMUXC_BASE_ADDR + 0x518, 0x00000028)
++MXC_DCD_ITEM(19, IOMUXC_BASE_ADDR + 0x50c, 0x00000028)
++MXC_DCD_ITEM(20, IOMUXC_BASE_ADDR + 0x5b8, 0x00000028)
++MXC_DCD_ITEM(21, IOMUXC_BASE_ADDR + 0x5c0, 0x00000028)
++
++MXC_DCD_ITEM(22, IOMUXC_BASE_ADDR + 0x534, 0x00018200)
++MXC_DCD_ITEM(23, IOMUXC_BASE_ADDR + 0x538, 0x00008000)
++MXC_DCD_ITEM(24, IOMUXC_BASE_ADDR + 0x53c, 0x00018200)
++MXC_DCD_ITEM(25, IOMUXC_BASE_ADDR + 0x540, 0x00018200)
++MXC_DCD_ITEM(26, IOMUXC_BASE_ADDR + 0x544, 0x00018200)
++MXC_DCD_ITEM(27, IOMUXC_BASE_ADDR + 0x548, 0x00018200)
++MXC_DCD_ITEM(28, IOMUXC_BASE_ADDR + 0x54c, 0x00018200)
++MXC_DCD_ITEM(29, IOMUXC_BASE_ADDR + 0x550, 0x00018200)
++# Data
++MXC_DCD_ITEM(30, IOMUXC_BASE_ADDR + 0x774, 0x00020000)
++MXC_DCD_ITEM(31, IOMUXC_BASE_ADDR + 0x784, 0x00000028)
++MXC_DCD_ITEM(32, IOMUXC_BASE_ADDR + 0x788, 0x00000028)
++MXC_DCD_ITEM(33, IOMUXC_BASE_ADDR + 0x794, 0x00000028)
++MXC_DCD_ITEM(34, IOMUXC_BASE_ADDR + 0x79c, 0x00000028)
++MXC_DCD_ITEM(35, IOMUXC_BASE_ADDR + 0x7a0, 0x00000028)
++MXC_DCD_ITEM(36, IOMUXC_BASE_ADDR + 0x7a4, 0x00000028)
++MXC_DCD_ITEM(37, IOMUXC_BASE_ADDR + 0x7a8, 0x00000028)
++MXC_DCD_ITEM(38, IOMUXC_BASE_ADDR + 0x748, 0x00000028)
++
++MXC_DCD_ITEM(39, IOMUXC_BASE_ADDR + 0x5ac, 0x00000028)
++MXC_DCD_ITEM(40, IOMUXC_BASE_ADDR + 0x5b4, 0x00000028)
++MXC_DCD_ITEM(41, IOMUXC_BASE_ADDR + 0x528, 0x00000028)
++MXC_DCD_ITEM(42, IOMUXC_BASE_ADDR + 0x520, 0x00000028)
++MXC_DCD_ITEM(43, IOMUXC_BASE_ADDR + 0x514, 0x00000028)
++MXC_DCD_ITEM(44, IOMUXC_BASE_ADDR + 0x510, 0x00000028)
++MXC_DCD_ITEM(45, IOMUXC_BASE_ADDR + 0x5bc, 0x00000028)
++MXC_DCD_ITEM(46, IOMUXC_BASE_ADDR + 0x5c4, 0x00000028)
++
++
++# MMDC_P0_BASE_ADDR = 0x021b0000
++# MMDC_P1_BASE_ADDR = 0x021b4000
++# Calibrations
++# ZQ
++MXC_DCD_ITEM(47, MMDC_P0_BASE_ADDR + 0x800, 0xA1390003)
++
++# write leveling
++MXC_DCD_ITEM(48, MMDC_P0_BASE_ADDR + 0x80c, 0x0015000C)
++MXC_DCD_ITEM(49, MMDC_P0_BASE_ADDR + 0x810, 0x001D0017)
++MXC_DCD_ITEM(50, MMDC_P1_BASE_ADDR + 0x80c, 0x000F0019)
++MXC_DCD_ITEM(51, MMDC_P1_BASE_ADDR + 0x810, 0x00070013)
++
++# Read DQS Gating calibration
++MXC_DCD_ITEM(52, MMDC_P0_BASE_ADDR + 0x83c, 0x03100320)
++MXC_DCD_ITEM(53, MMDC_P0_BASE_ADDR + 0x840, 0x03040304)
++MXC_DCD_ITEM(54, MMDC_P1_BASE_ADDR + 0x83c, 0x03140320)
++MXC_DCD_ITEM(55, MMDC_P1_BASE_ADDR + 0x840, 0x03100260)
++
++# Read calibration
++MXC_DCD_ITEM(56, MMDC_P0_BASE_ADDR + 0x848, 0x46363C3E)
++MXC_DCD_ITEM(57, MMDC_P1_BASE_ADDR + 0x848, 0x40383448)
++
++# Write calibration
++MXC_DCD_ITEM(58, MMDC_P0_BASE_ADDR + 0x850, 0x38383E42)
++MXC_DCD_ITEM(59, MMDC_P1_BASE_ADDR + 0x850, 0x4A404844)
++
++# read data bit delay
++MXC_DCD_ITEM(60, MMDC_P0_BASE_ADDR + 0x81c, 0x33333333)
++MXC_DCD_ITEM(61, MMDC_P0_BASE_ADDR + 0x820, 0x33333333)
++MXC_DCD_ITEM(62, MMDC_P0_BASE_ADDR + 0x824, 0x33333333)
++MXC_DCD_ITEM(63, MMDC_P0_BASE_ADDR + 0x828, 0x33333333)
++MXC_DCD_ITEM(64, MMDC_P1_BASE_ADDR + 0x81c, 0x33333333)
++MXC_DCD_ITEM(65, MMDC_P1_BASE_ADDR + 0x820, 0x33333333)
++MXC_DCD_ITEM(66, MMDC_P1_BASE_ADDR + 0x824, 0x33333333)
++MXC_DCD_ITEM(67, MMDC_P1_BASE_ADDR + 0x828, 0x33333333)
++
++# imx6qp: fine tune SDCLK duty cyc to low
++MXC_DCD_ITEM(68, MMDC_P0_BASE_ADDR + 0x8c0, 0x24912489)
++MXC_DCD_ITEM(69, MMDC_P1_BASE_ADDR + 0x8c0, 0x24914452)
++
++# Complete calibration by forced measurement
++MXC_DCD_ITEM(70, MMDC_P0_BASE_ADDR + 0x8b8, 0x00000800)
++MXC_DCD_ITEM(71, MMDC_P1_BASE_ADDR + 0x8b8, 0x00000800)
++
++# MMDC init:
++# in DDR3, 64-bit mode, only MMDC0 is initiated:
++MXC_DCD_ITEM(72, MMDC_P0_BASE_ADDR + 0x004, 0x00020036)
++MXC_DCD_ITEM(73, MMDC_P0_BASE_ADDR + 0x008, 0x09444040)
++MXC_DCD_ITEM(74, MMDC_P0_BASE_ADDR + 0x00c, 0x898E7955)
++MXC_DCD_ITEM(75, MMDC_P0_BASE_ADDR + 0x010, 0xFF328F64)
++MXC_DCD_ITEM(76, MMDC_P0_BASE_ADDR + 0x014, 0x01FF00DB)
++
++MXC_DCD_ITEM(77, MMDC_P0_BASE_ADDR + 0x018, 0x00011740)
++MXC_DCD_ITEM(68, MMDC_P0_BASE_ADDR + 0x01c, 0x00008000)
++MXC_DCD_ITEM(69, MMDC_P0_BASE_ADDR + 0x02c, 0x000026D2)
++MXC_DCD_ITEM(70, MMDC_P0_BASE_ADDR + 0x030, 0x008E1023)
++MXC_DCD_ITEM(71, MMDC_P0_BASE_ADDR + 0x040, 0x00000047)
++
++MXC_DCD_ITEM(72, MMDC_P0_BASE_ADDR + 0x400, 0x14420000)
++MXC_DCD_ITEM(73, MMDC_P0_BASE_ADDR + 0x000, 0x841A0000)
++MXC_DCD_ITEM(74, MMDC_P0_BASE_ADDR + 0x890, 0x00400c58)
++
++# add noc DDR configuration
++MXC_DCD_ITEM(75, 0x00bb0008, 0x00000000)
++MXC_DCD_ITEM(76, 0x00bb000c, 0x2891E41A)
++MXC_DCD_ITEM(77, 0x00bb0038, 0x00000564)
++MXC_DCD_ITEM(78, 0x00bb0014, 0x00000040)
++MXC_DCD_ITEM(79, 0x00bb0028, 0x00000020)
++MXC_DCD_ITEM(80, 0x00bb002c, 0x00000020)
++
++# Mode register writes
++MXC_DCD_ITEM(81, MMDC_P0_BASE_ADDR + 0x01c, 0x02888032)
++MXC_DCD_ITEM(82, MMDC_P0_BASE_ADDR + 0x01c, 0x00008033)
++MXC_DCD_ITEM(83, MMDC_P0_BASE_ADDR + 0x01c, 0x00048031)
++MXC_DCD_ITEM(84, MMDC_P0_BASE_ADDR + 0x01c, 0x19408030)
++MXC_DCD_ITEM(85, MMDC_P0_BASE_ADDR + 0x01c, 0x04008040)
++
++MXC_DCD_ITEM(86, MMDC_P0_BASE_ADDR + 0x020, 0x00007800)
++
++MXC_DCD_ITEM(87, MMDC_P0_BASE_ADDR + 0x818, 0x00022227)
++MXC_DCD_ITEM(88, MMDC_P1_BASE_ADDR + 0x818, 0x00022227)
++
++MXC_DCD_ITEM(89, MMDC_P0_BASE_ADDR + 0x004, 0x00025576)
++MXC_DCD_ITEM(90, MMDC_P0_BASE_ADDR + 0x404, 0x00011006)
++MXC_DCD_ITEM(91, MMDC_P0_BASE_ADDR + 0x01c, 0x00000000)
+diff --git a/board/via/mx6artigoa820/mx6artigoa820.c b/board/via/mx6artigoa820/mx6artigoa820.c
+new file mode 100644
+index 0000000..984d313
+--- /dev/null
++++ b/board/via/mx6artigoa820/mx6artigoa820.c
+@@ -0,0 +1,738 @@
++/*
++ * Copyright (C) 2012-2016 Freescale Semiconductor, Inc.
++ *
++ * Author: Fabio Estevam <fabio.estevam@freescale.com>
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#include <asm/arch/clock.h>
++#include <asm/arch/imx-regs.h>
++#include <asm/arch/iomux.h>
++#include <asm/arch/mx6-pins.h>
++#include <linux/errno.h>
++#include <asm/gpio.h>
++#include <asm/imx-common/mxc_i2c.h>
++#include <asm/imx-common/iomux-v3.h>
++#include <asm/imx-common/boot_mode.h>
++#include <asm/imx-common/video.h>
++#include <mmc.h>
++#include <fsl_esdhc.h>
++#include <miiphy.h>
++#include <netdev.h>
++#include <asm/arch/mxc_hdmi.h>
++#include <asm/arch/crm_regs.h>
++#include <asm/io.h>
++#include <asm/arch/sys_proto.h>
++#include <i2c.h>
++//#include <asm/arch/mx6-ddr.h>//VIA_dev
++#include <ipu_pixfmt.h>
++#include <linux/fb.h>
++#include <usb.h>
++#include "../common/via.h"	/* common function */
++#ifdef CONFIG_CMD_SATA
++#include <asm/imx-common/sata.h>
++#endif
++#ifdef CONFIG_FSL_FASTBOOT
++#include <fsl_fastboot.h>
++#endif /*CONFIG_FSL_FASTBOOT*/
++
++DECLARE_GLOBAL_DATA_PTR;
++
++#define UART_PAD_CTRL  (PAD_CTL_PUS_100K_UP |			\
++	PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm |			\
++	PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
++
++#define USDHC_PAD_CTRL (PAD_CTL_PUS_47K_UP |			\
++	PAD_CTL_SPEED_LOW | PAD_CTL_DSE_80ohm |			\
++	PAD_CTL_SRE_FAST  | PAD_CTL_HYS)
++
++#define ENET_PAD_CTRL  (PAD_CTL_PUS_100K_UP |			\
++	PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm | PAD_CTL_HYS)
++
++#define SPI_PAD_CTRL (PAD_CTL_HYS | PAD_CTL_SPEED_MED | \
++		      PAD_CTL_DSE_40ohm | PAD_CTL_SRE_FAST)
++
++#define I2C_PAD_CTRL	(PAD_CTL_PUS_100K_UP |			\
++	PAD_CTL_SPEED_MED | PAD_CTL_DSE_40ohm | PAD_CTL_HYS |	\
++	PAD_CTL_ODE | PAD_CTL_SRE_FAST)
++
++
++int dram_init(void)
++{
++	gd->ram_size = via_ddr_size();	/* Get RAM Size */
++	return 0;
++}
++
++/* via_uart */
++static iomux_v3_cfg_t const uart_pads[] = {
++	IOMUX_PADS(PAD_SD3_DAT6__UART1_RX_DATA	| MUX_PAD_CTRL(UART_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD3_DAT7__UART1_TX_DATA	| MUX_PAD_CTRL(UART_PAD_CTRL)),
++	IOMUX_PADS(PAD_EIM_D26__UART2_TX_DATA	| MUX_PAD_CTRL(UART_PAD_CTRL)),
++	IOMUX_PADS(PAD_EIM_D27__UART2_RX_DATA	| MUX_PAD_CTRL(UART_PAD_CTRL)),
++};
++
++/* via_ethernet */
++iomux_v3_cfg_t const enet_pads[] = {
++	IOMUX_PADS(PAD_ENET_MDIO__ENET_MDIO		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++	IOMUX_PADS(PAD_ENET_MDC__ENET_MDC		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_TXC__RGMII_TXC		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_TD0__RGMII_TD0		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_TD1__RGMII_TD1		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_TD2__RGMII_TD2		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_TD3__RGMII_TD3		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_TX_CTL__RGMII_TX_CTL	| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++	IOMUX_PADS(PAD_ENET_REF_CLK__ENET_TX_CLK	| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_RXC__GPIO6_IO30		| MUX_PAD_CTRL(NO_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_RD0__GPIO6_IO25		| MUX_PAD_CTRL(NO_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_RD1__GPIO6_IO27		| MUX_PAD_CTRL(NO_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_RD2__GPIO6_IO28		| MUX_PAD_CTRL(NO_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_RD3__GPIO6_IO29		| MUX_PAD_CTRL(NO_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_RX_CTL__GPIO6_IO24	| MUX_PAD_CTRL(NO_PAD_CTRL)),
++	IOMUX_PADS(PAD_ENET_CRS_DV__GPIO1_IO25	| MUX_PAD_CTRL(NO_PAD_CTRL)),
++};
++
++iomux_v3_cfg_t enet_pads_final[] = {
++	IOMUX_PADS(PAD_RGMII_RXC__RGMII_RXC		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_RD0__RGMII_RD0		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_RD1__RGMII_RD1		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_RD2__RGMII_RD2		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_RD3__RGMII_RD3		| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++	IOMUX_PADS(PAD_RGMII_RX_CTL__RGMII_RX_CTL	| MUX_PAD_CTRL(ENET_PAD_CTRL)),
++};
++
++static void setup_iomux_enet(void)
++{
++	/* reset pin = gpio1_io25 = low */
++	gpio_direction_output(IMX_GPIO_NR(1, 25), 0);
++
++	gpio_direction_output(IMX_GPIO_NR(6, 30), 1);
++	gpio_direction_output(IMX_GPIO_NR(6, 25), 1);
++	gpio_direction_output(IMX_GPIO_NR(6, 27), 1);
++	gpio_direction_output(IMX_GPIO_NR(6, 28), 1);
++	gpio_direction_output(IMX_GPIO_NR(6, 29), 1);
++
++	SETUP_IOMUX_PADS(enet_pads);
++	gpio_direction_output(IMX_GPIO_NR(6, 24), 1);
++
++	/* Reset PHY, Need delay 10ms, gpio1_io25 = high */
++	udelay(10000);
++	gpio_set_value(IMX_GPIO_NR(1, 25), 1);
++
++	SETUP_IOMUX_PADS(enet_pads_final);
++}
++
++/* via_spi */
++
++#ifdef CONFIG_MXC_SPI
++iomux_v3_cfg_t const ecspi1_pads[] = {
++	IOMUX_PADS(PAD_EIM_D19__GPIO3_IO19	| MUX_PAD_CTRL(SPI_PAD_CTRL)),
++	IOMUX_PADS(PAD_EIM_D17__ECSPI1_MISO	| MUX_PAD_CTRL(SPI_PAD_CTRL)),
++	IOMUX_PADS(PAD_EIM_D18__ECSPI1_MOSI	| MUX_PAD_CTRL(SPI_PAD_CTRL)),
++	IOMUX_PADS(PAD_EIM_D16__ECSPI1_SCLK	| MUX_PAD_CTRL(SPI_PAD_CTRL)),
++};
++
++static void setup_spi(void)
++{
++	SETUP_IOMUX_PADS(ecspi1_pads);
++	gpio_request(IMX_GPIO_NR(3, 19), "ECSPI1 CS");
++}
++
++int board_spi_cs_gpio(unsigned bus, unsigned cs)
++{
++	return (bus == 0 && cs == 0) ? (IMX_GPIO_NR(3, 19)) : -1;
++}
++#endif
++
++/* via_i2c */
++#define I2C_PAD MUX_PAD_CTRL(I2C_PAD_CTRL)
++
++/* I2C1: adv7180=0x40  */
++I2C_PADS(i2c_pad_info0,
++	PAD_CSI0_DAT9__I2C1_SCL		| I2C_PAD,
++	PAD_CSI0_DAT9__GPIO5_IO27	| I2C_PAD,
++	IMX_GPIO_NR(5, 27),
++	PAD_CSI0_DAT8__I2C1_SDA		| I2C_PAD,
++	PAD_CSI0_DAT8__GPIO5_IO26	| I2C_PAD,
++	IMX_GPIO_NR(5, 26));
++
++/* I2C2: HDMI */
++I2C_PADS(i2c_pad_info1,
++	PAD_KEY_COL3__I2C2_SCL		| I2C_PAD,
++	PAD_KEY_COL3__GPIO4_IO12	| I2C_PAD,
++	IMX_GPIO_NR(4, 12),
++	PAD_KEY_ROW3__I2C2_SDA		| I2C_PAD,
++	PAD_KEY_ROW3__GPIO4_IO13	| I2C_PAD,
++	IMX_GPIO_NR(4, 13));
++
++/* I2C3: sgtl5000=0x0a */
++I2C_PADS(i2c_pad_info2,
++	PAD_GPIO_3__I2C3_SCL		| I2C_PAD,
++	PAD_GPIO_3__GPIO1_IO03		| I2C_PAD,
++	IMX_GPIO_NR(1, 3),
++	PAD_GPIO_6__I2C3_SDA		| I2C_PAD,
++	PAD_GPIO_6__GPIO1_IO06		| I2C_PAD,
++	IMX_GPIO_NR(1, 6));
++
++/* via_pcie */
++iomux_v3_cfg_t const pcie_pads[] = {
++	IOMUX_PADS(PAD_GPIO_17__GPIO7_IO12	| MUX_PAD_CTRL(NO_PAD_CTRL)),	/* RESET */
++};
++
++static void setup_pcie(void)
++{
++	SETUP_IOMUX_PADS(pcie_pads);
++}
++
++/* via_uart, tx/rx only */
++static void setup_iomux_uart(void)
++{
++	/* set ring pin to low */
++	gpio_direction_output(IMX_GPIO_NR(3, 4), 0);
++	SETUP_IOMUX_PADS(uart_pads);
++}
++
++#ifdef CONFIG_FSL_ESDHC
++/* via_esdhc */
++
++iomux_v3_cfg_t const usdhc2_pads[] = {
++	IOMUX_PADS(PAD_SD2_CLK__SD2_CLK	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD2_CMD__SD2_CMD	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD2_DAT0__SD2_DATA0	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD2_DAT1__SD2_DATA1	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD2_DAT2__SD2_DATA2	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD2_DAT3__SD2_DATA3	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_NANDF_D2__GPIO2_IO02	| MUX_PAD_CTRL(NO_PAD_CTRL)),
++};
++
++iomux_v3_cfg_t const usdhc4_pads[] = {
++	IOMUX_PADS(PAD_SD4_CLK__SD4_CLK	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD4_CMD__SD4_CMD	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD4_DAT0__SD4_DATA0	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD4_DAT1__SD4_DATA1	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD4_DAT2__SD4_DATA2	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD4_DAT3__SD4_DATA3	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD4_DAT4__SD4_DATA4	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD4_DAT5__SD4_DATA5	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD4_DAT6__SD4_DATA6	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++	IOMUX_PADS(PAD_SD4_DAT7__SD4_DATA7	| MUX_PAD_CTRL(USDHC_PAD_CTRL)),
++};
++
++struct fsl_esdhc_cfg usdhc_cfg[2] = {
++	{USDHC2_BASE_ADDR},
++	{USDHC4_BASE_ADDR},
++};
++
++#define USDHC2_CD_GPIO	IMX_GPIO_NR(2, 2)
++#define USDHC3_CD_GPIO	IMX_GPIO_NR(2, 0)
++
++int board_mmc_get_env_dev(int devno)
++{
++	return devno - 1;
++}
++
++int mmc_map_to_kernel_blk(int devno)
++{
++	return devno + 1;
++}
++
++int board_mmc_getcd(struct mmc *mmc)
++{
++	struct fsl_esdhc_cfg *cfg = (struct fsl_esdhc_cfg *)mmc->priv;
++	int ret = 0;
++
++	switch (cfg->esdhc_base) {
++	case USDHC2_BASE_ADDR:
++		ret = !gpio_get_value(USDHC2_CD_GPIO);
++		break;
++	/* no usdhc3 */
++	/*case USDHC3_BASE_ADDR:
++		ret = !gpio_get_value(USDHC3_CD_GPIO);
++		break;*/
++	case USDHC4_BASE_ADDR:
++		ret = 1; /* eMMC/uSDHC4 is always present */
++		break;
++	}
++
++	return ret;
++}
++
++int mmc_get_env_devno(void)
++{
++	u32 soc_sbmr = readl(SRC_BASE_ADDR + 0x4);
++	u32 dev_no;
++	u32 bootsel;
++
++	bootsel = (soc_sbmr & 0x000000FF) >> 6 ;
++
++	/* If not boot from sd/mmc, use default value */
++	if (bootsel != 1)
++		return CONFIG_SYS_MMC_ENV_DEV;
++
++	/* BOOT_CFG2[3] and BOOT_CFG2[4] */
++	dev_no = (soc_sbmr & 0x00001800) >> 11;
++
++	/* emmc = sd4, microsd = sd2(default) */
++	switch (dev_no) {
++		case 3: return 1;
++		default: return 0;
++	}
++	return dev_no;
++}
++
++/* non spl = normal uboot */
++static int board_mmc_init_non_spl(bd_t *bis)
++{
++	s32 status = 0;
++	int i;
++
++	/*
++	 * According to the board_mmc_init() the following map is done:
++	 * (U-boot device node)    (Physical Port)
++	 * mmc0                    SD2
++	 * mmc1                    eMMC
++	 */
++	for (i = 0; i < CONFIG_SYS_FSL_USDHC_NUM; i++) {
++		switch (i) {
++		case 0:
++			SETUP_IOMUX_PADS(usdhc2_pads);
++			gpio_direction_input(USDHC2_CD_GPIO);
++			usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC2_CLK);
++			/* sd2 = 4bit */
++			usdhc_cfg[0].max_bus_width = 4;
++			break;
++		case 1:
++			SETUP_IOMUX_PADS(usdhc4_pads);
++			usdhc_cfg[1].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
++			break;
++		default:
++			printf("Warning: you configured more USDHC controllers"
++			       "(%d) then supported by the board (%d)\n",
++			       i + 1, CONFIG_SYS_FSL_USDHC_NUM);
++			return -EINVAL;
++		}
++
++		status = fsl_esdhc_initialize(bis, &usdhc_cfg[i]);
++	}
++
++	return status;
++}
++
++/* init mmc on spl mode */
++static int board_mmc_init_spl(bd_t *bis)
++{
++	struct src *psrc = (struct src *)SRC_BASE_ADDR;
++	unsigned reg = readl(&psrc->sbmr1) >> 11;
++	/*
++	 * Upon reading BOOT_CFG register the following map is done:
++	 * Bit 11 and 12 of BOOT_CFG register can determine the current
++	 * mmc 		port
++	 * 0x1      SD2
++	 * 0x2      SD3 (VIA_dev: no device)
++	 * 0x3      SD4 (VIA_dev: not bootable)
++	 */
++
++	switch (reg & 0x3) {
++	case 0x1:
++		SETUP_IOMUX_PADS(usdhc2_pads);
++		usdhc_cfg[0].esdhc_base = USDHC2_BASE_ADDR;
++		usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC2_CLK);
++		gd->arch.sdhc_clk = usdhc_cfg[0].sdhc_clk;
++		break;
++	case 0x3:
++		SETUP_IOMUX_PADS(usdhc4_pads);
++		usdhc_cfg[0].esdhc_base = USDHC4_BASE_ADDR;
++		usdhc_cfg[0].sdhc_clk = mxc_get_clock(MXC_ESDHC4_CLK);
++		gd->arch.sdhc_clk = usdhc_cfg[0].sdhc_clk;
++		break;
++	}
++
++	return fsl_esdhc_initialize(bis, &usdhc_cfg[0]);
++}
++
++int board_mmc_init(bd_t *bis)
++{
++#ifndef CONFIG_SPL_BUILD
++ return board_mmc_init_non_spl(bis);
++#else
++ /* spl mmc init */
++ board_mmc_init_spl(bis);
++#endif
++}
++#endif /* CONFIG_FSL_ESDHC */
++
++int check_mmc_autodetect(void)
++{
++	char *autodetect_str = getenv("mmcautodetect");
++
++	if ((autodetect_str != NULL) &&
++		(strcmp(autodetect_str, "yes") == 0)) {
++		return 1;
++	}
++
++	return 0;
++}
++
++void board_late_mmc_env_init(void)
++{
++	char cmd[32];
++	char mmcblk[32];
++	u32 dev_no = mmc_get_env_devno();
++
++	if (!check_mmc_autodetect())
++		return;
++
++	setenv_ulong("mmcdev", dev_no);
++
++	/* Set mmcblk env */
++	sprintf(mmcblk, "/dev/mmcblk%dp2 rootwait rw",
++		mmc_map_to_kernel_blk(dev_no));
++	setenv("mmcroot", mmcblk);
++
++	sprintf(cmd, "mmc dev %d", dev_no);
++	run_command(cmd, 0);
++}
++
++/* via_usb */
++#ifdef CONFIG_USB_EHCI_MX6
++#define USB_OTHERREGS_OFFSET	0x800
++#define UCTRL_PWR_POL		(1 << 9)
++
++iomux_v3_cfg_t const usb_otg_pads[] = {
++	IOMUX_PADS(PAD_EIM_D22__USB_OTG_PWR	| MUX_PAD_CTRL(NO_PAD_CTRL)),
++	IOMUX_PADS(PAD_ENET_RX_ER__USB_OTG_ID	| MUX_PAD_CTRL(NO_PAD_CTRL)),
++};
++
++iomux_v3_cfg_t const usb_hc1_pads[] = {
++	IOMUX_PADS(PAD_EIM_DA0__GPIO3_IO00	| MUX_PAD_CTRL(NO_PAD_CTRL)),
++};
++
++static void setup_usb(void)
++{
++	SETUP_IOMUX_PADS(usb_otg_pads);
++	/*
++	 * set daisy chain for otg_pin_id on 6q.
++	 * for 6dl, this bit is reserved
++	 */
++	imx_iomux_set_gpr_register(1, 13, 1, 0);
++
++
++	SETUP_IOMUX_PADS(usb_hc1_pads);
++	/* Reset USB hub: USB_HUB_RESET_B=GPIO_18=GPIO7_IO13 */
++	gpio_direction_output(IMX_GPIO_NR(7, 13), 0);
++	mdelay(2);
++	gpio_set_value(IMX_GPIO_NR(7, 13), 1);
++}
++
++int board_ehci_hcd_init(int port)
++{
++	u32 *usbnc_usb_ctrl;
++
++	if (port > 1)
++		return -EINVAL;
++
++	usbnc_usb_ctrl = (u32 *)(USB_BASE_ADDR + USB_OTHERREGS_OFFSET +
++				 port * 4);
++
++	setbits_le32(usbnc_usb_ctrl, UCTRL_PWR_POL);
++
++	return 0;
++}
++
++int board_ehci_power(int port, int on)
++{
++	switch (port) {
++	case 0:
++		break;
++	case 1:
++		/* VIA: USB_123 power: uses GPIO3_IO00 */
++		if (on)
++			gpio_direction_output(IMX_GPIO_NR(3, 0), 0);
++		else
++			gpio_direction_output(IMX_GPIO_NR(3, 0), 1);
++		break;
++	default:
++		printf("MXC USB port %d not yet supported\n", port);
++		return -EINVAL;
++	}
++
++	return 0;
++}
++#endif
++
++int board_phy_config(struct phy_device *phydev)
++{
++	ksz9031_rgmii_rework(phydev);
++
++	if (phydev->drv->config)
++		phydev->drv->config(phydev);
++
++	return 0;
++}
++
++/* via_lvds */
++#if defined(CONFIG_VIDEO_IPUV3)
++
++iomux_v3_cfg_t const di0_pads[] = {
++	IOMUX_PADS(PAD_DI0_DISP_CLK__IPU1_DI0_DISP_CLK),	/* DISP0_CLK */
++	IOMUX_PADS(PAD_DI0_PIN2__IPU1_DI0_PIN02),		/* DISP0_HSYNC */
++	IOMUX_PADS(PAD_DI0_PIN3__IPU1_DI0_PIN03),		/* DISP0_VSYNC */
++};
++
++static void disable_lvds(struct display_info_t const *dev)
++{
++	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
++
++	int reg = readl(&iomux->gpr[2]);
++
++	reg &= ~(IOMUXC_GPR2_LVDS_CH0_MODE_MASK |
++		 IOMUXC_GPR2_LVDS_CH1_MODE_MASK);
++
++	writel(reg, &iomux->gpr[2]);
++}
++
++static void do_enable_hdmi(struct display_info_t const *dev)
++{
++	disable_lvds(dev);
++	imx_enable_hdmi_phy();
++}
++
++static void enable_lvds(struct display_info_t const *dev)
++{
++	struct iomuxc *iomux = (struct iomuxc *)
++				IOMUXC_BASE_ADDR;
++	u32 reg = readl(&iomux->gpr[2]);
++	reg |= IOMUXC_GPR2_DATA_WIDTH_CH0_18BIT |
++	       IOMUXC_GPR2_DATA_WIDTH_CH1_18BIT;
++	writel(reg, &iomux->gpr[2]);
++}
++
++struct display_info_t const displays[] = {{
++	.bus	= -1,
++	.addr	= 0,
++	.pixfmt	= IPU_PIX_FMT_RGB24,
++	.detect	= detect_hdmi,
++	.enable	= do_enable_hdmi,
++	.mode	= {
++		.name           = "HDMI",
++		.refresh        = 60,
++		.xres           = 640,
++		.yres           = 480,
++		.pixclock       = 39721,
++		.left_margin    = 48,
++		.right_margin   = 16,
++		.upper_margin   = 33,
++		.lower_margin   = 10,
++		.hsync_len      = 96,
++		.vsync_len      = 2,
++		.sync           = 0,
++		.vmode          = FB_VMODE_NONINTERLACED
++} } };
++size_t display_count = ARRAY_SIZE(displays);
++
++static void setup_display(void)
++{
++	struct mxc_ccm_reg *mxc_ccm = (struct mxc_ccm_reg *)CCM_BASE_ADDR;
++	struct iomuxc *iomux = (struct iomuxc *)IOMUXC_BASE_ADDR;
++	int reg;
++
++	/* Setup HSYNC, VSYNC, DISP_CLK for debugging purposes */
++	SETUP_IOMUX_PADS(di0_pads);
++
++	enable_ipu_clock();
++	imx_setup_hdmi();
++
++	/* Turn on LDB0, LDB1, IPU,IPU DI0 clocks */
++	reg = readl(&mxc_ccm->CCGR3);
++	reg |=  MXC_CCM_CCGR3_LDB_DI0_MASK | MXC_CCM_CCGR3_LDB_DI1_MASK;
++	writel(reg, &mxc_ccm->CCGR3);
++
++	/* set LDB0, LDB1 clk select to 011/011 */
++	reg = readl(&mxc_ccm->cs2cdr);
++	reg &= ~(MXC_CCM_CS2CDR_LDB_DI0_CLK_SEL_MASK
++		 | MXC_CCM_CS2CDR_LDB_DI1_CLK_SEL_MASK);
++	reg |= (3 << MXC_CCM_CS2CDR_LDB_DI0_CLK_SEL_OFFSET)
++	      | (3 << MXC_CCM_CS2CDR_LDB_DI1_CLK_SEL_OFFSET);
++	writel(reg, &mxc_ccm->cs2cdr);
++
++	reg = readl(&mxc_ccm->cscmr2);
++	reg |= MXC_CCM_CSCMR2_LDB_DI0_IPU_DIV | MXC_CCM_CSCMR2_LDB_DI1_IPU_DIV;
++	writel(reg, &mxc_ccm->cscmr2);
++
++	reg = readl(&mxc_ccm->chsccdr);
++	reg |= (CHSCCDR_CLK_SEL_LDB_DI0
++		<< MXC_CCM_CHSCCDR_IPU1_DI0_CLK_SEL_OFFSET);
++	reg |= (CHSCCDR_CLK_SEL_LDB_DI0
++		<< MXC_CCM_CHSCCDR_IPU1_DI1_CLK_SEL_OFFSET);
++	writel(reg, &mxc_ccm->chsccdr);
++
++	reg = IOMUXC_GPR2_BGREF_RRMODE_EXTERNAL_RES
++	     | IOMUXC_GPR2_DI1_VS_POLARITY_ACTIVE_LOW
++	     | IOMUXC_GPR2_DI0_VS_POLARITY_ACTIVE_LOW
++	     | IOMUXC_GPR2_BIT_MAPPING_CH1_SPWG
++	     | IOMUXC_GPR2_DATA_WIDTH_CH1_18BIT
++	     | IOMUXC_GPR2_BIT_MAPPING_CH0_SPWG
++	     | IOMUXC_GPR2_DATA_WIDTH_CH0_18BIT
++	     | IOMUXC_GPR2_LVDS_CH0_MODE_DISABLED
++	     | IOMUXC_GPR2_LVDS_CH1_MODE_ENABLED_DI0;
++	writel(reg, &iomux->gpr[2]);
++
++	reg = readl(&iomux->gpr[3]);
++	reg = (reg & ~(IOMUXC_GPR3_LVDS1_MUX_CTL_MASK
++			| IOMUXC_GPR3_HDMI_MUX_CTL_MASK))
++	    | (IOMUXC_GPR3_MUX_SRC_IPU1_DI0
++	       << IOMUXC_GPR3_LVDS1_MUX_CTL_OFFSET);
++	writel(reg, &iomux->gpr[3]);
++}
++#endif /* CONFIG_VIDEO_IPUV3 */
++
++/*
++ * Do not overwrite the console
++ * Use always serial for U-Boot console
++ */
++int overwrite_console(void)
++{
++	return 1;
++}
++
++int board_eth_init(bd_t *bis)
++{
++	setup_iomux_enet();
++	setup_pcie();
++
++	return cpu_eth_init(bis);
++}
++
++int board_early_init_f(void)
++{
++	setup_iomux_uart();
++	/* via don't adjust cpu frequency, use default */
++	/* clk_config(CONFIG_REF_CLK_FREQ, 1000, CPU_CLK); */
++#if defined(CONFIG_VIDEO_IPUV3)
++	setup_display();
++#endif
++
++	return 0;
++}
++
++int board_init(void)
++{
++	/* address of boot parameters */
++	gd->bd->bi_boot_params = PHYS_SDRAM + 0x100;
++
++#ifdef CONFIG_MXC_SPI
++	setup_spi();
++#endif
++
++	setup_i2c(0, CONFIG_SYS_I2C_SPEED, 0x7f, I2C_PADS_INFO(i2c_pad_info0));
++	setup_i2c(1, CONFIG_SYS_I2C_SPEED, 0x7f, I2C_PADS_INFO(i2c_pad_info1));
++	setup_i2c(2, CONFIG_SYS_I2C_SPEED, 0x7f, I2C_PADS_INFO(i2c_pad_info2));
++
++#ifdef CONFIG_USB_EHCI_MX6
++	setup_usb();
++#endif
++
++#ifdef CONFIG_CMD_SATA
++	setup_sata();
++#endif
++
++	return 0;
++}
++
++#ifdef CONFIG_LDO_BYPASS_CHECK
++void ldo_mode_set(int ldo_bypass)
++{
++	/* no pmic */
++}
++#endif
++
++#ifdef CONFIG_CMD_BMODE
++static const struct boot_mode board_boot_modes[] = {
++	/* 4 bit bus width */
++	{"sd2",	 MAKE_CFGVAL(0x40, 0x28, 0x00, 0x00)},
++	/* Chris Marked: no sd3 */
++	//{"sd3",	 MAKE_CFGVAL(0x40, 0x30, 0x00, 0x00)},
++	/* 8 bit bus width */
++	{"emmc", MAKE_CFGVAL(0x60, 0x58, 0x00, 0x00)},
++	{NULL,	 0},
++};
++#endif
++
++int board_late_init(void)
++{
++#ifdef CONFIG_CMD_BMODE
++	add_board_boot_modes(board_boot_modes);
++#endif
++
++#ifdef CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
++setenv("board_name", "ARTIGO-A820");
++
++if (is_mx6dqp())
++	setenv("board_rev", "MX6QP");
++else if (is_mx6dq())
++	setenv("board_rev", "MX6Q");
++else if (is_mx6sdl())
++	setenv("board_rev", "MX6DL");
++#endif
++
++#ifdef CONFIG_ENV_IS_IN_MMC
++	board_late_mmc_env_init();
++#endif
++
++	return 0;
++}
++
++int checkboard(void)
++{
++	char* soc_name = "MX6DQ";
++	if (is_mx6dqp())
++		soc_name = "MX6QP";
++	else if (is_mx6sdl())
++		soc_name = "MX6DL";
++
++	printf("Board: %s-ARTiGO-A820\n", soc_name);
++	return 0;
++}
++
++#ifdef CONFIG_FSL_FASTBOOT
++
++void board_fastboot_setup(void)
++{
++	switch (get_boot_device()) {
++#if defined(CONFIG_FASTBOOT_STORAGE_SATA)
++	case SATA_BOOT:
++		if (!getenv("fastboot_dev"))
++			setenv("fastboot_dev", "sata");
++		if (!getenv("bootcmd"))
++			setenv("bootcmd", "boota sata");
++		break;
++#endif /*CONFIG_FASTBOOT_STORAGE_SATA*/
++#if defined(CONFIG_FASTBOOT_STORAGE_MMC)
++	case SD2_BOOT:
++	case MMC2_BOOT:
++	    if (!getenv("fastboot_dev"))
++			setenv("fastboot_dev", "mmc0");
++	    if (!getenv("bootcmd"))
++			setenv("bootcmd", "boota mmc0");
++	    break;
++	case SD3_BOOT:
++	case MMC3_BOOT:
++	    if (!getenv("fastboot_dev"))
++			setenv("fastboot_dev", "mmc1");
++	    if (!getenv("bootcmd"))
++			setenv("bootcmd", "boota mmc1");
++	    break;
++	case MMC4_BOOT:
++	    if (!getenv("fastboot_dev"))
++			setenv("fastboot_dev", "mmc2");
++	    if (!getenv("bootcmd"))
++			setenv("bootcmd", "boota mmc2");
++	    break;
++#endif /*CONFIG_FASTBOOT_STORAGE_MMC*/
++	default:
++		printf("unsupported boot devices\n");
++		break;
++	}
++
++}
++#endif /*CONFIG_FSL_FASTBOOT*/
+diff --git a/board/via/mx6artigoa820/plugin.S b/board/via/mx6artigoa820/plugin.S
+new file mode 100644
+index 0000000..e5d6cf5
+--- /dev/null
++++ b/board/via/mx6artigoa820/plugin.S
+@@ -0,0 +1,343 @@
++/*
++ * Copyright (C) 2012-2014 Freescale Semiconductor, Inc.
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#include <config.h>
++
++/* Chris Added: use old method */
++#define ROM_API_TABLE_BASE_ADDR_LEGACY		0xC0
++#define ROM_API_TABLE_BASE_ADDR_MX6DQ_TO15	0xC4
++#define ROM_API_TABLE_BASE_ADDR_MX6DL_TO12	0xC4
++#define ROM_API_HWCNFG_SETUP_OFFSET		0x08
++#define ROM_VERSION_OFFSET			0x48
++#define ROM_VERSION_TO12			0x12
++#define ROM_VERSION_TO15			0x15
++#define IRAM_FREE_START				0x00907000
++// steven: we define mx6qp=0x91
++#define MXC_CPU_MX6DL				0x61
++#define MXC_CPU_MX6Q				0x63
++#define MXC_CPU_MX6QPLUS			0x91
++
++#define MXC_DCD_ITEM(i, addr, val)	\
++	ldr r1, =val;	\
++	ldr r0, =addr;	\
++	str r1, [r0];
++
++.macro artigoa820_imx6_ddr_setting
++
++// CCM_BASE_addr = 0x020C4000
++//DDR clk
++// r6=cpu type, 0x61=mx6dl, 0x63=mx6q, 0x76=mx6qp(temp)
++	ldr r0, =0x020C8260
++	ldr r6, [r0]
++	lsr r6, r6, #16
++	and r6, r6, #0xff
++	cmp r6, #MXC_CPU_MX6Q
++	bne Label_cpu_is_mx6dl
++	// 0x63: mx6d, mx6q or mx6qp
++	// identify mx6q and mx6qp
++	ldr r6, [r0]
++	lsr r6, r6, #8
++	and r6, r6, #0x1
++	cmp r6, #0x1
++	bne Label_cpu_is_mx6q
++	ldr r6, =MXC_CPU_MX6QPLUS
++	b Label_speed_528MHz
++Label_cpu_is_mx6q:
++	ldr r6, =MXC_CPU_MX6Q
++	b Label_speed_528MHz
++Label_cpu_is_mx6dl:
++	ldr r6, =MXC_CPU_MX6DL
++	b Label_speed_400MHz
++// 528MHz
++Label_speed_528MHz:
++	ldr r0, =CCM_BASE_ADDR
++	ldr r1, =0x00020324
++	str r1, [r0, #0x018]
++	b Label_mx6_speed_end
++// 400MHz
++Label_speed_400MHz:
++	ldr r0, =CCM_BASE_ADDR
++	ldr r1, =0x00060324
++	str r1, [r0, #0x018]
++Label_mx6_speed_end:
++
++// debug init
++/*
++	cmp r6, #CPU_MX6DQ
++	bne Label_mx6dl_debug_init
++	ldr r0, =0x20e0254
++	b Label_mx6_debug_init_end
++Label_mx6dl_debug_init:
++	ldr r0, =0x20e0020
++Label_mx6_debug_init_end:
++	ldr r1, =0x5
++	str r1, [r0]
++	ldr r0, =0x20a8000
++	ldr r1, =0x20
++	str r1, [r0, #0x4]
++	//debug
++	ldr r0, =0x20a8000
++	ldr r1, =0xFFFF7FE0
++	str r1, [r0]
++*/
++
++// ARTiGO-A820
++	cmp r6, #MXC_CPU_MX6QPLUS
++	beq Label_mx6dq_gpio
++	cmp r6, #MXC_CPU_MX6Q
++	bne Label_mx6dl_gpio
++Label_mx6dq_gpio:
++	ldr r1, =0x05
++	ldr r0, =0x20e02fc
++	str r1, [r0]
++	ldr r0, =0x20e0300
++	str r1, [r0]
++	b Label_mx6_gpio_end
++Label_mx6dl_gpio:
++	ldr r1, =0x05
++	ldr r0, =0x20e0284
++	str r1, [r0]
++	ldr r0, =0x20e0288
++	str r1, [r0]
++Label_mx6_gpio_end:
++	ldr r0, =0x20a0004
++	ldr r1, =0x00
++	str r1, [r0]
++	ldr r0, =0x20a0008
++	ldr r1, [r0]
++	and r1, #3
++	cmp r1, #1
++	beq Label_artigoa820_4g_a
++	cmp r1, #2
++	beq Label_artigoa820_2g
++	// default r1 = 3 = 1g
++	b Label_artigoa820_1g
++Label_artigoa820_4g_a:
++	b Label_artigoa820_4g_b
++
++	.ltorg
++Label_artigoa820_2g:
++	cmp r6, #MXC_CPU_MX6QPLUS
++	beq Label_mx6qp_2g_ram
++	cmp r6, #MXC_CPU_MX6Q
++	bne Label_mx6dl_2g_ram
++// imx6q_2g_ram
++#include "artigoa820_mx6q_2g.cfg"
++	b Label_mx6_2g_ram_end
++// imx6qp_2g_ram
++Label_mx6qp_2g_ram:
++#include "artigoa820_mx6qp_2g.cfg"
++	b Label_mx6_2g_ram_end
++// imx6dl_2g_ram
++Label_mx6dl_2g_ram:
++#include "artigoa820_mx6dl_2g.cfg"
++Label_mx6_2g_ram_end:
++	b Label_artigoa820_ram_setting_end
++
++	.ltorg
++Label_artigoa820_1g:
++	cmp r6, #MXC_CPU_MX6QPLUS
++	beq Label_mx6qp_1g_ram
++	cmp r6, #MXC_CPU_MX6Q
++	bne Label_mx6dl_1g_ram
++// imx6q_1g_ram
++#include "artigoa820_mx6q_1g.cfg"
++	b Label_mx6_1g_ram_end
++// imx6qp_1g_ram
++Label_mx6qp_1g_ram:
++#include "artigoa820_mx6qp_1g.cfg"
++	b Label_mx6_1g_ram_end
++// imx6dl_1g_ram
++Label_mx6dl_1g_ram:
++#include "artigoa820_mx6dl_1g.cfg"
++Label_mx6_1g_ram_end:
++	b Label_artigoa820_ram_setting_end
++
++	.ltorg
++Label_artigoa820_4g_b:
++#include "artigoa820_mx6q_4g.cfg"
++
++
++Label_artigoa820_ram_setting_end:
++
++.endm
++
++/* Chris: ref. ./include/asm/arch/mx6_plugin.S */
++
++.macro imx6_clock_gating
++	ldr r0, =CCM_BASE_ADDR
++	ldr r1, =0x00C03F3F
++	str r1, [r0, #0x068]
++	ldr r1, =0x0030FC03
++	str r1, [r0, #0x06c]
++	ldr r1, =0x0FFFC000
++	str r1, [r0, #0x070]
++	ldr r1, =0x3FF00000
++	str r1, [r0, #0x074]
++	ldr r1, =0x00FFF300
++	str r1, [r0, #0x078]
++	ldr r1, =0x0F0000C3
++	str r1, [r0, #0x07c]
++// steven: 3ff -> fff
++	ldr r1, =0x00000FFF
++	str r1, [r0, #0x080]
++.endm
++
++.macro imx6_qos_setting
++	ldr r0, =IOMUXC_BASE_ADDR
++	ldr r1, =0xF00000CF
++	str r1, [r0, #0x10]
++
++// r6=cpu type
++	cmp r6, #MXC_CPU_MX6QPLUS
++	bne Label_qos_others
++// mx6qp qos
++	ldr r1, =0x77177717
++	b Label_qos_end
++Label_qos_others:
++	ldr r1, =0x007F007F
++Label_qos_end:
++	str r1, [r0, #0x18]
++	str r1, [r0, #0x1c]
++.endm
++
++/* Chris: ref. ./include/asm/arch/mx6_plugin.S */
++
++plugin_start:
++	push	{r0-r4, lr}
++	artigoa820_imx6_ddr_setting
++	imx6_clock_gating
++	imx6_qos_setting
++/*
++	//debug
++	ldr r0, =0x20a8000
++	ldr r1, =0xffff7fc0
++	str r1, [r0]
++*/
++
++/*
++ * The following is to fill in those arguments for this ROM function
++ * pu_irom_hwcnfg_setup(void **start, size_t *bytes, const void *boot_data)
++ * This function is used to copy data from the storage media into DDR.
++ * start - Initial (possibly partial) image load address on entry.
++ *         Final image load address on exit.
++ * bytes - Initial (possibly partial) image size on entry.
++ *         Final image size on exit.
++ * boot_data - Initial @ref ivt Boot Data load address.
++ */
++	adr r0, boot_data2
++	adr r1, image_len2
++	adr r2, boot_data2
++
++#ifdef CONFIG_SYS_BOOT_EIMNOR
++	ldr r3, =0x00900800
++	ldr r4, =0x08000000
++	str r4, [r3, #0xc0]
++#endif
++
++/*
++ * check the _pu_irom_api_table for the address
++ */
++before_calling_rom___pu_irom_hwcnfg_setup:
++// Chris: ARTiGO-A820 method.
++// * r6 is set by artigoa820_imx6_ddr_setting
++	ldr r3, =ROM_VERSION_OFFSET
++	ldr r4, [r3]
++	// mx6dl
++	cmp r6, #MXC_CPU_MX6DL
++	beq Label_mx6dl_version
++	// mx6q, mx6qp, mx6d
++	ldr r3, =ROM_VERSION_TO15
++	cmp r4,r3
++	ldrge r3, =ROM_API_TABLE_BASE_ADDR_MX6DQ_TO15
++	ldrlt r3, =ROM_API_TABLE_BASE_ADDR_LEGACY
++	b Label_mx6_version_end
++Label_mx6dl_version:
++	ldr r3, =ROM_VERSION_TO12
++	cmp r4, r3
++	ldrge r3, =ROM_API_TABLE_BASE_ADDR_MX6DL_TO12
++	ldrlt r3, =ROM_API_TABLE_BASE_ADDR_LEGACY
++Label_mx6_version_end:
++	ldr r4, [r3, #ROM_API_HWCNFG_SETUP_OFFSET]
++	blx r4
++after_calling_rom___pu_irom_hwcnfg_setup:
++
++/*
++ * ROM_API_HWCNFG_SETUP function enables MMU & Caches.
++ * Thus disable MMU & Caches.
++ */
++
++	mrc     p15, 0, r0, c1, c0, 0   /* read CP15 register 1 into r0*/
++	ands    r0, r0, #0x1            /* check if MMU is enabled */
++	beq     mmu_disable_notreq      /* exit if MMU is already disabled */
++
++	/* Disable caches, MMU */
++	mrc     p15, 0, r0, c1, c0, 0	/* read CP15 register 1 into r0 */
++	bic     r0, r0, #(1 << 2)	/* disable D Cache */
++	bic     r0, r0, #0x1		/* clear bit 0 ; MMU off */
++
++	bic     r0, r0, #(0x1 << 11)	/* disable Z, branch prediction */
++	bic     r0, r0, #(0x1 << 1)	/* disable A, Strict alignment */
++					/* check enabled. */
++	mcr     p15, 0, r0, c1, c0, 0	/* write CP15 register 1 */
++	mov     r0, r0
++	mov     r0, r0
++	mov     r0, r0
++	mov     r0, r0
++
++mmu_disable_notreq:
++    NOP
++
++/* To return to ROM from plugin, we need to fill in these argument.
++ * Here is what need to do:
++ * Need to construct the paramters for this function before return to ROM:
++ * plugin_download(void **start, size_t *bytes, UINT32 *ivt_offset)
++ */
++	pop {r0-r4, lr}
++	push {r5}
++	ldr r5, boot_data2
++	str r5, [r0]
++	ldr r5, image_len2
++	str r5, [r1]
++	ldr r5, second_ivt_offset
++	str r5, [r2]
++	mov r0, #1
++	pop {r5}
++
++	/* return back to ROM code */
++	bx lr
++
++/* make the following data right in the end of the output */
++.ltorg
++
++#ifdef CONFIG_SYS_BOOT_EIMNOR
++#define FLASH_OFFSET 0x1000
++#else
++#define FLASH_OFFSET 0x400
++#endif
++
++/*
++ * second_ivt_offset is the offset from the "second_ivt_header" to
++ * "image_copy_start", which involves FLASH_OFFSET, plus the first
++ * ivt_header, the plugin code size itself recorded by "ivt2_header"
++ */
++
++second_ivt_offset:	.long (ivt2_header + 0x2C + FLASH_OFFSET)
++
++/*
++ * The following is the second IVT header plus the second boot data
++ */
++ivt2_header:		.long 0x0
++app2_code_jump_v:	.long 0x0
++reserv3:		.long 0x0
++dcd2_ptr:		.long 0x0
++boot_data2_ptr:		.long 0x0
++self_ptr2:		.long 0x0
++app_code_csf2:		.long 0x0
++reserv4:		.long 0x0
++boot_data2:		.long 0x0
++image_len2:		.long 0x0
++plugin2:		.long 0x0
+diff --git a/common/env_common.c b/common/env_common.c
+index 7fb62e8..562e434 100644
+--- a/common/env_common.c
++++ b/common/env_common.c
+@@ -246,6 +246,11 @@ int env_export(env_t *env_out)
+ 		return ret;
+ 
+ 	env_out->crc = crc32(0, env_out->data, ENV_SIZE);
++	{
++		/* VIA_dev: support destroyenv */
++		int in_destroyenv(void);
++		if(in_destroyenv()) {env_out->crc++;}
++	}
+ 
+ 	return 0;
+ }
+diff --git a/configs/mx6artigoa820_defconfig b/configs/mx6artigoa820_defconfig
+new file mode 100644
+index 0000000..627697f
+--- /dev/null
++++ b/configs/mx6artigoa820_defconfig
+@@ -0,0 +1,55 @@
++CONFIG_ARM=y
++CONFIG_ARCH_MX6=y
++CONFIG_TARGET_MX6ARTIGOA820=y
++#CONFIG_VIDEO=y
++CONFIG_SYS_EXTRA_OPTIONS="IMX_CONFIG=board/via/mx6artigoa820/artigoa820_dram.cfg,MX6QDL"
++CONFIG_BOOTDELAY=3
++# CONFIG_CONSOLE_MUX is not set
++CONFIG_SYS_CONSOLE_IS_IN_ENV=y
++CONFIG_SYS_CONSOLE_OVERWRITE_ROUTINE=y
++CONFIG_HUSH_PARSER=y
++CONFIG_CMD_BOOTZ=y
++# CONFIG_CMD_IMLS is not set
++# CONFIG_CMD_FLASH is not set
++CONFIG_CMD_MEMTEST=y
++CONFIG_CMD_MMC=y
++CONFIG_CMD_SF=y
++CONFIG_CMD_I2C=y
++CONFIG_CMD_USB=y
++CONFIG_CMD_DFU=y
++CONFIG_CMD_USB_MASS_STORAGE=y
++CONFIG_CMD_GPIO=y
++CONFIG_CMD_DHCP=y
++CONFIG_CMD_MII=y
++CONFIG_CMD_PING=y
++CONFIG_CMD_CACHE=y
++CONFIG_CMD_EXT2=y
++CONFIG_CMD_EXT4=y
++CONFIG_CMD_EXT4_WRITE=y
++CONFIG_CMD_FAT=y
++CONFIG_CMD_FS_GENERIC=y
++CONFIG_DFU_MMC=y
++CONFIG_DFU_SF=y
++CONFIG_USB=y
++CONFIG_USB_STORAGE=y
++CONFIG_USB_GADGET=y
++CONFIG_CI_UDC=y
++CONFIG_USB_GADGET_DOWNLOAD=y
++CONFIG_G_DNL_MANUFACTURER="FSL"
++CONFIG_G_DNL_VENDOR_NUM=0x0525
++CONFIG_G_DNL_PRODUCT_NUM=0xa4a5
++# CONFIG_VIDEO_SW_CURSOR is not set
++# CONFIG_OF_LIBFDT=y
++
++CONFIG_DEFAULT_DEVICE_TREE="imx6dl-artigoa820"
++CONFIG_OF_CONTROL=y
++# CONFIG_BLK is not set
++#CONFIG_DM_GPIO=y
++#CONFIG_DM_I2C=y
++#CONFIG_DM_MMC=y
++# CONFIG_DM_MMC_OPS is not set
++CONFIG_PINCTRL=y
++CONFIG_PINCTRL_IMX6=y
++CONFIG_DM_REGULATOR=y
++#CONFIG_DM_ETH=y
++#CONFIG_DM_USB=y
+diff --git a/drivers/video/ipu_common.c b/drivers/video/ipu_common.c
+index 28b4bcf..a560853 100644
+--- a/drivers/video/ipu_common.c
++++ b/drivers/video/ipu_common.c
+@@ -535,6 +535,11 @@ int ipu_probe(void)
+ 	g_pixel_clk[0] = &pixel_clk[0];
+ 	g_pixel_clk[1] = &pixel_clk[1];
+ 
++	{
++		/* VIA_dev: adjust ipu_clk.rate */
++		#include <asm/imx-common/sys_proto.h>
++		ipu_clk.rate = is_cpu_type(MXC_CPU_MX6DL) ? 198000000 : 264000000;
++	}
+ 	g_ipu_clk = &ipu_clk;
+ 	debug("ipu_clk = %u\n", clk_get_rate(g_ipu_clk));
+ #if defined(CONFIG_MX6) || defined(CONFIG_MX53)
+diff --git a/include/configs/mx6artigoa820.h b/include/configs/mx6artigoa820.h
+new file mode 100644
+index 0000000..064fe51
+--- /dev/null
++++ b/include/configs/mx6artigoa820.h
+@@ -0,0 +1,95 @@
++/*
++ * Copyright (C) 2012-2016 Freescale Semiconductor, Inc.
++ * Copyright 2017 NXP
++ *
++ * Configuration settings for the Freescale i.MX6Q SabreSD board.
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#ifndef __MX6ARTIGOA820_CONFIG_H
++#define __MX6ARTIGOA820_CONFIG_H
++
++#ifdef CONFIG_SPL
++#include "imx6_spl.h"
++#endif
++
++#define CONFIG_MACH_TYPE	3980
++#define CONFIG_MXC_UART_BASE	UART2_BASE
++#define CONSOLE_DEV		"ttymxc1"
++
++#include "mx6artigoa820_common.h"
++
++/* Falcon Mode */
++#define CONFIG_SPL_FS_LOAD_ARGS_NAME	"args"
++#define CONFIG_SPL_FS_LOAD_KERNEL_NAME	"uImage"
++#define CONFIG_CMD_SPL
++#define CONFIG_SYS_SPL_ARGS_ADDR       0x18000000
++#define CONFIG_CMD_SPL_WRITE_SIZE      (128 * SZ_1K)
++
++/* Falcon Mode - MMC support: args@1MB kernel@2MB */
++#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTOR  0x800   /* 1MB */
++#define CONFIG_SYS_MMCSD_RAW_MODE_ARGS_SECTORS (CONFIG_CMD_SPL_WRITE_SIZE / 512)
++#define CONFIG_SYS_MMCSD_RAW_MODE_KERNEL_SECTOR        0x1000  /* 2MB */
++
++#define CONFIG_SYS_FSL_USDHC_NUM	2
++#define CONFIG_SYS_MMC_ENV_DEV		0	/* 0=SDHC2 */
++#ifndef CONFIG_SYS_MMC_ENV_PART
++#define CONFIG_SYS_MMC_ENV_PART                0       /* user partition */
++#endif
++
++#ifdef CONFIG_CMD_SF
++#define CONFIG_SF_DEFAULT_CS   0
++#endif
++
++/*
++ * imx6 q/dl/solo pcie would be failed to work properly in kernel, if
++ * the pcie module is iniialized/enumerated both in uboot and linux
++ * kernel.
++ * rootcause:imx6 q/dl/solo pcie don't have the reset mechanism.
++ * it is only be RESET by the POR. So, the pcie module only be
++ * initialized/enumerated once in one POR.
++ * Set to use pcie in kernel defaultly, mask the pcie config here.
++ * Remove the mask freely, if the uboot pcie functions, rather than
++ * the kernel's, are required.
++ */
++#ifdef CONFIG_PCI
++#define CONFIG_CMD_PCI
++#define CONFIG_PCI_SCAN_SHOW
++#define CONFIG_PCIE_IMX
++#define CONFIG_PCIE_IMX_PERST_GPIO	IMX_GPIO_NR(7, 12)
++#define CONFIG_PCIE_IMX_POWER_GPIO	IMX_GPIO_NR(3, 19)
++#endif
++
++/* USB Configs */
++#ifdef CONFIG_CMD_USB
++#define CONFIG_USB_EHCI
++#define CONFIG_USB_EHCI_MX6
++#define CONFIG_EHCI_HCD_INIT_AFTER_RESET
++#define CONFIG_USB_HOST_ETHER
++#define CONFIG_USB_ETHER_ASIX
++#define CONFIG_MXC_USB_PORTSC		(PORT_PTS_UTMI | PORT_PTS_PTW)
++#define CONFIG_MXC_USB_FLAGS		0
++#define CONFIG_USB_MAX_CONTROLLER_COUNT	2 /* Enabled USB controller number */
++#endif
++
++/*#define CONFIG_SPLASH_SCREEN*/
++/*#define CONFIG_MXC_EPDC*/
++
++/*
++ * SPLASH SCREEN Configs
++ */
++#if defined(CONFIG_SPLASH_SCREEN) && defined(CONFIG_MXC_EPDC)
++	/*
++	 * Framebuffer and LCD
++	 */
++	#define CONFIG_CMD_BMP
++	#undef LCD_TEST_PATTERN
++	/* #define CONFIG_SPLASH_IS_IN_MMC			1 */
++	#define LCD_BPP					LCD_MONOCHROME
++	/* #define CONFIG_SPLASH_SCREEN_ALIGN		1 */
++
++	#define CONFIG_WAVEFORM_BUF_SIZE		0x200000
++#endif /* CONFIG_SPLASH_SCREEN && CONFIG_MXC_EPDC */
++
++#endif                         /* __MX6ARTIGOA820_CONFIG_H */
+diff --git a/include/configs/mx6artigoa820_common.h b/include/configs/mx6artigoa820_common.h
+new file mode 100644
+index 0000000..ccfe439
+--- /dev/null
++++ b/include/configs/mx6artigoa820_common.h
+@@ -0,0 +1,384 @@
++/*
++ * Copyright (C) 2012 Freescale Semiconductor, Inc.
++ *
++ * Configuration settings for the Freescale i.MX6Q SabreSD board.
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++#ifndef __MX6ARTIGOA820_COMMON_CONFIG_H
++#define __MX6ARTIGOA820_COMMON_CONFIG_H
++
++/* VIA_dev: DRAM, uncomment for PLUGIN mode support */
++#define CONFIG_USE_PLUGIN
++
++#include "mx6_common.h"
++
++#define CONFIG_IMX_THERMAL
++
++/* Size of malloc() pool */
++#define CONFIG_SYS_MALLOC_LEN		(16 * SZ_1M)
++
++#define CONFIG_MXC_UART
++
++/* MMC Configs */
++#define CONFIG_SYS_FSL_ESDHC_ADDR      0
++
++#define CONFIG_FEC_MXC
++#define CONFIG_MII
++#define IMX_FEC_BASE			ENET_BASE_ADDR
++#define CONFIG_FEC_XCV_TYPE		RGMII
++#ifdef CONFIG_DM_ETH
++#define CONFIG_ETHPRIME			"eth0"
++#else
++#define CONFIG_ETHPRIME			"FEC"
++#endif
++#define CONFIG_FEC_MXC_PHYADDR		7
++
++#define CONFIG_PHYLIB
++/* VIA_dev: support 9031 */
++#define CONFIG_PHY_MICREL
++#define CONFIG_PHY_MICREL_KSZ9031
++
++#define SYS_NOSMP
++
++/* Command definition */
++#define CONFIG_CMD_BMODE
++
++#ifdef CONFIG_NAND_BOOT
++#define MFG_NAND_PARTITION "mtdparts=gpmi-nand:64m(boot),16m(kernel),16m(dtb),1m(misc),-(rootfs) "
++#else
++#define MFG_NAND_PARTITION ""
++#endif
++
++#define CONFIG_MFG_ENV_SETTINGS \
++	"mfgtool_args=setenv bootargs console=" CONSOLE_DEV ",115200 " \
++		"rdinit=/linuxrc " \
++		"g_mass_storage.stall=0 g_mass_storage.removable=1 " \
++		"g_mass_storage.file=/fat g_mass_storage.ro=1 " \
++		"g_mass_storage.idVendor=0x066F g_mass_storage.idProduct=0x37FF "\
++		"g_mass_storage.iSerialNumber=\"\" "\
++		"enable_wait_mode=off "\
++		MFG_NAND_PARTITION \
++		"\0" \
++		"initrd_addr=0x12C00000\0" \
++		"initrd_high=0xffffffff\0" \
++		"bootcmd_mfg=run mfgtool_args;bootz ${loadaddr} ${initrd_addr} ${fdt_addr};\0" \
++
++
++#define CONFIG_ENV_VARS_UBOOT_RUNTIME_CONFIG
++
++#if defined(CONFIG_NAND_BOOT)
++	/*
++	 * The dts also enables the WEIN NOR which is mtd0.
++	 * So the partions' layout for NAND is:
++	 *     mtd1: 16M      (uboot)
++	 *     mtd2: 16M      (kernel)
++	 *     mtd3: 16M      (dtb)
++	 *     mtd4: left     (rootfs)
++	 */
++#define CONFIG_EXTRA_ENV_SETTINGS \
++	CONFIG_MFG_ENV_SETTINGS \
++	"fdt_addr=0x18000000\0" \
++	"fdt_high=0xffffffff\0"	  \
++	"bootargs=console=" CONSOLE_DEV ",115200 ubi.mtd=5 "  \
++		"root=ubi0:rootfs rootfstype=ubifs "		     \
++		"mtdparts=gpmi-nand:64m(boot),16m(kernel),16m(dtb),1m(misc),-(rootfs)\0"\
++	"bootcmd=nand read ${loadaddr} 0x4000000 0x800000;"\
++		"nand read ${fdt_addr} 0x5000000 0x100000;"\
++		"bootz ${loadaddr} - ${fdt_addr}\0"
++
++#elif defined(CONFIG_SATA_BOOT)
++
++#define CONFIG_EXTRA_ENV_SETTINGS \
++		CONFIG_MFG_ENV_SETTINGS \
++		"fdt_addr=0x18000000\0" \
++		"fdt_high=0xffffffff\0"   \
++		"bootargs=console=" CONSOLE_DEV ",115200 \0"\
++		"bootargs_sata=setenv bootargs ${bootargs} " \
++			"root=/dev/sda1 rootwait rw \0" \
++		"bootcmd_sata=run bootargs_sata; sata init; " \
++			"sata read ${loadaddr} 0x800  0x4000; " \
++			"sata read ${fdt_addr} 0x8000 0x800; " \
++			"bootz ${loadaddr} - ${fdt_addr} \0" \
++		"bootcmd=run bootcmd_sata \0"
++
++#else
++
++#define CONFIG_EXTRA_ENV_SETTINGS \
++	CONFIG_MFG_ENV_SETTINGS \
++	"script=boot.scr\0" \
++	"image=zImage\0" \
++	"fdt_file=undefined\0" \
++	"fdt_addr=0x18000000\0" \
++	"boot_fdt=try\0" \
++	"ip_dyn=yes\0" \
++	"console=" CONSOLE_DEV "\0" \
++	"dfuspi=dfu 0 sf 0:0:10000000:0\0" \
++	"dfu_alt_info_spl=spl raw 0x400\0" \
++	"dfu_alt_info_img=u-boot raw 0x10000\0" \
++	"dfu_alt_info=spl raw 0x400\0" \
++	"fdt_high=0xffffffff\0"	  \
++	"initrd_high=0xffffffff\0" \
++	"mmcdev=" __stringify(CONFIG_SYS_MMC_ENV_DEV) "\0" \
++	"mmcpart=1\0" \
++	"mmcautodetect=yes\0" \
++	"update_sd_firmware=" \
++		"if test ${ip_dyn} = yes; then " \
++			"setenv get_cmd dhcp; " \
++		"else " \
++			"setenv get_cmd tftp; " \
++		"fi; " \
++		"if mmc dev ${mmcdev}; then "	\
++			"if ${get_cmd} ${update_sd_firmware_filename}; then " \
++				"setexpr fw_sz ${filesize} / 0x200; " \
++				"setexpr fw_sz ${fw_sz} + 1; "	\
++				"mmc write ${loadaddr} 0x2 ${fw_sz}; " \
++			"fi; "	\
++		"fi\0" \
++	"smp=" SYS_NOSMP "\0"\
++	"hdmi=video=mxcfb0:dev=hdmi,1920x1080M@60,bpp=32\0" \
++	"lvds_auo_g070=video=mxcfb0:dev=ldb,if=RGB24 ldb=480C60\0" \
++	"lvds_auo_g104=video=mxcfb0:dev=ldb,if=RGB24 ldb=LDB-XGA\0" \
++	"lvds_auo_g220=video=mxcfb0:dev=ldb,if=RGB24 ldb=LDB-WSXGA+\0" \
++	"lvds_auo_g238=video=mxcfb0:dev=ldb,if=RGB24 ldb=LDB-1080P60\0" \
++	"lvds_qa=video=mxcfb0:dev=ldb,if=RGB24 ldb=LDB-SXGA\0" \
++	"lvds=video=mxcfb0:dev=ldb,if=RGB24 ldb=LDB-XGA\0" \
++	"hdmilvds_g238=video=mxcfb0:dev=hdmi,1920x1080M@60,bpp=16 video=mxcfb1:dev=ldb,if=RGB24 ldb=LDB-1080P60\0" \
++	"hdmilvds_g220=video=mxcfb0:dev=hdmi,1920x1080M@60,bpp=16 video=mxcfb1:dev=ldb,if=RGB24 ldb=LDB-WSXGA+\0" \
++	"hdmilvds_g104=video=mxcfb0:dev=hdmi,1920x1080M@60,bpp=16 video=mxcfb1:dev=ldb,if=RGB24 ldb=LDB-XGA\0" \
++	"hdmilvds_g070=video=mxcfb0:dev=hdmi,1920x1080M@60,bpp=16 video=mxcfb1:dev=ldb,if=RGB24 ldb=480C60\0" \
++	"output_display=video=mxcfb0:dev=hdmi,1920x1080M@60,bpp=32\0" \
++	"o_hdmi=setenv output_display ${hdmi}\0" \
++	"o_lvdsg070=setenv output_display ${lvds_auo_g070}\0" \
++	"o_lvdsg104=setenv output_display ${lvds_auo_g104}\0" \
++	"o_lvdsg220=setenv output_display ${lvds_auo_g220}\0" \
++	"o_lvdsg238=setenv output_display ${lvds_auo_g238}\0" \
++	"o_lvdsqa=setenv output_display ${lvds_qa}\0" \
++	"o_hdmilvds_g238=setenv output_display ${hdmilvds_g238}\0" \
++	"o_hdmilvds_g220=setenv output_display ${hdmilvds_g220}\0" \
++	"o_hdmilvds_g104=setenv output_display ${hdmilvds_g104}\0" \
++	"o_hdmilvds_g070=setenv output_display ${hdmilvds_g070}\0" \
++	"mmcargs=setenv bootargs console=${console},${baudrate} ${smp} ${output_display} " \
++		"root=${mmcroot}\0" \
++	"loadbootscript=" \
++		"fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${script};\0" \
++	"bootscript=echo Running bootscript from mmc ...; " \
++		"source\0" \
++	"loadimage=fatload mmc ${mmcdev}:${mmcpart} ${loadaddr} ${image}\0" \
++	"loadfdt=cpudetect; " \
++		"if itest $cpu_type -eq 0; then setenv fdt_file imx6q-artigoa820.dtb; " \
++		"elif itest $cpu_type -eq 1; then setenv fdt_file imx6dl-artigoa820.dtb; " \
++		"else setenv fdt_file imx6qp-artigoa820.dtb; fi;" \
++		"fatload mmc ${mmcdev}:${mmcpart} ${fdt_addr} ${fdt_file}\0" \
++	"mmcboot=echo Booting from ${mmcname} ...; " \
++		"run mmcargs; " \
++		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
++			"if run loadfdt; then " \
++				"bootz ${loadaddr} - ${fdt_addr}; " \
++			"else " \
++				"if test ${boot_fdt} = try; then " \
++					"bootz; " \
++				"else " \
++					"echo WARN: Cannot load the DT; " \
++				"fi; " \
++			"fi; " \
++		"else " \
++			"bootz; " \
++		"fi;\0" \
++	"netargs=setenv bootargs console=${console},${baudrate} ${smp} " \
++		"root=/dev/nfs " \
++		"ip=dhcp nfsroot=${serverip}:${nfsroot},v3,tcp\0" \
++	"netboot=echo Booting from net ...; " \
++		"run netargs; " \
++		"if test ${ip_dyn} = yes; then " \
++			"setenv get_cmd dhcp; " \
++		"else " \
++			"setenv get_cmd tftp; " \
++		"fi; " \
++		"${get_cmd} ${image}; " \
++		"if test ${boot_fdt} = yes || test ${boot_fdt} = try; then " \
++			"if ${get_cmd} ${fdt_addr} ${fdt_file}; then " \
++				"bootz ${loadaddr} - ${fdt_addr}; " \
++			"else " \
++				"if test ${boot_fdt} = try; then " \
++					"bootz; " \
++				"else " \
++					"echo WARN: Cannot load the DT; " \
++				"fi; " \
++			"fi; " \
++		"else " \
++			"bootz; " \
++		"fi;\0" \
++		"bootcmd_main=setenv mmcroot /dev/mmcblk${rootdev}p2 rootfstype=ext4 rootwait rw;" \
++		"mmc dev ${mmcdev};" \
++		"if mmc rescan; then " \
++			"if run loadbootscript; then " \
++			"run bootscript; " \
++			"else " \
++				"if run loadimage; then " \
++					"run mmcboot; " \
++				"else run netboot; " \
++				"fi; " \
++			"fi; " \
++		"else run netboot; fi\0" \
++	"bootcmd_sd=setenv mmcdev 0; setenv rootdev 1; setenv mmcname sdcard; run bootcmd_main;\0" \
++	"bootcmd_mmc=setenv mmcdev 1; setenv rootdev 0; setenv mmcname mmc; run bootcmd_main;\0" \
++	"bootcmd_auto=if run loadimage; then run bootcmd_sd; else run bootcmd_mmc; fi;\0" \
++
++#define CONFIG_BOOTCOMMAND \
++	"run bootcmd_auto"
++#endif
++
++#define CONFIG_ARP_TIMEOUT     200UL
++
++#define CONFIG_SYS_MEMTEST_START       0x10000000
++#define CONFIG_SYS_MEMTEST_END         0x10010000
++#define CONFIG_SYS_MEMTEST_SCRATCH     0x10800000
++
++#define CONFIG_STACKSIZE               (128 * 1024)
++
++/* Physical Memory Map */
++#define CONFIG_NR_DRAM_BANKS           1
++#define PHYS_SDRAM                     MMDC0_ARB_BASE_ADDR
++
++#define CONFIG_SYS_SDRAM_BASE          PHYS_SDRAM
++#define CONFIG_SYS_INIT_RAM_ADDR       IRAM_BASE_ADDR
++#define CONFIG_SYS_INIT_RAM_SIZE       IRAM_SIZE
++
++#define CONFIG_SYS_INIT_SP_OFFSET \
++	(CONFIG_SYS_INIT_RAM_SIZE - GENERATED_GBL_DATA_SIZE)
++#define CONFIG_SYS_INIT_SP_ADDR \
++	(CONFIG_SYS_INIT_RAM_ADDR + CONFIG_SYS_INIT_SP_OFFSET)
++
++/* Environment organization */
++#define CONFIG_ENV_SIZE			(8 * 1024)
++
++
++/* VIA_dev: defconfig had defined CONFIG_CMD_SF */
++/* VIA_dev: environment is in SPIROM */
++#define CONFIG_ENV_IS_IN_SPI_FLASH
++
++#ifdef CONFIG_CMD_SATA
++#define CONFIG_DWC_AHSATA
++#define CONFIG_SYS_SATA_MAX_DEVICE	1
++#define CONFIG_DWC_AHSATA_PORT_ID	0
++#define CONFIG_DWC_AHSATA_BASE_ADDR	SATA_ARB_BASE_ADDR
++#define CONFIG_LBA48
++#define CONFIG_LIBATA
++#endif
++
++#ifdef CONFIG_CMD_SF
++#define CONFIG_SPI_FLASH
++/* VIA_dev: support SST, WINBOND, MXIC */
++#define CONFIG_SPI_FLASH_STMICRO
++#define CONFIG_SPI_FLASH_SST
++#define CONFIG_SPI_FLASH_WINBOND
++#define CONFIG_SPI_FLASH_MACRONIX
++#define CONFIG_MXC_SPI
++#define CONFIG_SF_DEFAULT_BUS  0
++#define CONFIG_SF_DEFAULT_SPEED 25000000	/* VIA_dev: 20000000 -> 25000000 */
++#define CONFIG_SF_DEFAULT_MODE (SPI_MODE_0)
++#endif
++
++#ifdef CONFIG_MTD_NOR_FLASH
++#define CONFIG_SYS_FLASH_BASE           WEIM_ARB_BASE_ADDR
++#define CONFIG_SYS_FLASH_SECT_SIZE      (128 * 1024)
++#define CONFIG_SYS_MAX_FLASH_BANKS 1    /* max number of memory banks */
++#define CONFIG_SYS_MAX_FLASH_SECT 256   /* max number of sectors on one chip */
++#define CONFIG_SYS_FLASH_CFI            /* Flash memory is CFI compliant */
++#define CONFIG_FLASH_CFI_DRIVER         /* Use drivers/cfi_flash.c */
++#define CONFIG_SYS_FLASH_USE_BUFFER_WRITE /* Use buffered writes*/
++#define CONFIG_SYS_FLASH_EMPTY_INFO
++#define CONFIG_SYS_FLASH_CFI_WIDTH	FLASH_CFI_16BIT
++#endif
++
++#ifdef CONFIG_CMD_NAND
++/* NAND flash command */
++#define CONFIG_CMD_NAND_TRIMFFS
++
++/* NAND stuff */
++#define CONFIG_NAND_MXS
++#define CONFIG_SYS_MAX_NAND_DEVICE     1
++#define CONFIG_SYS_NAND_BASE           0x40000000
++#define CONFIG_SYS_NAND_5_ADDR_CYCLE
++#define CONFIG_SYS_NAND_ONFI_DETECTION
++
++/* DMA stuff, needed for GPMI/MXS NAND support */
++#define CONFIG_APBH_DMA
++#define CONFIG_APBH_DMA_BURST
++#define CONFIG_APBH_DMA_BURST8
++#endif
++
++
++#if defined(CONFIG_ENV_IS_IN_MMC)
++/* VIA_dev: for compatible, use 768 */
++#define CONFIG_ENV_OFFSET              (768 * 1024)
++#elif defined(CONFIG_ENV_IS_IN_SPI_FLASH)
++#define CONFIG_ENV_OFFSET              (768 * 1024)
++#define CONFIG_ENV_SECT_SIZE           (64 * 1024)
++#define CONFIG_ENV_SPI_BUS             CONFIG_SF_DEFAULT_BUS
++#define CONFIG_ENV_SPI_CS              CONFIG_SF_DEFAULT_CS
++#define CONFIG_ENV_SPI_MODE            CONFIG_SF_DEFAULT_MODE
++#define CONFIG_ENV_SPI_MAX_HZ          CONFIG_SF_DEFAULT_SPEED
++#elif defined(CONFIG_ENV_IS_IN_FLASH)
++#undef CONFIG_ENV_SIZE
++#define CONFIG_ENV_SIZE                        CONFIG_SYS_FLASH_SECT_SIZE
++#define CONFIG_ENV_SECT_SIZE           CONFIG_SYS_FLASH_SECT_SIZE
++#define CONFIG_ENV_OFFSET              (7 * CONFIG_SYS_FLASH_SECT_SIZE)
++#elif defined(CONFIG_ENV_IS_IN_NAND)
++#undef CONFIG_ENV_SIZE
++#define CONFIG_ENV_OFFSET              (60 << 20)
++#define CONFIG_ENV_SECT_SIZE           (128 << 10)
++#define CONFIG_ENV_SIZE                        CONFIG_ENV_SECT_SIZE
++#elif defined(CONFIG_ENV_IS_IN_SATA)
++#define CONFIG_ENV_OFFSET		(768 * 1024)
++#define CONFIG_SYS_SATA_ENV_DEV		0
++#define CONFIG_SYS_DCACHE_OFF /* remove when sata driver support cache */
++#endif
++
++/* I2C Configs */
++#ifndef CONFIG_DM_I2C
++#define CONFIG_SYS_I2C
++#endif
++#ifdef CONFIG_CMD_I2C
++#define CONFIG_SYS_I2C_MXC
++#define CONFIG_SYS_I2C_MXC_I2C1		/* enable I2C bus 1 */
++#define CONFIG_SYS_I2C_MXC_I2C2		/* enable I2C bus 2 */
++#define CONFIG_SYS_I2C_MXC_I2C3		/* enable I2C bus 3 */
++#define CONFIG_SYS_I2C_SPEED		  100000
++#endif
++
++/* Framebuffer */
++#undef CONFIG_CFB_CONSOLE
++/* VIA_dev: skip, if no CONFIG_VIDEO */
++#ifdef CONFIG_VIDEO
++  #define CONFIG_VIDEO_IPUV3
++#endif
++#define CONFIG_VIDEO_BMP_RLE8
++#define CONFIG_SPLASH_SCREEN
++#define CONFIG_SPLASH_SCREEN_ALIGN
++#define CONFIG_BMP_16BPP
++#define CONFIG_VIDEO_LOGO
++#define CONFIG_VIDEO_BMP_LOGO
++#ifdef CONFIG_MX6DL
++#define CONFIG_IPUV3_CLK 198000000
++#else
++#define CONFIG_IPUV3_CLK 264000000
++#endif
++#define CONFIG_IMX_HDMI
++#define CONFIG_IMX_VIDEO_SKIP
++
++#if defined(CONFIG_ANDROID_SUPPORT)
++#include "mx6sabreandroid_common.h"
++#else
++
++#ifndef CONFIG_SPL
++#define CONFIG_USBD_HS
++
++#define CONFIG_USB_FUNCTION_MASS_STORAGE
++#endif
++
++#endif /* CONFIG_ANDROID_SUPPORT */
++
++#endif                         /* __MX6ARTIGOA820_COMMON_CONFIG_H */

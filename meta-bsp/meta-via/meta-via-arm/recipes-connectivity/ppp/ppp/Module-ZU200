@@ -1,0 +1,33 @@
+#/etc/ppp/peers/Module-ZU200
+# Usage: root>pppd call Module-ZU200
+# Keep pppd attached to the terminal
+# Comment this to get daemon mode pppd
+nodetach
+# For sanity,keep a lock on the serial line
+lock
+# Serial Device to which the HSPDA phone is connected
+/dev/ttyUSB3
+# Serial port line speed
+115200
+user "web"
+password "web"
+# No hardware flow control
+nocrtscts
+# Ask the peer for up to 2 DNS server addresses
+usepeerdns
+# The phone is not required to authenticate
+noauth
+# pppd must not propose any IP address to the peer
+noipdefault
+# No ppp compression
+novj
+novjccomp
+noccp
+# If you want to use the HSDPA link as your gateway
+defaultroute
+ipcp-accept-local
+ipcp-accept-remote
+# The chat script(be sure to edit that file,too!)
+connect 'chat -s -v -f /etc/ppp/peers/Chat-Module-ZU200-connect'
+# The close script(be sure to edit that file,too!)
+disconnect 'chat -s -v -f /etc/ppp/peers/Chat-Module-ZU200-disconnect'

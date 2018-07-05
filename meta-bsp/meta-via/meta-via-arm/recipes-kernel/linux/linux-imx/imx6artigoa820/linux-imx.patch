@@ -1,0 +1,228 @@
+diff --git a/arch/arm/kernel/reboot.c b/arch/arm/kernel/reboot.c
+index 3fa867a..b16b121 100644
+--- a/arch/arm/kernel/reboot.c
++++ b/arch/arm/kernel/reboot.c
+@@ -104,7 +104,9 @@ void machine_halt(void)
+ {
+ 	local_irq_disable();
+ 	smp_send_stop();
+-	while (1);
++
++	if (pm_power_off)
++		pm_power_off();
+ }
+ 
+ /*
+diff --git a/arch/arm/mach-imx/mach-imx6q.c b/arch/arm/mach-imx/mach-imx6q.c
+index b884209..48f25e2 100644
+--- a/arch/arm/mach-imx/mach-imx6q.c
++++ b/arch/arm/mach-imx/mach-imx6q.c
+@@ -314,6 +314,15 @@ static inline void imx6q_enet_init(void)
+ 		imx6q_enet_clk_sel();
+ }
+ 
++/* Added: turn off HDMI when power off */
++static void mx6_poweroff(void)
++{
++	void __iomem *mx6_pwr_off = MX6Q_IO_ADDRESS(0x20c8130);
++	u32 value;
++	value = readl(mx6_pwr_off);
++	writel(value & 0xfffffffe, mx6_pwr_off);
++}
++
+ static void __init imx6q_init_machine(void)
+ {
+ 	struct device *parent;
+@@ -335,6 +344,7 @@ static void __init imx6q_init_machine(void)
+ 	imx6q_csi_mux_init();
+ 	cpu_is_imx6q() ?  imx6q_pm_init() : imx6dl_pm_init();
+ 	imx6q_axi_init();
++	pm_power_off = mx6_poweroff;
+ }
+ 
+ #define OCOTP_CFG3			0x440
+diff --git a/drivers/net/usb/qmi_wwan.c b/drivers/net/usb/qmi_wwan.c
+index 24d5272..8ac5324 100644
+--- a/drivers/net/usb/qmi_wwan.c
++++ b/drivers/net/usb/qmi_wwan.c
+@@ -958,7 +958,7 @@ static int qmi_wwan_resume(struct usb_interface *intf)
+ 	{QMI_GOBI_DEVICE(0x05c6, 0x9225)},	/* Sony Gobi 2000 Modem device (N0279, VU730) */
+ 	{QMI_GOBI_DEVICE(0x05c6, 0x9245)},	/* Samsung Gobi 2000 Modem device (VL176) */
+ 	{QMI_GOBI_DEVICE(0x03f0, 0x251d)},	/* HP Gobi 2000 Modem device (VP412) */
+-	{QMI_GOBI_DEVICE(0x05c6, 0x9215)},	/* Acer Gobi 2000 Modem device (VP413) */
++	/*{QMI_GOBI_DEVICE(0x05c6, 0x9215)},	conflict with EC20 */ /* Acer Gobi 2000 Modem device (VP413) */
+ 	{QMI_FIXED_INTF(0x05c6, 0x9215, 4)},	/* Quectel EC20 Mini PCIe */
+ 	{QMI_GOBI_DEVICE(0x05c6, 0x9265)},	/* Asus Gobi 2000 Modem device (VR305) */
+ 	{QMI_GOBI_DEVICE(0x05c6, 0x9235)},	/* Top Global Gobi 2000 Modem device (VR306) */
+diff --git a/drivers/tty/serial/Kconfig b/drivers/tty/serial/Kconfig
+index 25c1d7b..785f5a8 100644
+--- a/drivers/tty/serial/Kconfig
++++ b/drivers/tty/serial/Kconfig
+@@ -597,6 +597,16 @@ config SERIAL_IMX_CONSOLE
+ 	  "console=ttymxc0". (Try "man bootparam" or see the documentation of
+ 	  your bootloader about how to pass options to the kernel at boot time.)
+ 
++config IMX_UART1_RS485_RTS_GPIO
++	bool "UART1 RS485 - RTS pin is controlled by GPIO"
++	depends on SERIAL_IMX=y
++	help
++	  If you have enabled the serial port on the Freescale IMX
++	  CPU you can make it by answering Y to this option.
++
++	  VAB-820-2-B2 had fixed the RTS/CTS pin direction,
++	  but still needs to be compatible with the old board.
++
+ config SERIAL_UARTLITE
+ 	tristate "Xilinx uartlite serial port support"
+ 	depends on HAS_IOMEM
+diff --git a/drivers/tty/serial/imx.c b/drivers/tty/serial/imx.c
+index fe070db..27c6ec53 100644
+--- a/drivers/tty/serial/imx.c
++++ b/drivers/tty/serial/imx.c
+@@ -189,6 +189,13 @@
+ #define IMX_RXBD_NUM 20
+ #define IMX_MODULE_MAX_CLK_RATE	80000000
+ 
++#ifdef	CONFIG_IMX_UART1_RS485_RTS_GPIO
++static void  __iomem *mux_ctl_sd3_data0 = 0;
++static void  __iomem *pad_ctl_sd3_data0 = 0;
++static u32 mux_sd3_data0;
++static u32 pad_sd3_data0;
++#endif
++
+ /* i.MX21 type uart runs on all i.mx except i.MX1 and i.MX6q */
+ enum imx_uart_type {
+ 	IMX1_UART,
+@@ -542,7 +549,7 @@ static void dma_tx_work(struct work_struct *w)
+ 	unsigned long flags;
+ 	int ret;
+ 
+-	if (test_and_set_bit(DMA_TX_IS_WORKING, &sport->flags))
++	if ((sport->port.rs485.flags & SER_RS485_ENABLED) || test_and_set_bit(DMA_TX_IS_WORKING, &sport->flags))
+ 		return;
+ 
+ 	spin_lock_irqsave(&sport->port.lock, flags);
+@@ -1750,6 +1757,14 @@ static int imx_rs485_config(struct uart_port *port,
+ 		rs485conf->flags &= ~SER_RS485_ENABLED;
+ 
+ 	if (rs485conf->flags & SER_RS485_ENABLED) {
++
++#ifdef	CONFIG_IMX_UART1_RS485_RTS_GPIO
++		if (0 == port->line)	{
++			writel(mux_sd3_data0 | 0x5, mux_ctl_sd3_data0);
++			writel(0x1b0b0, pad_ctl_sd3_data0);
++		}
++#endif
++
+ 		/* disable transmitter */
+ 		temp = readl(sport->port.membase + UCR2);
+ 		if (rs485conf->flags & SER_RS485_RTS_AFTER_SEND)
+@@ -1758,6 +1773,15 @@ static int imx_rs485_config(struct uart_port *port,
+ 			imx_port_rts_active(sport, &temp);
+ 		writel(temp, sport->port.membase + UCR2);
+ 	}
++#ifdef	CONFIG_IMX_UART1_RS485_RTS_GPIO
++	else
++	{
++		if (0 == port->line)	{
++			writel(mux_sd3_data0, mux_ctl_sd3_data0);
++			writel(pad_sd3_data0, pad_ctl_sd3_data0);
++		}
++	}
++#endif
+ 
+ 	/* Make sure Rx is enabled in case Tx is active with Rx disabled */
+ 	if (!(rs485conf->flags & SER_RS485_ENABLED) ||
+@@ -2213,6 +2237,15 @@ static int serial_imx_probe(struct platform_device *pdev)
+ 
+ 	platform_set_drvdata(pdev, sport);
+ 
++#ifdef	CONFIG_IMX_UART1_RS485_RTS_GPIO
++	if (0 == sport->port.line)	{
++		mux_ctl_sd3_data0 = devm_ioremap(&pdev->dev, 0x020e0314, 4);
++		pad_ctl_sd3_data0 = devm_ioremap(&pdev->dev, 0x020e06fc, 4);
++		mux_sd3_data0 = readl(mux_ctl_sd3_data0);
++		pad_sd3_data0 = readl(pad_ctl_sd3_data0);
++	}
++#endif
++
+ 	return uart_add_one_port(&imx_reg, &sport->port);
+ }
+ 
+diff --git a/drivers/usb/serial/option.c b/drivers/usb/serial/option.c
+index 42cc72e..26b24db 100644
+--- a/drivers/usb/serial/option.c
++++ b/drivers/usb/serial/option.c
+@@ -1163,6 +1163,8 @@ struct option_blacklist_info {
+ 	{ USB_DEVICE(QUALCOMM_VENDOR_ID, 0x9000)}, /* SIMCom SIM5218 */
+ 	{ USB_DEVICE(QUALCOMM_VENDOR_ID, 0x9003), /* Quectel UC20 */
+ 	  .driver_info = (kernel_ulong_t)&net_intf4_blacklist },
++	{ USB_DEVICE(QUALCOMM_VENDOR_ID, 0x9215) },/* Quectel EC20 */ /* Add to support USB 4G module - Quectel EC20, by VIA Embedded, 2017.01.20 */
++	{ USB_DEVICE(0x1546, 0x1102) },/* U-Blox_LISA-U200 */ /* Add to support USB 3G module, by VIA embedded, 2015.08.18 */
+ 	{ USB_DEVICE(CMOTECH_VENDOR_ID, CMOTECH_PRODUCT_6001) },
+ 	{ USB_DEVICE(CMOTECH_VENDOR_ID, CMOTECH_PRODUCT_CMU_300) },
+ 	{ USB_DEVICE(CMOTECH_VENDOR_ID, CMOTECH_PRODUCT_6003),
+@@ -2042,6 +2044,9 @@ struct option_blacklist_info {
+ #ifdef CONFIG_PM
+ 	.suspend           = usb_wwan_suspend,
+ 	.resume            = usb_wwan_resume,
++#if 1 /* for UC20 and EC20 */
++	.reset_resume            = usb_wwan_resume,
++#endif
+ #endif
+ };
+ 
+@@ -2081,6 +2086,19 @@ static int option_probe(struct usb_serial *serial,
+ 	    iface_desc->bInterfaceClass != USB_CLASS_CDC_DATA)
+ 		return -ENODEV;
+ 
++#if 1 /* for UC20 and EC20 */
++	/* Quectel UC20's interface 4 can be used as USB Network device */
++	if (serial->dev->descriptor.idVendor  ==  cpu_to_le16(0x05C6)  &&
++	    serial->dev->descriptor.idProduct == cpu_to_le16(0x9003) &&
++	    serial->interface->cur_altsetting->desc.bInterfaceNumber >= 4)
++		return -ENODEV;
++	/* Quectel EC20's interface 4 can be used as USB Network device */
++	if (serial->dev->descriptor.idVendor  ==  cpu_to_le16(0x05C6)  &&
++	    serial->dev->descriptor.idProduct == cpu_to_le16(0x9215) &&
++	    serial->interface->cur_altsetting->desc.bInterfaceNumber >= 4)
++		return -ENODEV;
++#endif
++
+ 	/* Store the blacklist info so we can use it during attach. */
+ 	usb_set_serial_data(serial, (void *)blacklist);
+ 
+diff --git a/drivers/usb/serial/qcserial.c b/drivers/usb/serial/qcserial.c
+index 696458d..e777433 100644
+--- a/drivers/usb/serial/qcserial.c
++++ b/drivers/usb/serial/qcserial.c
+@@ -92,7 +92,7 @@ enum qcserial_layouts {
+ 	{USB_DEVICE(0x03f0, 0x241d)},	/* HP Gobi 2000 QDL device (VP412) */
+ 	{USB_DEVICE(0x03f0, 0x251d)},	/* HP Gobi 2000 Modem device (VP412) */
+ 	{USB_DEVICE(0x05c6, 0x9214)},	/* Acer Gobi 2000 QDL device (VP413) */
+-	{USB_DEVICE(0x05c6, 0x9215)},	/* Acer Gobi 2000 Modem device (VP413) */
++	/* {USB_DEVICE(0x05c6, 0x9215)},	conflict with EC20 */ /* Acer Gobi 2000 Modem device (VP413) */
+ 	{USB_DEVICE(0x05c6, 0x9264)},	/* Asus Gobi 2000 QDL device (VR305) */
+ 	{USB_DEVICE(0x05c6, 0x9265)},	/* Asus Gobi 2000 Modem device (VR305) */
+ 	{USB_DEVICE(0x05c6, 0x9234)},	/* Top Global Gobi 2000 QDL device (VR306) */
+diff --git a/drivers/usb/serial/usb_wwan.c b/drivers/usb/serial/usb_wwan.c
+index 3dfdfc8..4877678 100644
+--- a/drivers/usb/serial/usb_wwan.c
++++ b/drivers/usb/serial/usb_wwan.c
+@@ -505,6 +505,16 @@ static struct urb *usb_wwan_setup_urb(struct usb_serial_port *port,
+ 			  usb_sndbulkpipe(serial->dev, endpoint) | dir,
+ 			  buf, len, callback, ctx);
+ 
++#if 1 /* zero package for UC20 and EC20 */
++	if (dir == USB_DIR_OUT) {
++		struct usb_device_descriptor *desc = &serial->dev->descriptor;
++		if (desc->idVendor == cpu_to_le16(0x05C6) && desc->idProduct == cpu_to_le16(0x9003))
++			urb->transfer_flags |= URB_ZERO_PACKET;
++		if (desc->idVendor == cpu_to_le16(0x05C6) && desc->idProduct == cpu_to_le16(0x9215))
++			urb->transfer_flags |= URB_ZERO_PACKET;
++	}
++#endif
++
+ 	return urb;
+ }
+ 
