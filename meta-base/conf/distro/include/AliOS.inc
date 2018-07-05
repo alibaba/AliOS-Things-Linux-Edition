@@ -1,9 +1,7 @@
-# Poky based distro file
-
 DISTRO = "AliOS"
 DISTRO_NAME = "AliOS Things"
-DISTRO_CODENAME = "M1"
-DISTRO_VERSION = "1.0.0"
+DISTRO_CODENAME = "M2"
+DISTRO_VERSION = "1.1.0"
 HOSTOS_VERSION = "${DISTRO_VERSION}"
 
 MAINTAINER = "iot <iot@alibaba-inc.com>"
@@ -20,22 +18,16 @@ POKY_DEFAULT_EXTRA_RRECOMMENDS = "kernel-module-af-packet"
 
 DISTRO_FEATURES ?= "${DISTRO_FEATURES_DEFAULT} ${DISTRO_FEATURES_LIBC} ${POKY_DEFAULT_DISTRO_FEATURES}"
 
-DISTRO_EXTRA_RDEPENDS += " ${POKY_DEFAULT_EXTRA_RDEPENDS}"
-DISTRO_EXTRA_RRECOMMENDS += " ${POKY_DEFAULT_EXTRA_RRECOMMENDS}"
-
 PREFERRED_VERSION_linux-yocto ?= "4.9%"
 
 SDK_NAME = "${DISTRO}-${TCLIBC}-${SDK_ARCH}-${IMAGE_BASENAME}-${TUNE_PKGARCH}"
 SDKPATH = "/opt/${DISTRO}/${SDK_VERSION}"
 
-DISTRO_EXTRA_RDEPENDS += " ${POKY_DEFAULT_EXTRA_RDEPENDS}"
-DISTRO_EXTRA_RRECOMMENDS += " ${POKY_DEFAULT_EXTRA_RRECOMMENDS}"
-
 # This hooks into packagegroup-base, so it won't do anything if your images doesn't include packagegroup-base.
-DISTRO_EXTRA_RDEPENDS += ""
+DISTRO_EXTRA_RDEPENDS += " ${POKY_DEFAULT_EXTRA_RDEPENDS}"
 
 # This also hooks into packagegroup-base, but isn't mandatory.
-DISTRO_EXTRA_RRECOMMENDS += ""
+DISTRO_EXTRA_RRECOMMENDS += " ${POKY_DEFAULT_EXTRA_RRECOMMENDS}"
 
 POKYQEMUDEPS = "${@bb.utils.contains("INCOMPATIBLE_LICENSE", "GPL-3.0", "", "packagegroup-core-device-devel",d)}"
 DISTRO_EXTRA_RDEPENDS_append_qemuarm = " ${POKYQEMUDEPS}"
@@ -48,7 +40,6 @@ DISTRO_EXTRA_RDEPENDS_append_qemux86-64 = " ${POKYQEMUDEPS}"
 TCLIBCAPPEND = ""
 
 QEMU_TARGETS ?= "arm aarch64 i386 mips mipsel mips64 mips64el nios2 ppc x86_64"
-# Other QEMU_TARGETS "sh4"
 
 PREMIRRORS ??= "\
 bzr://.*/.*   http://downloads.yoctoproject.org/mirror/sources/ \n \
@@ -64,12 +55,6 @@ MIRRORS =+ "\
 ftp://.*/.*      http://downloads.yoctoproject.org/mirror/sources/ \n \
 http://.*/.*     http://downloads.yoctoproject.org/mirror/sources/ \n \
 https://.*/.*    http://downloads.yoctoproject.org/mirror/sources/ \n"
-
-# The CONNECTIVITY_CHECK_URI's are used to test whether we can succesfully
-# fetch from the network (and warn you if not). To disable the test set
-# the variable to be empty.
-# Git example url: git://git.yoctoproject.org/yocto-firewall-test;protocol=git;rev=master
-CONNECTIVITY_CHECK_URIS ?= "https://www.aliyun.com/"
 
 SANITY_TESTED_DISTROS ?= " \
             poky-2.4 \n \

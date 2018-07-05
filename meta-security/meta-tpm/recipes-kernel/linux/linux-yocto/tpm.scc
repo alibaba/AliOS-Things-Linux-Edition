@@ -1,3 +1,0 @@
-define KFEATURE_DESCRIPTION "TPM 1.x enablement"
-
-kconf hardware tpm.cfg

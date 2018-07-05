@@ -1,0 +1,24 @@
+From d3b6b98984a28e782cb22dc6c7bd0ea9a0e74f15 Mon Sep 17 00:00:00 2001
+From: Lei Maohui <leimaohui at cn.fujitsu.com>
+Date: Mon, 17 Aug 2015 15:53:02 +0900
+Subject: [PATCH] keyutils fix x86-64 cflags
+
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 82e1a0f..23aa466 100644
+--- a/Makefile
++++ b/Makefile
+@@ -60,7 +60,7 @@ endif
+ ifeq ($(origin USRLIBDIR),undefined)
+ USRLIBDIR	:= $(patsubst /lib/%,/usr/lib/%,$(LIBDIR))
+ endif
+-BUILDFOR	:= $(shell file /usr/bin/make | sed -e 's!.*ELF \(32\|64\)-bit.*!\1!')-bit
++BUILDFOR	:= 64-bit
+ 
+ LNS		:= ln -sf
+ 
+--
+1.8.4.2

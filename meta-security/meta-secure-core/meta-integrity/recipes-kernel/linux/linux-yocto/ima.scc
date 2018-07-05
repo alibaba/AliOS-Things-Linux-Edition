@@ -1,0 +1,5 @@
+define KFEATURE_DESCRIPTION "Integrity Measurement Architecture (IMA) enablement"
+define KFEATURE_COMPATIBILITY all
+
+include integrity.scc
+kconf non-hardware ima.cfg

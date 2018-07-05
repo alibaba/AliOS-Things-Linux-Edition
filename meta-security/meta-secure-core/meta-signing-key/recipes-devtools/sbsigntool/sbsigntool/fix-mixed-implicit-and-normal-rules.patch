@@ -1,0 +1,33 @@
+From 05e73dbe1f25600ad0dbb36b2d690560c5a36281 Mon Sep 17 00:00:00 2001
+From: Lans Zhang <jia.zhang@windriver.com>
+Date: Tue, 31 Mar 2015 15:34:38 +0800
+Subject: [PATCH] Fix mixed implicit and normal rules
+
+Upstream-Status: Inappropriate [embedded specific]
+
+This patch comes from upstream:
+http://git.yoctoproject.org/cgit/cgit.cgi/meta-luv/plain/recipes-devtools/sbsigntool/sbsigntool/fix-mixed-implicit-and-normal-rules.patch
+
+Signed-off-by: Lans Zhang <jia.zhang@windriver.com>
+---
+ Makefile | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 65d0d8f..a83185d 100644
+--- a/Makefile
++++ b/Makefile
+@@ -39,10 +39,6 @@ $(SCOREDIR)/SUMMARY: $(MODS:%=$(SCOREDIR)/%.score)
+ 	$(CC) -v >> $@
+ 	cat $^ | grep 'Total score:' >> $@
+ 
+-$(SCOREDIR)/%.score: ccan/%/_info tools/ccanlint/ccanlint $(OBJFILES)
+-	mkdir -p `dirname $@`
+-	$(CCANLINT) -v -s ccan/$* > $@ || true
+-
+ $(ALL_DEPENDS): %/.depends: %/_info tools/ccan_depends
+ 	tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )
+ 
+-- 
+1.8.3.1
+

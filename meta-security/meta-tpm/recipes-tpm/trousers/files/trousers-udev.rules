@@ -1,2 +1,0 @@
-# trousers daemon expects tpm device to be owned by tss user & group
-KERNEL=="tpm[0-9]*", MODE="0600", OWNER="tss", GROUP="tss"

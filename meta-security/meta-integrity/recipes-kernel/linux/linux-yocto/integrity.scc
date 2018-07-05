@@ -1,4 +1,0 @@
-define KFEATURE_DESCRIPTION "Integrity subsystem enablement"
-define KFEATURE_COMPATIBILITY all
-
-kconf non-hardware integrity.cfg

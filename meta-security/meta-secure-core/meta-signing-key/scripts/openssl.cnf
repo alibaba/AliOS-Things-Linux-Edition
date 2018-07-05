@@ -1,0 +1,3 @@
+[v3_req]
+subjectKeyIdentifier=hash
+authorityKeyIdentifier=keyid:always

@@ -1,4 +1,4 @@
-Welcome to AliOS Things !!!
+Welcome to AliOS Things Linux Edition !!!
 
 documentation
 
@@ -12,10 +12,10 @@ meta-external
 
     => Provide third party libs.
 
-meta-misc
-
-    => Save misc layers.
-
 meta-security
 
     => Provide security solutions.
+
+meta-virtualization
+
+    => Provide virtualization solutions.

@@ -1,1 +1,0 @@
-require rpm-integrity.inc

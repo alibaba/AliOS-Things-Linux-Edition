@@ -1,0 +1,124 @@
+#!/bin/sh
+# Licensed on MIT
+
+secure_enabled() {
+    for arg in `cat /proc/cmdline`; do
+        optarg=`expr "x$arg" : 'x[^=]*=\(.*\)'`
+        case "$arg" in
+        root=*)
+            ROOTFS_DEV="$optarg"
+            ;;
+        esac
+    done
+
+    if [ -z "$ROOTFS_DEV" ]; then
+        # No root device specified in command line, it is a iso/hddimg live boot.
+        # Skip the secure init.
+        return 1
+    else
+        return 0
+    fi
+}
+
+rootfs_cryptfs_run() {
+    if [ -z "$ROOTFS_DIR" ]; then
+        return
+    fi
+
+    C=0
+    delay=${bootparam_rootdelay:-1}
+    timeout=${bootparam_roottimeout:-5}
+
+    while [ ! -d $ROOTFS_DIR/dev ]; do
+        if [ $(( $C * $delay )) -gt $timeout ]; then
+            fatal "root '$bootparam_root' doesn't exist or does not contain a /dev."
+        fi
+
+        if [ -n "$bootparam_root" ]; then
+            debug "No e2fs compatible filesystem has been mounted, mounting $bootparam_root..."
+
+            if [ "`echo ${bootparam_root} | cut -c1-5`" = "UUID=" ]; then
+                root_uuid=`echo $bootparam_root | cut -c6-`
+                bootparam_root="/dev/disk/by-uuid/$root_uuid"
+            fi
+
+            if [ "`echo ${bootparam_root} | cut -c1-9`" = "PARTUUID=" ]; then
+                root_uuid=`echo $bootparam_root | cut -c10-`
+                bootparam_root="/dev/disk/by-partuuid/$root_uuid"
+            fi
+
+            if [ -e "$bootparam_root" ]; then
+                flags=""
+                if [ -n "$bootparam_ro" ] && ! echo "$bootparam_rootflags" | grep -w -q "ro"; then
+                    if [  -n "$bootparam_rootflags" ]; then
+                        bootparam_rootflags="$bootparam_rootflags,"
+                    fi
+                    bootparam_rootflags="${bootparam_rootflags}ro"
+                fi
+                if [ -n "$bootparam_rootflags" ]; then
+                    flags="$flags -o$bootparam_rootflags"
+                fi
+                if [ -n "$bootparam_rootfstype" ]; then
+                    flags="$flags -t$bootparam_rootfstype"
+                fi
+                mount $flags $bootparam_root $ROOTFS_DIR
+                if [ -d $ROOTFS_DIR/dev ]; then
+                    break
+                else
+                    # It is unlikely to change, but keep trying anyway.
+                    # Perhaps we pick a different device next time.
+                    umount $ROOTFS_DIR
+                    [ -x /init.cryptfs ] && /init.cryptfs "$ROOTFS_DIR" "$bootparam_root" "$flags"
+                fi
+            fi
+        fi
+        debug "Sleeping for $delay second(s) to wait root to settle..."
+        sleep $delay
+        C=$(( $C + 1 ))
+    done
+}
+
+finish_ima_run() {
+    if [ -n "$ROOTFS_DIR" ]; then
+        if [ ! -d $ROOTFS_DIR/dev ]; then
+            fatal "ERROR: There's no '/dev' on rootfs."
+        fi
+
+        info "Switching root to '$ROOTFS_DIR'..."
+
+        # Move the mount points of some filesystems over to
+        # the corresponding directories under the real root filesystem.
+        for dir in `cat /proc/mounts | grep -v rootfs | awk '{ print $2 }'` ; do
+            mkdir -p "$ROOTFS_DIR"/${dir##*/}
+            mount -nv --move "$dir" "$ROOTFS_DIR"/${dir##*/}
+        done
+
+        cd $ROOTFS_DIR
+
+        killall `basename $_UDEV_DAEMON` 2>/dev/null
+        # !!! The Big Fat Warnings !!!
+        #
+        # The IMA policy may enforce appraising the executable and verifying the
+        # signature stored in xattr. However, ramfs doesn't support xattr, and all
+        # other initializations must *NOT* be placed after IMA initialization!
+        [ -x /init.ima ] && /init.ima "$ROOTFS_DIR" && {
+            # switch_root is an exception. We call it in the real rootfs and it
+            # should be already signed properly.
+            switch_root_cmd="usr/sbin/switch_root.static"
+        } || {
+            switch_root_cmd="switch_root"
+        }
+
+        exec "$switch_root_cmd" $ROOTFS_DIR ${bootparam_init:-/sbin/init} || { \
+        "$ROOTFS_DIR/bin/echo.coreutils" "ERROR: Initramfs failed to initialize the system."
+        }
+
+    else
+        debug "No rootfs has been set"
+    fi
+}
+
+secure_run() {
+    rootfs_cryptfs_run
+    finish_ima_run
+}
