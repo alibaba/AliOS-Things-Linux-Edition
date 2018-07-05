@@ -1,5 +1,0 @@
-define KFEATURE_DESCRIPTION "Kernel Module Signing (modsign) enablement"
-define KFEATURE_COMPATIBILITY all
-
-include integrity.scc
-kconf non-hardware modsign.cfg

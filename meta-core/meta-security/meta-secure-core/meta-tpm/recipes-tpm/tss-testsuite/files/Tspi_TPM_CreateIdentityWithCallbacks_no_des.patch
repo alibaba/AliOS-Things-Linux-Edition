@@ -1,0 +1,79 @@
+diff --git a/tcg/highlevel/tpm/Tspi_TPM_CreateIdentityWithCallbacks.c b/tcg/highlevel/tpm/Tspi_TPM_CreateIdentityWithCallbacks.c
+index b5704f3..12fbd56 100644
+--- a/tcg/highlevel/tpm/Tspi_TPM_CreateIdentityWithCallbacks.c
++++ b/tcg/highlevel/tpm/Tspi_TPM_CreateIdentityWithCallbacks.c
+@@ -66,8 +66,8 @@
+ 
+ #define CERT_VERIFY_BYTE 0x5a
+ 
+-TCPA_ALGORITHM_ID symAlg = TCPA_ALG_3DES;
+-TSS_ALGORITHM_ID tssSymAlg = TSS_ALG_3DES;
++TCPA_ALGORITHM_ID symAlg = TCPA_ALG_AES;
++TSS_ALGORITHM_ID tssSymAlg = TSS_ALG_AES;
+ 
+ /* globals to make callbacks easier */
+ TSS_HTPM hTPM = 0;
+@@ -114,6 +114,7 @@ collate_cb(PVOID myArgs, UINT32 proofSize, BYTE *proof, TSS_ALGORITHM_ID algID,
+			symKey.size = 128/8;
+			memcpy(iv, "&%@)*%%$&#)%&#*$", 16);
+			break;
++#ifndef OPENSSL_NO_DES
+		case TSS_ALG_DES:
+			symKey.algId = TCPA_ALG_DES;
+			symKey.size = 64/8;
+@@ -124,6 +125,7 @@ collate_cb(PVOID myArgs, UINT32 proofSize, BYTE *proof, TSS_ALGORITHM_ID algID,
+			symKey.size = 192/8;
+			memcpy(iv, "&%@)*%%)", 8);
+			break;
++#endif /* OPENSSL_NO_DES */
+		default:
+			return TSS_E_BAD_PARAMETER;
+			break;
+@@ -194,6 +196,7 @@ activate_cb(PVOID myArgs, UINT32 symBlobLen, BYTE *symBlob, UINT32 symAttestBlob
+		case TCPA_ALG_AES:
+			memcpy(iv, "&%@)*%%$&#)%&#*$", 16);
+			break;
++#ifndef OPENSSL_NO_DES
+		case TSS_ALG_DES:
+		case TCPA_ALG_DES:
+			memcpy(iv, "&*$#%)$&", 8);
+@@ -202,6 +205,7 @@ activate_cb(PVOID myArgs, UINT32 symBlobLen, BYTE *symBlob, UINT32 symAttestBlob
+		case TCPA_ALG_3DES:
+			memcpy(iv, "&%@)*%%)", 8);
+			break;
++#endif /* OPENSSL_NO_DES */
+		default:
+			fprintf(stderr, "Bad algorithm ID: 0x%x\n", symKey.algId);
+			free(symKey.data);
+@@ -438,6 +442,7 @@ ca_create_credential(TSS_HCONTEXT hContext, TSS_HTPM hTPM,
+			asymContents.sessionKey.size = 128/8;
+			memcpy(iv, "&%@)*%%$&#)%&#*$", 16);
+			break;
++#ifndef OPENSSL_NO_DES
+		case TCPA_ALG_DES:
+			asymContents.sessionKey.size = 64/8;
+			memcpy(iv, "&*$#%)$&", 8);
+@@ -446,6 +451,7 @@ ca_create_credential(TSS_HCONTEXT hContext, TSS_HTPM hTPM,
+			asymContents.sessionKey.size = 192/8;
+			memcpy(iv, "&%@)*%%)", 8);
+			break;
++#endif /* OPENSSL_NO_DES */
+		default:
+			print_error("Invalid symmetric algorithm!", -1);
+			return TSS_E_INTERNAL_ERROR;
+@@ -727,6 +733,7 @@ main_v1_1(void){
+	}
+ 
+	switch (symKey.algId) {
++#ifndef OPENSSL_NO_DES
+		case TCPA_ALG_DES:
+			algID = TSS_ALG_DES;
+			iv = "&*$#%)$&";
+@@ -735,6 +742,7 @@ main_v1_1(void){
+			algID = TSS_ALG_3DES;
+			iv = "&%@)*%%)";
+			break;
++#endif /* OPENSSL_NO_DES */
+		case TCPA_ALG_AES:
+			algID = TSS_ALG_AES;
+			iv = "&%@)*%%$&#)%&#*$";

@@ -1,0 +1,27 @@
+From b5bc04d9062a69e116ed60ad540b56cd057d47d1 Mon Sep 17 00:00:00 2001
+From: Lans Zhang <jia.zhang@windriver.com>
+Date: Tue, 27 Dec 2016 14:25:58 +0800
+Subject: [PATCH] Don't build man pages
+
+Too many external tools are required to build the man pages. We don't
+need them anyway.
+
+Signed-off-by: George McCollister <george.mccollister@gmail.com>
+Signed-off-by: Lans Zhang <jia.zhang@windriver.com>
+---
+ Makefile.am | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/Makefile.am b/Makefile.am
+index 06ebf59..e527f34 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -1,5 +1,4 @@
+ SUBDIRS = src
+-dist_man_MANS = evmctl.1
+ 
+ doc_DATA =  examples/ima-genkey-self.sh examples/ima-genkey.sh examples/ima-gen-local-ca.sh
+ EXTRA_DIST = autogen.sh $(doc_DATA)
+-- 
+2.7.4
+

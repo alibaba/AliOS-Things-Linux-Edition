@@ -1,0 +1,91 @@
+From ed240e8a7b65cb32a2302f53c7f34bbe5457f661 Mon Sep 17 00:00:00 2001
+From: Yangjie Wang <yangjiewang@linux.alibaba.com>
+Date: Thu, 21 Jun 2018 16:27:21 +0800
+Subject: [PATCH] fix kvmtool build failed
+
+Signed-off-by: Yangjie Wang <yangjiewang@linux.alibaba.com>
+---
+ Makefile                          | 38 +++++++++++++++++++++++++++++---------
+ arm/aarch64/include/kvm/barrier.h |  6 ++++++
+ 2 files changed, 35 insertions(+), 9 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 030ff4e..cb5b2af 100644
+--- a/Makefile
++++ b/Makefile
+@@ -14,11 +14,6 @@ export E Q
+ include config/utilities.mak
+ include config/feature-tests.mak
+ 
+-CC	:= $(CROSS_COMPILE)gcc
+-CFLAGS	:=
+-LD	:= $(CROSS_COMPILE)ld
+-LDFLAGS	:=
+-
+ FIND	:= find
+ CSCOPE	:= cscope
+ TAGS	:= ctags
+@@ -104,12 +99,37 @@ ARCH ?= $(shell uname -m | sed -e s/i.86/i386/ -e s/ppc.*/powerpc/ \
+ 	  -e s/armv.*/arm/ -e s/aarch64.*/arm64/ -e s/mips64/mips/)
+ 
+ ifeq ($(ARCH),i386)
+-	ARCH         := x86
+-	DEFINES      += -DCONFIG_X86_32
++	DEFINES += -DCONFIG_X86_32
++	OBJS	+= x86/boot.o
++	OBJS	+= x86/cpuid.o
++	OBJS	+= x86/interrupt.o
++	OBJS	+= x86/ioport.o
++	OBJS	+= x86/irq.o
++	OBJS	+= x86/kvm.o
++	OBJS	+= x86/kvm-cpu.o
++	OBJS	+= x86/mptable.o
++# Exclude BIOS object files from header dependencies.
++	OTHEROBJS	+= x86/bios.o
++	OTHEROBJS	+= x86/bios/bios-rom.o
++	ARCH_INCLUDE := x86/include
++	ARCH_HAS_FRAMEBUFFER := y
+ endif
++
+ ifeq ($(ARCH),x86_64)
+-	ARCH         := x86
+-	DEFINES      += -DCONFIG_X86_64
++	DEFINES += -DCONFIG_X86_64
++	OBJS	+= x86/boot.o
++	OBJS	+= x86/cpuid.o
++	OBJS	+= x86/interrupt.o
++	OBJS	+= x86/ioport.o
++	OBJS	+= x86/irq.o
++	OBJS	+= x86/kvm.o
++	OBJS	+= x86/kvm-cpu.o
++	OBJS	+= x86/mptable.o
++# Exclude BIOS object files from header dependencies.
++	OTHEROBJS	+= x86/bios.o
++	OTHEROBJS	+= x86/bios/bios-rom.o
++	ARCH_INCLUDE := x86/include
++	ARCH_HAS_FRAMEBUFFER := y
+ 	ARCH_PRE_INIT = x86/init.S
+ endif
+ 
+diff --git a/arm/aarch64/include/kvm/barrier.h b/arm/aarch64/include/kvm/barrier.h
+index 97ab252..395234e 100644
+--- a/arm/aarch64/include/kvm/barrier.h
++++ b/arm/aarch64/include/kvm/barrier.h
+@@ -1,8 +1,14 @@
+ #ifndef KVM__KVM_BARRIER_H
+ #define KVM__KVM_BARRIER_H
+ 
++/*
+ #define mb()	asm volatile ("dmb ish"		: : : "memory")
+ #define rmb()	asm volatile ("dmb ishld"	: : : "memory")
+ #define wmb()	asm volatile ("dmb ishst"	: : : "memory")
++*/
++
++#define mb()    asm volatile (".word 0xD5033BBF"    : : : "memory")
++#define rmb()   asm volatile (".word 0xD50339BF"    : : : "memory")
++#define wmb()   asm volatile (".word 0xD5033ABF"    : : : "memory")
+ 
+ #endif /* KVM__KVM_BARRIER_H */
+-- 
+2.7.4
+

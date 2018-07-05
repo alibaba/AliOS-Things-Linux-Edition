@@ -1,0 +1,21 @@
+commit e9f5c326e6b2020300d897dd5a75301b54991ca1
+Author: Genli Pan <genli.pan@windriver.com>
+Date:   Tue May 12 15:27:48 2015 +0800
+
+fix bug in Tspi_TPM_LoadMaintenancePubKey01.c, assign to the right variable.
+
+Signed-off-by: Genli Pan <genli.pan@windriver.com>
+
+diff --git a/tcg/tpm/Tspi_TPM_LoadMaintenancePubKey01.c b/tcg/tpm/Tspi_TPM_LoadMaintenancePubKey01.c
+index b141d34..e8b18a5 100644
+--- a/tcg/tpm/Tspi_TPM_LoadMaintenancePubKey01.c
++++ b/tcg/tpm/Tspi_TPM_LoadMaintenancePubKey01.c
+@@ -194,7 +194,7 @@ main_v1_1( void )
+ 		exit( result );
+ 	}
+ 
+-	ValidationData.ulDataLength = 20;
++	ValidationData.ulExternalDataLength = 20;
+ 	ValidationData.rgbExternalData = data;
+ 
+ 		//Load Key Blob

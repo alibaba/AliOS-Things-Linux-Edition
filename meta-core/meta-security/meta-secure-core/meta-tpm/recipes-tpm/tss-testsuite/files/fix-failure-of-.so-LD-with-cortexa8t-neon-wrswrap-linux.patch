@@ -1,0 +1,33 @@
+commit 545f6773fcaf7aeff6de84f9e7594bd4c28eaa61
+Author: Yang, Xiao <xiao.yang@windriver.com>
+Date:   Wed Mar 27 19:58:26 2013 +0800
+
+Fix package testsuite's compilation failure with ARM cross CC
+
+missing -fPIC flags in ${CFLAGS}, will cause compilation errors
+when compile with cortexa8t-neon-wrswrap-linux-gnueabi-gcc.
+While it appears didn't cause problem when cross compiled for ATOM.
+
+Signed-off-by: Yang, Xiao <xiao.yang@windriver.com>
+Signed-off-by: Genli Pan <genli.pan@windriver.com>
+
+---
+ tcg/common/Makefile |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/tcg/common/Makefile b/tcg/common/Makefile
+index f389ac0..c6c12db 100644
+--- a/tcg/common/Makefile
++++ b/tcg/common/Makefile
+@@ -24,7 +24,7 @@ CC = gcc
+ CFLAGS += -g -I../include
+ 
+ .c.o:
+-	$(CC) $(CFLAGS) -c -o $@ $<
++	$(CC) $(CFLAGS) -fPIC -c -o $@ $<
+ 
+ all: common.o
+ 
+-- 
+1.7.0.4
+

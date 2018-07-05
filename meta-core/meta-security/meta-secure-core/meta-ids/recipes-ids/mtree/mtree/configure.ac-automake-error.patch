@@ -1,0 +1,35 @@
+From 72916bebc694b821fd35f8721937fdd691049e3e Mon Sep 17 00:00:00 2001
+From: Robert Yang <liezhi.yang@windriver.com>
+Date: Tue, 5 Aug 2014 21:48:17 -0700
+Subject: [PATCH] configure.ac: fixed automake error
+
+Fixed:
+configure.ac:29: installing 'scripts/compile'
+Makefile.am: error: required file './NEWS' not found
+Makefile.am: error: required file './AUTHORS' not found
+Makefile.am: error: required file './ChangeLog' not found
+autoreconf: automake failed with exit status: 1
+
+Upstream-Status: Pending
+
+Signed-off-by: Robert Yang <liezhi.yang@windriver.com>
+---
+ configure.ac |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/configure.ac b/configure.ac
+index bf228df..dc10bff 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -6,7 +6,7 @@
+ 
+ AC_INIT([mtree Utility for creating and verifying file hierarchies], [1.0.2], [http://www.freebsd.org/], [mtree])
+ AC_CONFIG_AUX_DIR(scripts)
+-AM_INIT_AUTOMAKE
++AM_INIT_AUTOMAKE([foreign])
+ dnl AM_MAINTAINER_MODE
+ AC_PREREQ(2.59)
+ AC_REVISION($Id: configure.ac 15 2013-05-30 15:29:35Z archie.cobbs $)
+-- 
+1.7.9.5
+
