@@ -1,0 +1,18 @@
+Usage
+=====
+
+Create installation SD
+----------------------
+
+To create the installation SD card, please
+run `sudo ./mk_sd_installer.sh /dev/sdx`, where `/dev/sdx` is the device of the SD card.
+
+
+Update installation SD
+----------------------
+
+To update the system with latest images built from source codes,
+copy `[Yocto source]/build/tmp/deploy/images/imx6artigoa820/${IMAGE_BASENAME}--sd_installer/image`
+to `[SD card partition 2]/`, and reflash the system.
+
+

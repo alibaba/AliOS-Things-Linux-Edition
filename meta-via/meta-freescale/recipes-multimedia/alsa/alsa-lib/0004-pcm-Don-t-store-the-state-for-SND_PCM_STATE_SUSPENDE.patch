@@ -1,0 +1,69 @@
+From 93607819d90ddf9bbdad8bbbe4af5d917ca572dc Mon Sep 17 00:00:00 2001
+From: Shengjiu Wang <shengjiu.wang@freescale.com>
+Date: Tue, 10 May 2016 15:09:26 +0800
+Subject: [PATCH 2/2] pcm: Don't store the state for SND_PCM_STATE_SUSPENDED
+
+The resume function don't update the dmix->state, if store SUSPENDED
+state in snd_pcm_dmix_state, the write function after resume will
+return error -ESTRPIPE, because the snd_pcm_write_areas() will check
+the state of the pcm device.
+This patch remove the store SND_PCM_STATE_SUSPENDED state operation
+for dmix,dshare,dsnoop.
+
+Upstream-Status: Pending
+
+Signed-off-by: Shengjiu Wang <shengjiu.wang@freescale.com>
+---
+ src/pcm/pcm_dmix.c   | 2 +-
+ src/pcm/pcm_dshare.c | 2 +-
+ src/pcm/pcm_dsnoop.c | 2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/pcm/pcm_dmix.c b/src/pcm/pcm_dmix.c
+index a6a8f3a..89c07d1 100644
+--- a/src/pcm/pcm_dmix.c
++++ b/src/pcm/pcm_dmix.c
+@@ -466,9 +466,9 @@ static snd_pcm_state_t snd_pcm_dmix_state(snd_pcm_t *pcm)
+ 	snd_pcm_state_t state;
+ 	state = snd_pcm_state(dmix->spcm);
+ 	switch (state) {
+-	case SND_PCM_STATE_SUSPENDED:
+ 	case SND_PCM_STATE_DISCONNECTED:
+ 		dmix->state = state;
++	case SND_PCM_STATE_SUSPENDED:
+ 		return state;
+ 	case SND_PCM_STATE_XRUN:
+ 		if ((err = snd_pcm_direct_slave_recover(dmix)) < 0)
+diff --git a/src/pcm/pcm_dshare.c b/src/pcm/pcm_dshare.c
+index 7cdfea2..e0b4ea7 100644
+--- a/src/pcm/pcm_dshare.c
++++ b/src/pcm/pcm_dshare.c
+@@ -261,9 +261,9 @@ static snd_pcm_state_t snd_pcm_dshare_state(snd_pcm_t *pcm)
+ 	snd_pcm_state_t state;
+ 	state = snd_pcm_state(dshare->spcm);
+ 	switch (state) {
+-	case SND_PCM_STATE_SUSPENDED:
+ 	case SND_PCM_STATE_DISCONNECTED:
+ 		dshare->state = state;
++	case SND_PCM_STATE_SUSPENDED:
+ 		return state;
+ 	case SND_PCM_STATE_XRUN:
+ 		if ((err = snd_pcm_direct_slave_recover(dshare)) < 0)
+diff --git a/src/pcm/pcm_dsnoop.c b/src/pcm/pcm_dsnoop.c
+index 539b671..03df6ff 100644
+--- a/src/pcm/pcm_dsnoop.c
++++ b/src/pcm/pcm_dsnoop.c
+@@ -212,9 +212,9 @@ static snd_pcm_state_t snd_pcm_dsnoop_state(snd_pcm_t *pcm)
+ 	snd_pcm_state_t state;
+ 	state = snd_pcm_state(dsnoop->spcm);
+ 	switch (state) {
+-	case SND_PCM_STATE_SUSPENDED:
+ 	case SND_PCM_STATE_DISCONNECTED:
+ 		dsnoop->state = state;
++	case SND_PCM_STATE_SUSPENDED:
+ 		return state;
+ 	case SND_PCM_STATE_XRUN:
+ 		if ((err = snd_pcm_direct_slave_recover(dsnoop)) < 0)
+-- 
+2.7.4
+
