@@ -15,3 +15,7 @@ meta-raspberrypi
 meta-rockchip
 
     => Rockchip BSP.
+
+meta-via
+
+    => VIA BSP.
