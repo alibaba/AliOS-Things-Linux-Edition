@@ -31,7 +31,7 @@ inherit pkgconfig
 DEPENDS_remove_class-native = " go-cross-native"
 DEPENDS_append_class-native = " go-native"
 
-RRECOMMENDS_${PN} = "kernel-module-xt-conntrack kernel-module-xftrm-user kernel-module-xt-addrtype tini"
+RRECOMMENDS_${PN} = "kernel-module-xt-conntrack kernel-module-xftrm-user kernel-module-xt-addrtype kernel-module-xt-nat kernel-module-xt-tcpudp tini"
 
 INITSCRIPT_PACKAGES += "${@bb.utils.contains('DISTRO_FEATURES','sysvinit','${PN}','',d)}"
 INITSCRIPT_NAME_${PN} = "${@bb.utils.contains('DISTRO_FEATURES','sysvinit','moby.init','',d)}"
@@ -72,7 +72,6 @@ do_install() {
     install -m 0755 ${S}/bundles/dynbinary-moby/docker-${VERSION} ${D}${bindir}/docker
 
     cd ${D}${bindir}
-    ln -sf moby docker-compose 
     ln -sf moby dockerd
     ln -sf moby docker-proxy
     ln -sf docker-containerd docker-containerd-ctr

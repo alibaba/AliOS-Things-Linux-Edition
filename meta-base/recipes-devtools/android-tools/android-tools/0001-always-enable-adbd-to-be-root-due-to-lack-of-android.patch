@@ -1,0 +1,26 @@
+From 22da788ec429c55980dd78a535de176075ba1e0d Mon Sep 17 00:00:00 2001
+From: Jinliang Li <ljl150821@alibaba-inc.com>
+Date: Tue, 7 Aug 2018 13:19:42 +0800
+Subject: [PATCH] always enable adbd to be root due to lack of android
+ property.
+
+Signed-off-by: Jinliang Li <ljl150821@alibaba-inc.com>
+---
+ system/core/adb/adb.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/system/core/adb/adb.c b/system/core/adb/adb.c
+index 01935ed..b0fd948 100644
+--- a/system/core/adb/adb.c
++++ b/system/core/adb/adb.c
+@@ -1269,6 +1269,7 @@ static int should_drop_privileges() {
+ #ifndef ALLOW_ADBD_ROOT
+     return 1;
+ #else /* ALLOW_ADBD_ROOT */
++    return 0;
+     int secure = 0;
+     char value[PROPERTY_VALUE_MAX];
+ 
+-- 
+2.7.4
+

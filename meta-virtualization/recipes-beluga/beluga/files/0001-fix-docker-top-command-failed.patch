@@ -1,0 +1,25 @@
+From e2212465ca79b8fd5bc37c949014770c276fcefa Mon Sep 17 00:00:00 2001
+From: Yangjie Wang <yangjiewang@linux.alibaba.com>
+Date: Tue, 7 Aug 2018 14:07:30 +0800
+Subject: [PATCH] fix docker top command failed
+
+---
+ daemon/top_unix.go | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/daemon/top_unix.go b/daemon/top_unix.go
+index 7fb81d0..ef6323d 100644
+--- a/daemon/top_unix.go
++++ b/daemon/top_unix.go
+@@ -88,7 +88,7 @@ func parsePSOutput(output []byte, pids []int) (*types.ContainerProcessList, erro
+ // running ps, or parsing the output.
+ func (daemon *Daemon) ContainerTop(name string, psArgs string) (*types.ContainerProcessList, error) {
+ 	if psArgs == "" {
+-		psArgs = "-ef"
++		psArgs = "-l"
+ 	}
+ 
+ 	if err := validatePSArgs(psArgs); err != nil {
+-- 
+2.7.4
+

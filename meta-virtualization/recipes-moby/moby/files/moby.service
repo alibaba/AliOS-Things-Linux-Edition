@@ -6,8 +6,8 @@ After=network.target
 
 [Service]
 Type=notify
+ExecStartPre=/sbin/modprobe xt_nat
 ExecStart=/usr/bin/dockerd
-ExecStartPost=/sbin/ifconfig -a docker0 172.17.0.1 netmask 255.255.0.0 up
 ExecReload=/bin/kill -s HUP $MAINPID
 LimitNOFILE=1048576
 

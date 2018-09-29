@@ -1,0 +1,28 @@
+From 868b7b18b43082726a27a7752134d3cc13c34739 Mon Sep 17 00:00:00 2001
+From: Jinliang Li <ljl150821@alibaba-inc.com>
+Date: Thu, 26 Jul 2018 14:33:31 +0800
+Subject: [PATCH] always enable adb network and listen on the default tcp port
+
+Signed-off-by: Jinliang Li <jinliang.li@linux.alibaba.com>
+---
+ system/core/adb/adb.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/system/core/adb/adb.c b/system/core/adb/adb.c
+index dc9c342..e87116c 100644
+--- a/system/core/adb/adb.c
++++ b/system/core/adb/adb.c
+@@ -1409,7 +1409,9 @@ int adb_main(int is_daemon, int server_port)
+     if (!value[0]) {
+         property_get("persist.adb.tcp.port", value, "");
+     }
+-    if (sscanf(value, "%d", &port) == 1 && port > 0) {
++    // Always enable network and listen on the default tcp port.
++    if (1) {
++        port = DEFAULT_ADB_LOCAL_TRANSPORT_PORT;
+         printf("using port=%d\n", port);
+         // listen on TCP port specified by service.adb.tcp.port property
+         local_init(port);
+-- 
+2.7.4
+
