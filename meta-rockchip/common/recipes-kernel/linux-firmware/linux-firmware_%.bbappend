@@ -26,3 +26,21 @@ FILES_${PN}-bcm43455 = " \
 "
 
 RDEPENDS_${PN}-bcm43455 += "${PN}-broadcom-license"
+
+# For realtek
+SRC_URI += " \
+	file://firmware/rtlbt/rtl8723d_config \
+	file://firmware/rtlbt/rtl8723d_fw \
+"
+
+PACKAGES_prepend += " \
+	${PN}-rtl8723ds \
+"
+
+LICENSE_${PN}-rtl8723ds = "Firmware-rtlwifi_firmware"
+
+FILES_${PN}-rtl8723ds = " \
+  ${nonarch_base_libdir}/firmware/rtlbt/rtl8723d_* \
+"
+
+RDEPENDS_${PN}-rtl8723ds += "${PN}-rtl-license"

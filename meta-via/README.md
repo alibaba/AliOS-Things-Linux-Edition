@@ -21,10 +21,10 @@ This layer depends on:
    * Remove/Mark line:
      * IMAGE_FSTYPES += "iso tar.bz2"
      * MACHINE ??= "intel-corei7-64"
-     * DISTRO ?= "AliOS"
+     * DISTRO ?= "alios"
 
    * Modify line:
-     * DISTRO ?= "AliOS-via"
+     * DISTRO ?= "alios-via"
 
    * Add Line:
      * ACCEPT_FSL_EULA = "1"

@@ -1,6 +1,7 @@
 # Copyright (C) 2018 Fuzhou Rockchip Electronics Co., Ltd
 # Released under the MIT license (see COPYING.MIT for the terms)
 
+require recipes-kernel/linux/linux-yocto.inc
 require linux-rockchip.inc
 
 SRC_URI = " \

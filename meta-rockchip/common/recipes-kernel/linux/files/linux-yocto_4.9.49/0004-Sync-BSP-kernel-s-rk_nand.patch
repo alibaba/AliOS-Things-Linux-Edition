@@ -1,7 +1,7 @@
 From b4aa0a38ffd8a7d1dda4ef62a8df8851ff411f6c Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 30 May 2018 18:56:55 +0800
-Subject: [PATCH 04/14] Sync BSP kernel's rk_nand
+Subject: [PATCH 04/73] Sync BSP kernel's rk_nand
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

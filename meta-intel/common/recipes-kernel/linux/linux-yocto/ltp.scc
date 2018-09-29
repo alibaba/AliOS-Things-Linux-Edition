@@ -1,0 +1,4 @@
+define KFEATURE_DESCRIPTION "Linux Test Project (LTP) enablement"
+define KFEATURE_COMPATIBILITY all
+
+kconf non-hardware ltp.cfg

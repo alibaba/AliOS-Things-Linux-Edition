@@ -1,0 +1,486 @@
+From 00e02e198c9929d7b5d800946a96f2eae53718d3 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Fri, 3 Aug 2018 15:23:16 +0800
+Subject: [PATCH] add musl_patch
+
+---
+ musl_patch | 467 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 467 insertions(+)
+ create mode 100644 musl_patch
+
+diff --git a/musl_patch b/musl_patch
+new file mode 100644
+index 0000000..5139465
+--- /dev/null
++++ b/musl_patch
+@@ -0,0 +1,467 @@
++diff --git a/runtest/commands b/runtest/commands
++index 8c109b2..9078836 100644
++--- a/runtest/commands
+++++ b/runtest/commands
++@@ -1,7 +1,7 @@
++ #DESCRIPTION:General Linux commands
++ ar export TCdat=$LTPROOT/testcases/bin; ar01
++ ld01 ld01
++-ldd01 ldd01
+++#ldd01 ldd01
++ nm01 nm01
++ file01 file01.sh
++ tar01  tar_tests.sh
++@@ -41,5 +41,5 @@ which01 which01.sh
++ lsmod01 lsmod01.sh
++ insmod01 insmod01.sh
++ wc01 wc01.sh
++-keyctl01 keyctl01.sh
++-gdb01 gdb01.sh
+++#keyctl01 keyctl01.sh
+++#gdb01 gdb01.sh
++diff --git a/runtest/controllers b/runtest/controllers
++index 219687b..4059ff3 100644
++--- a/runtest/controllers
+++++ b/runtest/controllers
++@@ -24,14 +24,14 @@ pids_5_1 pids.sh 5 1
++ #cgroup		cgroup_regression_test.sh
++ memcg_regression	memcg_regression_test.sh
++ memcg_test_3	memcg_test_3
++-memcg_failcnt memcg_failcnt.sh
++-memcg_force_empty memcg_force_empty.sh
++-memcg_limit_in_bytes memcg_limit_in_bytes.sh
++-memcg_stat_rss memcg_stat_rss.sh
++-memcg_subgroup_charge memcg_subgroup_charge.sh
+++#memcg_failcnt memcg_failcnt.sh
+++#memcg_force_empty memcg_force_empty.sh
+++#memcg_limit_in_bytes memcg_limit_in_bytes.sh
+++#memcg_stat_rss memcg_stat_rss.sh
+++#memcg_subgroup_charge memcg_subgroup_charge.sh
++ #memcg_max_usage_in_bytes	memcg_max_usage_in_bytes_test.sh
++-memcg_move_charge_at_immigrate	memcg_move_charge_at_immigrate_test.sh
++-memcg_memsw_limit_in_bytes	memcg_memsw_limit_in_bytes_test.sh
+++#memcg_move_charge_at_immigrate	memcg_move_charge_at_immigrate_test.sh
+++#memcg_memsw_limit_in_bytes	memcg_memsw_limit_in_bytes_test.sh
++ #memcg_stat	memcg_stat_test.sh
++ #memcg_use_hierarchy	memcg_use_hierarchy_test.sh
++ #memcg_usage_in_bytes	memcg_usage_in_bytes_test.sh
++@@ -372,6 +372,6 @@ cpuacct_100_1 cpuacct.sh 100 1
++ #cpuset_memory_pressure	cpuset_memory_pressure_testset.sh
++ #cpuset_memory_spread	cpuset_memory_spread_testset.sh
++ 
++-cpuset_regression_test cpuset_regression_test.sh
+++#cpuset_regression_test cpuset_regression_test.sh
++ 
++ cgroup_xattr	cgroup_xattr
++diff --git a/runtest/fs b/runtest/fs
++index 46587a2..3aa8cca 100644
++--- a/runtest/fs
+++++ b/runtest/fs
++@@ -41,7 +41,7 @@ iogen01 export LTPROOT; rwtest -N iogen01 -i 120s -s read,write -Da -Dv -n 2 500
++ 
++ fs_inod01 fs_inod $TMPDIR 10 10 10
++ linker01 linktest.sh 1000 1000
++-openfile01 openfile -f10 -t10
+++#openfile01 openfile -f10 -t10
++ inode01 inode01
++ inode02 inode02
++ stream01 stream01
++diff --git a/runtest/fs_perms_simple b/runtest/fs_perms_simple
++index b2dc720..6a2b827 100644
++--- a/runtest/fs_perms_simple
+++++ b/runtest/fs_perms_simple
++@@ -6,9 +6,9 @@
++ 
++ # We are executing shell script, thuss
++ # both exec and read right is needed.
++-fs_perms01 fs_perms 005 99 99 12 100 x 0
++-fs_perms02 fs_perms 050 99 99 200 99 x 0
++-fs_perms03 fs_perms 500 99 99 99 500 x 0
+++#fs_perms01 fs_perms 005 99 99 12 100 x 0
+++#fs_perms02 fs_perms 050 99 99 200 99 x 0
+++#fs_perms03 fs_perms 500 99 99 99 500 x 0
++ fs_perms04 fs_perms 002 99 99 12 100 w 0
++ fs_perms05 fs_perms 020 99 99 200 99 w 0
++ fs_perms06 fs_perms 200 99 99 99 500 w 0
++diff --git a/runtest/hugetlb b/runtest/hugetlb
++index 3832e82..e7b065b 100644
++--- a/runtest/hugetlb
+++++ b/runtest/hugetlb
++@@ -1,5 +1,5 @@
++ hugemmap01 hugemmap01
++-hugemmap02 hugemmap02
+++#hugemmap02 hugemmap02
++ hugemmap04 hugemmap04
++ #hugemmap05 hugemmap05
++ #hugemmap06 hugemmap06
++diff --git a/runtest/mm b/runtest/mm
++index 0dc82e7..c27fa8f 100644
++--- a/runtest/mm
+++++ b/runtest/mm
++@@ -37,7 +37,7 @@ shmt05 shmt05
++ shmt06 shmt06
++ shmt07 shmt07
++ shmt08 shmt08
++-shmt09 shmt09
+++#shmt09 shmt09
++ shmt10 shmt10
++ 
++ shm_test01	shm_test -l 10 -t 2
++diff --git a/runtest/net.ipv6_lib b/runtest/net.ipv6_lib
++index 322757c..027c3d6 100644
++--- a/runtest/net.ipv6_lib
+++++ b/runtest/net.ipv6_lib
++@@ -1,7 +1,7 @@
++ #DESCRIPTION:IPV6 related tests
++-in6_01 in6_01
+++#in6_01 in6_01
++ in6_02 in6_02
++ #getaddrinfo_01 getaddrinfo_01
++-asapi_01 asapi_01
+++#asapi_01 asapi_01
++ asapi_02 asapi_02
++ asapi_03 asapi_03
++diff --git a/runtest/sched b/runtest/sched
++index 774d11f..f5b7521 100644
++--- a/runtest/sched
+++++ b/runtest/sched
++@@ -3,8 +3,8 @@ pth_str01 pth_str01
++ pth_str02 pth_str02 -n1000
++ pth_str03 pth_str03
++ 
++-time-schedule01		time-schedule
++-trace_sched01		trace_sched -c 1
+++#time-schedule01		time-schedule
+++#trace_sched01		trace_sched -c 1
++ 
++ hackbench01 hackbench 50 process 1000
++ hackbench02 hackbench 20 thread 1000
++diff --git a/runtest/stress.others b/runtest/stress.others
++index 44c1f67..bb39930 100644
++--- a/runtest/stress.others
+++++ b/runtest/stress.others
++@@ -308,16 +308,16 @@ cgroup_fj_stress_hugetlb_200_1_each cgroup_fj_stress.sh hugetlb 200 1 each
++ ##########################
++ 
++ #test for race conditions
++-mtest05   mmstress
+++#mtest05   mmstress
++ 
++ mallocstress01  mallocstress
++ 
++ mmapstress01 mmapstress01 -p 20 -t 0.2 
++-mmapstress02 mmapstress02
++-mmapstress03 mmapstress03
+++#mmapstress02 mmapstress02
+++#mmapstress03 mmapstress03
++ mmapstress04 TMPFILE=`mktemp /tmp/example.XXXXXXXXXX`; ls -lR /usr/include/ > $TMPFILE; mmapstress04 $TMPFILE
++-mmapstress05 mmapstress05
++-mmapstress06 mmapstress06 20
+++#mmapstress05 mmapstress05
+++#mmapstress06 mmapstress06 20
++ mmapstress07 TMPFILE=`mktemp /tmp/example.XXXXXXXXXXXX`; mmapstress07 $TMPFILE
++ #mmapstress08 mmapstress08
++ mmapstress09 mmapstress09 -p 20 -t 0.2 
++@@ -327,4 +327,4 @@ mmapstress10 mmapstress10 -p 20 -t 0.2
++ #tracing
++ ##########################
++ 
++-trace-stress-test      ftrace_stress_test.sh 90
+++#trace-stress-test      ftrace_stress_test.sh 90
++diff --git a/runtest/syscalls b/runtest/syscalls
++index 8916e53..da9c499 100644
++--- a/runtest/syscalls
+++++ b/runtest/syscalls
++@@ -31,7 +31,7 @@ bind02 bind02
++ 
++ #bdflush01 bdflush01
++ 
++-brk01 brk01
+++#brk01 brk01
++ 
++ capget01 capget01
++ capget02 capget02
++@@ -80,7 +80,7 @@ clock_nanosleep2_01 clock_nanosleep2_01
++ clone01 clone01
++ clone02 clone02
++ clone03 clone03
++-clone04 clone04
+++#clone04 clone04
++ clone05 clone05
++ clone06 clone06
++ clone07 clone07
++@@ -318,8 +318,8 @@ fstatat01 fstatat01
++ 
++ fstatfs01 fstatfs01
++ fstatfs01_64 fstatfs01_64
++-fstatfs02 fstatfs02
++-fstatfs02_64 fstatfs02_64
+++#fstatfs02 fstatfs02
+++#fstatfs02_64 fstatfs02_64
++ 
++ fsync01 fsync01
++ fsync02 fsync02
++@@ -341,7 +341,7 @@ getcontext01 getcontext01
++ 
++ getcpu01 getcpu01
++ 
++-getcwd01 getcwd01
+++#getcwd01 getcwd01
++ getcwd02 getcwd02
++ getcwd03 getcwd03
++ getcwd04 getcwd04
++@@ -376,9 +376,9 @@ getgroups01 getgroups01
++ getgroups03 getgroups03
++ #getgroups03_16 getgroups03_16
++ 
++-gethostbyname_r01 gethostbyname_r01
+++#gethostbyname_r01 gethostbyname_r01
++ 
++-gethostid01 gethostid01
+++#gethostid01 gethostid01
++ 
++ gethostname01 gethostname01
++ 
++@@ -653,14 +653,14 @@ mount06 mount06
++ #move_pages11 cd $LTPROOT/testcases/bin && chown root move_pages11 && chmod 04755 move_pages11 && move_pages.sh 11
++ #move_pages12 move_pages12
++ 
++-mprotect01 mprotect01
+++#mprotect01 mprotect01
++ mprotect02 mprotect02
++ mprotect03 mprotect03
++ mprotect04 mprotect04
++ 
++ mq_notify01 mq_notify01
++ mq_notify02 mq_notify02
++-mq_open01 mq_open01
+++#mq_open01 mq_open01
++ mq_timedreceive01 mq_timedreceive01
++ mq_timedsend01 mq_timedsend01
++ mq_unlink01 mq_unlink01
++@@ -723,13 +723,13 @@ nanosleep02 nanosleep02
++ nanosleep03 nanosleep03
++ nanosleep04 nanosleep04
++ 
++-nftw01 nftw01
++-nftw6401 nftw6401
+++#nftw01 nftw01
+++#nftw6401 nftw6401
++ 
++-nice01 nice01
+++#nice01 nice01
++ nice02 nice02
++ nice03 nice03
++-nice04 nice04
+++#nice04 nice04
++ 
++ open01 open01
++ open01A symlink01 -T open01
++@@ -744,7 +744,7 @@ open09 open09
++ open10 open10
++ #open11 open11
++ open12 open12
++-open13 open13
+++#open13 open13
++ open14 open14
++ 
++ #openat test cases
++@@ -936,7 +936,7 @@ rt_sigprocmask02 rt_sigprocmask02
++ rt_sigqueueinfo01 rt_sigqueueinfo01
++ rt_sigsuspend01 rt_sigsuspend01
++ 
++-sbrk01 sbrk01
+++#sbrk01 sbrk01
++ sbrk02 sbrk02
++ #sbrk03 sbrk03
++ 
++@@ -946,26 +946,26 @@ sched_get_priority_max02 sched_get_priority_max02
++ sched_get_priority_min01 sched_get_priority_min01
++ sched_get_priority_min02 sched_get_priority_min02
++ 
++-sched_getparam01 sched_getparam01
++-sched_getparam02 sched_getparam02
++-sched_getparam03 sched_getparam03
+++#sched_getparam01 sched_getparam01
+++#sched_getparam02 sched_getparam02
+++#sched_getparam03 sched_getparam03
++ 
++-sched_rr_get_interval01 sched_rr_get_interval01
++-sched_rr_get_interval02 sched_rr_get_interval02
++-sched_rr_get_interval03 sched_rr_get_interval03
+++#sched_rr_get_interval01 sched_rr_get_interval01
+++#sched_rr_get_interval02 sched_rr_get_interval02
+++#sched_rr_get_interval03 sched_rr_get_interval03
++ 
++-sched_setparam01 sched_setparam01
++-sched_setparam02 sched_setparam02
++-sched_setparam03 sched_setparam03
++-sched_setparam04 sched_setparam04
++-sched_setparam05 sched_setparam05
+++#sched_setparam01 sched_setparam01
+++#sched_setparam02 sched_setparam02
+++#sched_setparam03 sched_setparam03
+++#sched_setparam04 sched_setparam04
+++#sched_setparam05 sched_setparam05
++ 
++-sched_getscheduler01 sched_getscheduler01
++-sched_getscheduler02 sched_getscheduler02
+++#sched_getscheduler01 sched_getscheduler01
+++#sched_getscheduler02 sched_getscheduler02
++ 
++-sched_setscheduler01 sched_setscheduler01
++-sched_setscheduler02 sched_setscheduler02
++-sched_setscheduler03 sched_setscheduler03
+++#sched_setscheduler01 sched_setscheduler01
+++#sched_setscheduler02 sched_setscheduler02
+++#sched_setscheduler03 sched_setscheduler03
++ 
++ sched_yield01 sched_yield01
++ 
++@@ -1021,7 +1021,7 @@ sendfile08_64 sendfile08_64
++ #sendfile09_64 sendfile09_64
++ 
++ 
++-sendmsg01 sendmsg01
+++#sendmsg01 sendmsg01
++ sendmsg02 sendmsg02
++ 
++ sendto01 sendto01
++@@ -1063,7 +1063,7 @@ setgroups01 setgroups01
++ #setgroups01_16 setgroups01_16
++ setgroups02 setgroups02
++ #setgroups02_16 setgroups02_16
++-setgroups03 setgroups03
+++#setgroups03 setgroups03
++ #setgroups03_16 setgroups03_16
++ setgroups04 setgroups04
++ #setgroups04_16 setgroups04_16
++@@ -1187,7 +1187,7 @@ sigaltstack01 sigaltstack01
++ sigaltstack02 sigaltstack02
++ 
++ 
++-sighold02 sighold02
+++#sighold02 sighold02
++ 
++ signal01 signal01
++ signal02 signal02
++@@ -1205,7 +1205,7 @@ sigpending02 sigpending02
++ 
++ sigprocmask01 sigprocmask01
++ 
++-sigrelse01 sigrelse01
+++#sigrelse01 sigrelse01
++ 
++ sigsuspend01 sigsuspend01
++ 
++@@ -1249,8 +1249,8 @@ stat06_64 stat06_64
++ 
++ statfs01 statfs01
++ statfs01_64 statfs01_64
++-statfs02 statfs02
++-statfs02_64 statfs02_64
+++#statfs02 statfs02
+++#statfs02_64 statfs02_64
++ statfs03 statfs03
++ statfs03_64 statfs03_64
++ 
++diff --git a/testcases/bin/cgroup_fj_common.sh b/testcases/bin/cgroup_fj_common.sh
++index 907881c..a77941a 100755
++--- a/testcases/bin/cgroup_fj_common.sh
+++++ b/testcases/bin/cgroup_fj_common.sh
++@@ -48,7 +48,7 @@ attach_and_check()
++ 
++     tst_resm TINFO "Attaching task $pid to $path"
++ 
++-    ROD echo "$pid" \> "$path/tasks"
+++    ROD echo -n "$pid" \> "$path/tasks"
++ 
++     for task in $(cat "$path/tasks"); do
++         if [ "$task" -ne "$pid" ]; then
++diff --git a/testcases/bin/cgroup_fj_function.sh b/testcases/bin/cgroup_fj_function.sh
++index 633f256..5d489f0 100755
++--- a/testcases/bin/cgroup_fj_function.sh
+++++ b/testcases/bin/cgroup_fj_function.sh
++@@ -124,7 +124,7 @@ test5()
++ 
++     ROD rmdir "$start_path/ltp_1/a"
++ 
++-    ROD echo "$pid" \> "$start_path/tasks"
+++    ROD echo -n "$pid" \> "$start_path/tasks"
++ }
++ 
++ # Group cannot be moved outside of hierarchy
++@@ -152,12 +152,12 @@ test7()
++ # Test notify_on_release with invalid inputs
++ test8()
++ {
++-    if echo "-1" > "$start_path/ltp_1/notify_on_release" 2>/dev/null; then
+++    if echo -n "-1" > "$start_path/ltp_1/notify_on_release" 2>/dev/null; then
++         tst_resm TFAIL "Can write -1 to $start_path/ltp_1/notify_on_release"
++         return
++     fi
++ 
++-    if echo "ltp" > "$start_path/ltp_1/notify_on_release" 2>/dev/null; then
+++    if echo -n "ltp" > "$start_path/ltp_1/notify_on_release" 2>/dev/null; then
++         tst_resm TFAIL "Can write ltp to $start_path/ltp_1/notify_on_release"
++         return
++     fi
++@@ -177,12 +177,12 @@ test9()
++         value=0
++     fi
++ 
++-    if ! echo "$value" > "$start_path/ltp_1/notify_on_release"; then
+++    if ! echo -n "$value" > "$start_path/ltp_1/notify_on_release"; then
++         tst_resm TFAIL "Failed to set $start_path/ltp_1/notify_on_release to $value"
++         return
++     fi
++ 
++-    ROD echo "$notify" \> "$start_path/ltp_1/notify_on_release"
+++    ROD echo -n "$notify" \> "$start_path/ltp_1/notify_on_release"
++ 
++     tst_resm TPASS "Set $start_path/ltp_1/notify_on_release to $value"
++ }
++diff --git a/testcases/bin/memcg_lib.sh b/testcases/bin/memcg_lib.sh
++index 6ea93e2..4c46cec 100755
++--- a/testcases/bin/memcg_lib.sh
+++++ b/testcases/bin/memcg_lib.sh
++@@ -79,7 +79,7 @@ shmmax_setup()
++ {
++ 	shmmax=`cat /proc/sys/kernel/shmmax`
++ 	if [ $shmmax -lt $HUGEPAGESIZE ]; then
++-		ROD echo "$HUGEPAGESIZE" \> /proc/sys/kernel/shmmax
+++		ROD echo -n "$HUGEPAGESIZE" \> /proc/sys/kernel/shmmax
++ 	fi
++ }
++ 
++diff --git a/testcases/bin/pids.sh b/testcases/bin/pids.sh
++index e2385a1..5974d80 100755
++--- a/testcases/bin/pids.sh
+++++ b/testcases/bin/pids.sh
++@@ -131,7 +131,7 @@ case2()
++ {
++ 	tmp=$((max - 1))
++ 	tst_res TINFO "limit the number of pid to $max"
++-	ROD echo $max \> $testpath/pids.max
+++	ROD echo -n $max \> $testpath/pids.max
++ 
++ 	start_pids_tasks2 $tmp
++ 
++@@ -154,7 +154,7 @@ case3()
++ {
++ 	lim=$((max + 2))
++ 	tst_res TINFO "limit the number of avalaible pid to $lim"
++-	ROD echo $lim \> $testpath/pids.max
+++	ROD echo -n $lim \> $testpath/pids.max
++ 
++ 	start_pids_tasks2 $max
++ 
++@@ -175,7 +175,7 @@ case3()
++ case4()
++ {
++ 	tst_res TINFO "limit the number of avalaible pid to 0"
++-	ROD echo 0 \> $testpath/pids.max
+++	ROD echo -n 0 \> $testpath/pids.max
++ 
++ 	start_pids_tasks2 $max
++ 
+-- 
+2.7.4
+

@@ -1,7 +1,7 @@
 From 301245e17766d8c0f9a81a8bf8ab87d52051d823 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 30 May 2018 18:57:51 +0800
-Subject: [PATCH 05/14] Sync BSP kernel's rockchip-iommu
+Subject: [PATCH 05/73] Sync BSP kernel's rockchip-iommu
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

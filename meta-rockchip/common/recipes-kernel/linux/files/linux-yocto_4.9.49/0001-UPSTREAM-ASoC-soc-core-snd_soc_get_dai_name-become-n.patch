@@ -1,7 +1,7 @@
 From 3088c0e0b441535cff329ccdef583762e4c5d084 Mon Sep 17 00:00:00 2001
 From: Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
 Date: Fri, 11 Nov 2016 01:19:28 +0000
-Subject: [PATCH 01/14] UPSTREAM: ASoC: soc-core: snd_soc_get_dai_name() become
+Subject: [PATCH 01/73] UPSTREAM: ASoC: soc-core: snd_soc_get_dai_name() become
  non static
 
 snd_soc_get_dai_name() is used from snd_soc_of_get_dai_name(),

@@ -1,0 +1,42 @@
+From 18a39ba1ec410f71c5941d5cbc913c93cd68b602 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Thu, 12 Jul 2018 17:02:34 +0800
+Subject: [PATCH 06/31] disable driver cases runtest/kernel_misc
+
+---
+ runtest/kernel_misc | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/runtest/kernel_misc b/runtest/kernel_misc
+index a574802..6ca2ef6 100644
+--- a/runtest/kernel_misc
++++ b/runtest/kernel_misc
+@@ -1,14 +1,14 @@
+ kmsg01 kmsg01
+-fw_load fw_load
++#fw_load fw_load
+ rtc01 rtc01
+-block_dev block_dev
+-tpci tpci
+-tbio tbio
+-ltp_acpi ltp_acpi
++#block_dev block_dev
++#tpci tpci
++#tbio tbio
++#ltp_acpi ltp_acpi
+ cpufreq_boost cpufreq_boost
+-uaccess uaccess
+-rcu_torture rcu_torture.sh
+-lock_torture lock_torture.sh
+-zram01 zram01.sh
+-zram02 zram02.sh
+-zram03 zram03
++#uaccess uaccess
++#rcu_torture rcu_torture.sh
++#lock_torture lock_torture.sh
++#zram01 zram01.sh
++#zram02 zram02.sh
++#zram03 zram03
+-- 
+2.7.4
+

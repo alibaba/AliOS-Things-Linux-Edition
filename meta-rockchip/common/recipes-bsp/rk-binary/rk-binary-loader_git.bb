@@ -9,7 +9,7 @@ LIC_FILES_CHKSUM = "file://${RK_BINARY_LICENSE};md5=5fd70190c5ed39734baceada8ecc
 DEPENDS = "u-boot-mkimage-native rk-binary-native"
 
 SRC_URI = "git://github.com/rockchip-linux/rkbin.git;branch=29mirror"
-SRCREV = "2a2ab345a98c7f41cd3fcb09f820828326fca596"
+SRCREV = "b789f812b52931534b7b6cf762428f94e3942bec"
 S = "${WORKDIR}/git"
 
 # Check needed variables
@@ -45,20 +45,20 @@ do_compile() {
                 TOS=`grep "TOS=" "${RK_TRUST_INI}" | cut -d'=' -f2 | sed "s#tools/rk_tools/#./#"`
                 TOSTA=`grep "TOSTA=" "${RK_TRUST_INI}" | cut -d'=' -f2 | sed "s#tools/rk_tools/#./#"`
                 if [ -n "${TOS}" ]; then
-                        loaderimage --pack --trustos "${TOS}" "${RK_TRUST_IMG}" "${RK_TEE_ADDR}"
+                        loaderimage --pack --trustos "${TOS}" "${RK_TRUST_IMG}" "${RK_TEE_ADDR}" --size 1024 1
                 else
-                        loaderimage --pack --trustos "${TOSTA}" "${RK_TRUST_IMG}" "${RK_TEE_ADDR}"
+                        loaderimage --pack --trustos "${TOSTA}" "${RK_TRUST_IMG}" "${RK_TEE_ADDR}" --size 1024 1
                 fi
         else
-                trust_merger --replace tools/rk_tools/ ./ "RKTRUST/${RK_TRUST_INI}"
+                trust_merger --replace tools/rk_tools/ ./ "RKTRUST/${RK_TRUST_INI}" --size 1024 1
         fi
 }
 
 do_deploy () {
-        install -d "${DEPLOY_DIR_IMAGE}"
+        install -d "${DEPLOYDIR}"
         for binary in "${RK_IDBLOCK_IMG}" "${RK_LOADER_BIN}" "${RK_TRUST_IMG}";do
-                install "${binary}" "${DEPLOY_DIR_IMAGE}/${binary}-${SRCREV}"
-                ln -sf "${binary}-${SRCREV}" "${DEPLOY_DIR_IMAGE}/${binary}" 
+                install "${binary}" "${DEPLOYDIR}/${binary}-${SRCREV}"
+                ln -sf "${binary}-${SRCREV}" "${DEPLOYDIR}/${binary}"
         done
 }
 addtask deploy before do_build after do_compile

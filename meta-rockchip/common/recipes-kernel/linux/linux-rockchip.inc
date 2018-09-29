@@ -1,9 +1,7 @@
 # Copyright (C) 2018 Fuzhou Rockchip Electronics Co., Ltd
 # Released under the MIT license (see COPYING.MIT for the terms)
 
-require recipes-kernel/linux/linux-yocto.inc
-
-DEPENDS += "openssl-native"
+DEPENDS += "openssl-native lz4-native"
 
 LINUX_VERSION_EXTENSION ?= "-rockchip-${LINUX_KERNEL_TYPE}"
 PV = "${LINUX_VERSION}+git${SRCPV}"
@@ -28,12 +26,5 @@ python () {
 do_install_prepend() {
     for image in ${ROCKCHIP_KERNEL_IMAGES};do
         ln -sf ${B}/${image} ${B}/arch/${ARCH}/boot/
-    done
-}
-
-# Remove installed kernel images
-do_install_append() {
-    for type in ${KERNEL_IMAGETYPES} ; do
-        rm -f ${D}/${KERNEL_IMAGEDEST}/${type}*
     done
 }

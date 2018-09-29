@@ -1,0 +1,25 @@
+From fc3a41bc8e82de4f214c9bc8b77ec13aadc7a53f Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 24 Jul 2018 11:43:10 +0800
+Subject: [PATCH 26/31] disable openat02 case
+
+---
+ runtest/syscalls | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/runtest/syscalls b/runtest/syscalls
+index 5c05f4b..4cf0691 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -749,7 +749,7 @@ open14 open14
+ 
+ #openat test cases
+ openat01 openat01
+-openat02 openat02
++#openat02 openat02
+ openat03 openat03
+ 
+ mincore01 mincore01
+-- 
+2.7.4
+

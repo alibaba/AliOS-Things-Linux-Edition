@@ -1,7 +1,7 @@
 From b950a64c5ba7ed3c974c6ebee57269594354598d Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 30 May 2018 18:58:12 +0800
-Subject: [PATCH 07/14] Sync BSP kernel's pinctrl-rockchip
+Subject: [PATCH 07/73] Sync BSP kernel's pinctrl-rockchip
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

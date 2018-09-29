@@ -1,0 +1,33 @@
+From 44fb95c0b7e05d0949c33465ff7b0ac24d7c379a Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 17 Jul 2018 15:44:32 +0800
+Subject: [PATCH 05/31] disable oom cases
+
+---
+ runtest/mm | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/runtest/mm b/runtest/mm
+index 8dc742d..21ce36d 100644
+--- a/runtest/mm
++++ b/runtest/mm
+@@ -73,11 +73,11 @@ ksm05 ksm05 -I 10
+ #ksm06_1 ksm06 -n 10
+ #ksm06_2 ksm06 -n 10000
+ 
+-oom01 oom01
+-oom02 oom02
+-oom03 oom03
+-oom04 oom04
+-oom05 oom05
++#oom01 oom01
++#oom02 oom02
++#oom03 oom03
++#oom04 oom04
++#oom05 oom05
+ 
+ swapping01 swapping01 -i 5
+ 
+-- 
+2.7.4
+

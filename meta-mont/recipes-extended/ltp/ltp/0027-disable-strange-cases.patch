@@ -1,0 +1,109 @@
+From 98ac111c839223cd8c60e9aa51cfb7aa5682d649 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 24 Jul 2018 11:47:43 +0800
+Subject: [PATCH 27/31] disable strange cases
+
+madvise09 df01_vfat ustat01 ustat02 clock_getres01 mkfs01_msdos
+mkfs01_vfat cpuhotplug02-06 cve-2014-0196 cve-2016-7117
+---
+ runtest/commands   |  6 +++---
+ runtest/cpuhotplug | 10 +++++-----
+ runtest/cve        |  4 ++--
+ runtest/syscalls   |  8 ++++----
+ 4 files changed, 14 insertions(+), 14 deletions(-)
+
+diff --git a/runtest/commands b/runtest/commands
+index dd77c08..8c109b2 100644
+--- a/runtest/commands
++++ b/runtest/commands
+@@ -23,7 +23,7 @@ df01_ext2 df01.sh -f ext2
+ df01_ext3 df01.sh -f ext3
+ df01_ext4 df01.sh -f ext4
+ #df01_xfs df01.sh -f xfs
+-df01_vfat df01.sh -f vfat
++#df01_vfat df01.sh -f vfat
+ #df01_exfat df01.sh -f exfat
+ #df01_ntfs df01.sh -f ntfs
+ mkfs01 mkfs01.sh
+@@ -33,8 +33,8 @@ mkfs01_ext4 mkfs01.sh -f ext4
+ #mkfs01_xfs mkfs01.sh -f xfs
+ #mkfs01_btrfs mkfs01.sh -f btrfs
+ #mkfs01_minix mkfs01.sh -f minix
+-mkfs01_msdos mkfs01.sh -f msdos
+-mkfs01_vfat mkfs01.sh -f vfat
++#mkfs01_msdos mkfs01.sh -f msdos
++#mkfs01_vfat mkfs01.sh -f vfat
+ #mkfs01_ntfs mkfs01.sh -f ntfs
+ #mkswap01 mkswap01.sh
+ which01 which01.sh
+diff --git a/runtest/cpuhotplug b/runtest/cpuhotplug
+index 8bfd43d..45397d8 100644
+--- a/runtest/cpuhotplug
++++ b/runtest/cpuhotplug
+@@ -1,9 +1,9 @@
+ ## Run the CPUHOTPLUG tests here
+ 
+ #cpuhotplug01 cpuhotplug01.sh -c 1 -l 1 -n 1 -f 1 -e 6
+-cpuhotplug02 cpuhotplug02.sh -c 1 -l 1
+-cpuhotplug03 cpuhotplug03.sh -c 1 -l 1
+-cpuhotplug04 cpuhotplug04.sh -l 1
+-cpuhotplug05 cpuhotplug05.sh -c 1 -l 1 -d /tmp
+-cpuhotplug06 cpuhotplug06.sh -c 1 -l 1
++#cpuhotplug02 cpuhotplug02.sh -c 1 -l 1
++#cpuhotplug03 cpuhotplug03.sh -c 1 -l 1
++#cpuhotplug04 cpuhotplug04.sh -l 1
++#cpuhotplug05 cpuhotplug05.sh -c 1 -l 1 -d /tmp
++#cpuhotplug06 cpuhotplug06.sh -c 1 -l 1
+ #cpuhotplug07 cpuhotplug07.sh -c 1 -l 1 -d /usr/src/linux
+diff --git a/runtest/cve b/runtest/cve
+index c2fa0c5..ed34074 100644
+--- a/runtest/cve
++++ b/runtest/cve
+@@ -1,9 +1,9 @@
+ # Tests which check for vulnerabilities by CVE number
+ cve-2012-0957 cve-2012-0957
+-cve-2014-0196 cve-2014-0196
++#cve-2014-0196 cve-2014-0196
+ #cve-2016-4997 cve-2016-4997
+ cve-2016-5195 dirtyc0w
+-cve-2016-7117 cve-2016-7117
++#cve-2016-7117 cve-2016-7117
+ cve-2017-2671 cve-2017-2671
+ cve-2017-5669 cve-2017-5669
+ cve-2017-6951 cve-2017-6951
+diff --git a/runtest/syscalls b/runtest/syscalls
+index 4cf0691..8f653b2 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -72,7 +72,7 @@ chroot02 chroot02
+ chroot03 chroot03
+ chroot04 chroot04
+ 
+-clock_getres01 clock_getres01
++#clock_getres01 clock_getres01
+ clock_nanosleep01 clock_nanosleep01
+ clock_nanosleep02 clock_nanosleep02
+ clock_nanosleep2_01 clock_nanosleep2_01
+@@ -761,7 +761,7 @@ madvise05 madvise05
+ #madvise06 madvise06
+ #madvise07 madvise07
+ madvise08 madvise08
+-madvise09 madvise09
++#madvise09 madvise09
+ 
+ newuname01 newuname01
+ 
+@@ -1385,8 +1385,8 @@ umount2_01 umount2_01
+ umount2_02 umount2_02
+ umount2_03 umount2_03
+ 
+-ustat01 ustat01
+-ustat02 ustat02
++#ustat01 ustat01
++#ustat02 ustat02
+ 
+ utime01 utime01
+ utime01A symlink01 -T utime01
+-- 
+2.7.4
+

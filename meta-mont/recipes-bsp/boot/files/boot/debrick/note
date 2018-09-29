@@ -1,0 +1,20 @@
+# take little-endian as example
+
+# select FPGA or ASIC mode in Makefile
+
+# select ASIC DDR3 or DDR2 in Makefile
+
+# unmark DEBRICK=1 in Makefile
+DEBRICK=1
+
+# build the boot image, little-endian
+make LE=1
+
+# reset the system or press hardware reset button
+mipsel-openwrt-linux-gdb -x debrick/reset.gdb
+
+# load boot1
+mipsel-openwrt-linux-gdb -x debrick/boot1_debrick.gdb
+
+# load boot2
+mipsel-openwrt-linux-gdb -x debrick/boot2_debrick.gdb

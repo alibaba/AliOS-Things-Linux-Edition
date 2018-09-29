@@ -1,0 +1,67 @@
+From 7e2b0310c87b17a16c0dc15cac6f1a516d2bb350 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Mon, 16 Jul 2018 14:32:05 +0800
+Subject: [PATCH 08/31] disable can swap cpuhotplug and isofs
+
+---
+ runtest/can        |  4 ++--
+ runtest/cpuhotplug |  2 +-
+ runtest/fs         |  2 +-
+ runtest/syscalls   | 12 ++++++------
+ 4 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/runtest/can b/runtest/can
+index 6aa2ae9..1510ab0 100644
+--- a/runtest/can
++++ b/runtest/can
+@@ -1,2 +1,2 @@
+-can_filter can_run_tests.sh can_filter
+-can_rcv_own_msgs can_run_tests.sh can_rcv_own_msgs
++#can_filter can_run_tests.sh can_filter
++#can_rcv_own_msgs can_run_tests.sh can_rcv_own_msgs
+diff --git a/runtest/cpuhotplug b/runtest/cpuhotplug
+index ec7f11e..8bfd43d 100644
+--- a/runtest/cpuhotplug
++++ b/runtest/cpuhotplug
+@@ -6,4 +6,4 @@ cpuhotplug03 cpuhotplug03.sh -c 1 -l 1
+ cpuhotplug04 cpuhotplug04.sh -l 1
+ cpuhotplug05 cpuhotplug05.sh -c 1 -l 1 -d /tmp
+ cpuhotplug06 cpuhotplug06.sh -c 1 -l 1
+-cpuhotplug07 cpuhotplug07.sh -c 1 -l 1 -d /usr/src/linux
++#cpuhotplug07 cpuhotplug07.sh -c 1 -l 1 -d /usr/src/linux
+diff --git a/runtest/fs b/runtest/fs
+index 33a8412..17d0810 100644
+--- a/runtest/fs
++++ b/runtest/fs
+@@ -75,4 +75,4 @@ fs_racer fs_racer.sh -t 5
+ #Run the Quota Remount Test introduced in linux-2.6.26
+ quota_remount_test01 quota_remount_test01.sh
+ 
+-isofs isofs.sh
++#isofs isofs.sh
+diff --git a/runtest/syscalls b/runtest/syscalls
+index b259c10..bc2493e 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -1262,12 +1262,12 @@ stime02 stime02
+ 
+ string01 string01
+ 
+-swapoff01 swapoff01
+-swapoff02 swapoff02
+-
+-swapon01 swapon01
+-swapon02 swapon02
+-swapon03 swapon03
++#swapoff01 swapoff01
++#swapoff02 swapoff02
++#
++#swapon01 swapon01
++#swapon02 swapon02
++#swapon03 swapon03
+ 
+ #Exclusive syscall() for POWER6 machines only
+ #switch01 endian_switch01
+-- 
+2.7.4
+

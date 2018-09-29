@@ -1,0 +1,30 @@
+From 2135bbad04011e70b833e4d5d54ab95d1e2f0820 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Wed, 18 Jul 2018 14:08:26 +0800
+Subject: [PATCH 15/31] move syscalls-ipc from functional to skipped
+
+---
+ functional | 2 +-
+ skipped    | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/functional b/functional
+index 1c0a9c0..a26ff6c 100644
+--- a/functional
++++ b/functional
+@@ -1 +1 @@
+-admin_tools,can,cap_bounds,commands,connectors,containers,controllers,cpuhotplug,crashme,cve,fcntl-locktests,filecaps,fs_bind,fs_ext4,fs_perms_simple,hugetlb,input,io,kernel_misc,math,mm,modules,net.ipv6_lib,nptl,numa,power_management_tests,securebits,syscalls,syscalls-ipc,timers
++admin_tools,can,cap_bounds,commands,connectors,containers,controllers,cpuhotplug,crashme,cve,fcntl-locktests,filecaps,fs_bind,fs_ext4,fs_perms_simple,hugetlb,input,io,kernel_misc,math,mm,modules,net.ipv6_lib,nptl,numa,power_management_tests,securebits,syscalls,timers
+diff --git a/skipped b/skipped
+index 876a966..43d89a5 100644
+--- a/skipped
++++ b/skipped
+@@ -1,4 +1,4 @@
+-dma_thread_diotest,fs_readonly,ima,lvm.part1,lvm.part2,scsi_debug.part1,ltp-aiodio.part1,ltp-aiodio.part2,ltp-aiodio.part3,ltp-aiodio.part4,net.ipv6,net.multicast,net.rpc,net.rpc_tests,net.sctp,net.tcp_cmds,net.tirpc_tests,network_commands,power_management_tests_exclusive,quickhit,smack,tpm_tools,tracing
++dma_thread_diotest,fs_readonly,ima,lvm.part1,lvm.part2,scsi_debug.part1,ltp-aiodio.part1,ltp-aiodio.part2,ltp-aiodio.part3,ltp-aiodio.part4,net.ipv6,net.multicast,net.rpc,net.rpc_tests,net.sctp,net.tcp_cmds,net.tirpc_tests,network_commands,power_management_tests_exclusive,quickhit,smack,syscalls-ipc,tpm_tools,tracing
+ io_cd,io_floppy,ltp-aio-stress.part1,ltp-aio-stress.part2,net.features,net.nfs,net_stress.appl,net_stress.broken_ip,net_stress.interface,net_stress.ipsec_icmp,net_stress.ipsec_tcp,net_stress.ipsec_udp,net_stress.multicast,net_stress.route,stress.part1,stress.part2,stress.part3
+ 
+ #lvm.part1 ms-dos
+-- 
+2.7.4
+

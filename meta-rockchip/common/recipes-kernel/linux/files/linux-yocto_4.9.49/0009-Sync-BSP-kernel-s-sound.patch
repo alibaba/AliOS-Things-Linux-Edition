@@ -1,7 +1,7 @@
 From 66c780057276c9220c732ce4afad086c237579cd Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Thu, 31 May 2018 20:03:51 +0800
-Subject: [PATCH 09/14] Sync BSP kernel's sound
+Subject: [PATCH 09/73] Sync BSP kernel's sound
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

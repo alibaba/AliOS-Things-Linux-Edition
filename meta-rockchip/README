@@ -1,56 +1,110 @@
-
-# How to build
-1. create your build project
-
-    `. ./oe-init-build-env`
-
-2. copy configuration for rockchip bsp
-
-    `cp ../meta-bsp/meta-rockchip/bblayers_meta-rockchip.conf conf/bblayers.conf`
-    `cp ../meta-bsp/meta-rockchip/local_rockchip-rk3308-evb.conf conf/local.conf`
-
-3. build the image
-
-    `bitbake core-image-minimal`
-
-4. Get all the images in directory tmp/deploy/images/rockchip-rk3308-evb
-
-    loader.bin
-
-    switch the maskrom mode into rockusb mode
-
-    core-image-minimal-rockchip-rk3308-evb.wic
-
-    A gpt disk image that includes idblock.img, resource.img(dtb), kernel.img,
-    u-boot-rk.img, trust.img and rootfs. It is created by definition in
-    meta-bsp/meta-rockchip/wic/generic-gptdisk.wks.
+meta-rockchip
+=============
+rockchip BSP layer
 
 
-# How to deploy
-## Deploy images on rk3308-evb board in linux host
-1. Get the rockchip deploy tool,it is in `build/tmp/work/x86_64-linux/rk-binary-native/git-r0/git/tools/upgrade_tool`
-
-2. Press long the maskrom button and reset button on rk3308-evb board, go into the maskrom mode
-
-3. Switch the maskrom mode into rockusb mode
-
-    `sudo ./upgrade_tool db loader.bin`
-
-4. In rockusb mode, deploy the fully included .wic image into flash.
-
-    `sudo ./upgrade_tool wl 0 core-image-minimal-rockchip-rk3308-evb.wic`
-
-5. Press reset button to reboot
+Dependencies
+============
+This layer depends on:
+    <repo_dir>/meta-yp/meta
 
 
-# How to debug
-## UART
-### In linux host
+How to build
+============
+1. create your build project, e.g. build-rockchip
 
-    sudo minicom -D /dev/ttyUSB0 -b 1500000
+    $ source oe-init-build-env build-rockchip
 
-### In windows host
-1. Install the usb-uart driver
+2. Add this layer
 
-2. Connect the serial port, e.g. COM1, set the baud rate to 1500000 in putty or secureCRT.
+    Add this layer along with its dependencies into build-rockchip/conf/bblayers.conf. e.g.
+    BBLAYERS ?= " \
+        ...
+        <repo_dir>/meta-bsp/meta-rockchip \
+        "
+    Or using bitbake-layers to add this layer and its dependencies
+    $ bitbake-layers add-layer <repo_dir>/meta-bsp/meta-rockchip
+
+3. To build for a particular board, set the MACHINE in build-rockchip/conf/local.conf,
+   e.g. MACHINE = "rockchip-rk3308-evb", this layer defines the below machines you can set.
+
+    - rockchip-rk3308-evb
+      rockchip rk3308 evb arm64 board.
+
+    - rockchip-rk3308-evb-aarch32
+      rockchip rk3308 evb arm32 board.
+
+    - rockchip-rk3308-voice-module-aarch32
+      rockchip rk3308 evb arm32 voice module board.
+
+    - rockchip-rk3308-smart-voice-a1-aarch32
+      rockchip rk3308 smart voice a1 board.
+
+4. build the image
+
+    $ bitbake core-image-minimal
+
+5. Get all the images in directory build-rockchip/tmp/deploy/images/rockchip-rk3308-evb
+
+    - loader.bin
+      switch the maskrom mode into loader mode
+
+    - wic image,e.g. core-image-minimal-rockchip-rk3308-evb.wic
+      A gpt disk image that includes idblock.img, resource.img(dtb), kernel.img,
+      u-boot-rk.img, trust.img and rootfs. It is created by definition in
+      meta-bsp/meta-rockchip/wic/generic-gptdisk.wks.
+
+
+How to deploy
+=============
+Deploy image into rockchip target on linux host
+1. Get the rockchip deploy tool, assuming your linux host is x86_64, it is in
+   build-rockchip/tmp/work/x86_64-linux/rk-binary-native/git-r0/git/tools/upgrade_tool
+   upgrade_tool is 32bit program, run the following steps if your 64bit linux host doesn't
+   support multi-architecture. On ubuntu 16.04 x86_64 host,
+
+   - sudo dpkg --add-architecture i386
+   - sudo apt-get update
+   - sudo apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386
+
+2. Press long the maskrom button and reset button on rk3308-evb board,
+    go into the maskrom mode.
+
+3. Switch the maskrom mode into loader mode
+
+    $ sudo ./upgrade_tool db loader.bin
+
+4. In loader mode, deploy the fully included .wic image into flash.
+
+    $ sudo ./upgrade_tool wl 0 core-image-minimal-rockchip-rk3308-evb.wic
+
+5. Press reset button to boot
+
+
+How to debug
+============
+UART
+Connect the UART DEBUG port with your pc
+
+1. In linux host
+
+    $ sudo minicom -D /dev/ttyUSB0 -b 1500000
+
+2. In windows host
+    a) Install the usb-uart driver
+
+    b) Connect the serial port, e.g. COM1, set the baud rate to 1500000 in putty or secureCRT.
+
+ADB
+Connect the USB OTG port with your pc
+
+1. run remote shell interactively
+    $ adb shell
+    sh-4.4$
+
+2. push files into devices from host
+    $ adb push [-p] <local> <remote>
+
+3. get files into host from devices
+    $ adb pull [-p] [-a] <remote> [<local>]
 

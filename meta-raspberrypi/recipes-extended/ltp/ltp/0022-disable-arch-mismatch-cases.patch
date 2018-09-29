@@ -1,0 +1,55 @@
+From f68e9e8f8e3778c4fb949d32abe4c1f92e8ec226 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 24 Jul 2018 11:12:48 +0800
+Subject: [PATCH 22/31] disable arch mismatch cases
+
+signal06 mmapstress08 runpwtests03 runpwtests04
+---
+ runtest/power_management_tests | 4 ++--
+ runtest/stress.others          | 2 +-
+ runtest/syscalls               | 2 +-
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/runtest/power_management_tests b/runtest/power_management_tests
+index 26de676..22e5f18 100644
+--- a/runtest/power_management_tests
++++ b/runtest/power_management_tests
+@@ -1,7 +1,7 @@
+ #POWER_MANAGEMENT
+ #runpwtests01 runpwtests01.sh
+ #runpwtests02 runpwtests02.sh
+-runpwtests03 runpwtests03.sh
+-runpwtests04 runpwtests04.sh
++#runpwtests03 runpwtests03.sh
++#runpwtests04 runpwtests04.sh
+ #runpwtests05 runpwtests05.sh
+ #runpwtests06 runpwtests06.sh
+diff --git a/runtest/stress.others b/runtest/stress.others
+index c876777..44c1f67 100644
+--- a/runtest/stress.others
++++ b/runtest/stress.others
+@@ -319,7 +319,7 @@ mmapstress04 TMPFILE=`mktemp /tmp/example.XXXXXXXXXX`; ls -lR /usr/include/ > $T
+ mmapstress05 mmapstress05
+ mmapstress06 mmapstress06 20
+ mmapstress07 TMPFILE=`mktemp /tmp/example.XXXXXXXXXXXX`; mmapstress07 $TMPFILE
+-mmapstress08 mmapstress08
++#mmapstress08 mmapstress08
+ mmapstress09 mmapstress09 -p 20 -t 0.2 
+ mmapstress10 mmapstress10 -p 20 -t 0.2
+ 
+diff --git a/runtest/syscalls b/runtest/syscalls
+index 4ff46ef..156b596 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -1194,7 +1194,7 @@ signal02 signal02
+ signal03 signal03
+ signal04 signal04
+ signal05 signal05
+-signal06 signal06
++#signal06 signal06
+ 
+ signalfd01 signalfd01
+ 
+-- 
+2.7.4
+

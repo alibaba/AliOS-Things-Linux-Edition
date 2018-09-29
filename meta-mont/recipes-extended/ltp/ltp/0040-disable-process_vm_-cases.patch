@@ -1,0 +1,33 @@
+From ba802e91763ffb5bd6a8f2f55d0dc2fe9859f59b Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Fri, 24 Aug 2018 11:11:57 +0800
+Subject: [PATCH 1/2] disable process_vm_* cases
+
+---
+ runtest/syscalls | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/runtest/syscalls b/runtest/syscalls
+index 2b7b16e..2712fca 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -811,11 +811,11 @@ preadv02_64 preadv02_64
+ 
+ profil01 profil01
+ 
+-process_vm_readv01 process_vm01 -r
+-process_vm_readv02 process_vm_readv02
+-process_vm_readv03 process_vm_readv03
+-process_vm_writev01 process_vm01 -w
+-process_vm_writev02 process_vm_writev02
++#process_vm_readv01 process_vm01 -r
++#process_vm_readv02 process_vm_readv02
++#process_vm_readv03 process_vm_readv03
++#process_vm_writev01 process_vm01 -w
++#process_vm_writev02 process_vm_writev02
+ 
+ prot_hsymlinks prot_hsymlinks
+ dirtyc0w dirtyc0w
+-- 
+2.7.4
+

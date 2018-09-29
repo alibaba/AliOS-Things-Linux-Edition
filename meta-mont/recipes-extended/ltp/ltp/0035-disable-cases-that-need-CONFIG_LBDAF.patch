@@ -1,0 +1,55 @@
+From e781e8bd4fe99d815bf231cbbe5512fa4171373a Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Wed, 22 Aug 2018 11:33:43 +0800
+Subject: [PATCH 2/6] disable cases that need CONFIG_LBDAF
+
+---
+ runtest/commands | 4 ++--
+ runtest/syscalls | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/runtest/commands b/runtest/commands
+index 8c109b2..4c66198 100644
+--- a/runtest/commands
++++ b/runtest/commands
+@@ -21,7 +21,7 @@ sssd03 sssd03
+ du01 du01.sh
+ df01_ext2 df01.sh -f ext2
+ df01_ext3 df01.sh -f ext3
+-df01_ext4 df01.sh -f ext4
++#df01_ext4 df01.sh -f ext4
+ #df01_xfs df01.sh -f xfs
+ #df01_vfat df01.sh -f vfat
+ #df01_exfat df01.sh -f exfat
+@@ -29,7 +29,7 @@ df01_ext4 df01.sh -f ext4
+ mkfs01 mkfs01.sh
+ mkfs01_ext2 mkfs01.sh -f ext2
+ mkfs01_ext3 mkfs01.sh -f ext3
+-mkfs01_ext4 mkfs01.sh -f ext4
++#mkfs01_ext4 mkfs01.sh -f ext4
+ #mkfs01_xfs mkfs01.sh -f xfs
+ #mkfs01_btrfs mkfs01.sh -f btrfs
+ #mkfs01_minix mkfs01.sh -f minix
+diff --git a/runtest/syscalls b/runtest/syscalls
+index 8916e53..024c496 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -621,13 +621,13 @@ mmap06 mmap06
+ mmap07 mmap07
+ mmap08 mmap08
+ mmap09 mmap09
+-mmap12 mmap12
++#mmap12 mmap12
+ mmap13 mmap13
+ mmap14 mmap14
+ # test is broken, mask it for now.
+ #mmap11 mmap11 -i 30000
+ mmap15 mmap15
+-mmap16 mmap16
++#mmap16 mmap16
+ 
+ #modify_ldt01 modify_ldt01
+ #modify_ldt02 modify_ldt02
+-- 
+2.7.4
+

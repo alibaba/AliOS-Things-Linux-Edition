@@ -1,0 +1,69 @@
+From 4fc087150170f0d0067ddb7109c926bedd44f366 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 31 Jul 2018 20:56:26 +0800
+Subject: [PATCH 31/31] move pids cases to front in controllers
+
+---
+ runtest/controllers | 44 ++++++++++++++++++++++----------------------
+ 1 file changed, 22 insertions(+), 22 deletions(-)
+
+diff --git a/runtest/controllers b/runtest/controllers
+index 391795c..219687b 100644
+--- a/runtest/controllers
++++ b/runtest/controllers
+@@ -1,4 +1,26 @@
+ #DESCRIPTION:Resource Management testing
++
++pids_1_1 pids.sh 1 1
++pids_1_2 pids.sh 1 2
++pids_1_10 pids.sh 1 10
++pids_1_50 pids.sh 1 50
++pids_1_100 pids.sh 1 100
++pids_2_1 pids.sh 2 1
++pids_2_2 pids.sh 2 2
++pids_2_10 pids.sh 2 10
++pids_2_50 pids.sh 2 50
++pids_2_100 pids.sh 2 100
++pids_3_0 pids.sh 3 0
++pids_3_1 pids.sh 3 1
++pids_3_10 pids.sh 3 10
++pids_3_50 pids.sh 3 50
++pids_3_100 pids.sh 3 100
++pids_4_1 pids.sh 4 1
++pids_4_2 pids.sh 4 2
++pids_4_10 pids.sh 4 10
++pids_4_50 pids.sh 4 50
++pids_4_100 pids.sh 4 100
++pids_5_1 pids.sh 5 1
+ #cgroup		cgroup_regression_test.sh
+ memcg_regression	memcg_regression_test.sh
+ memcg_test_3	memcg_test_3
+@@ -353,25 +375,3 @@ cpuacct_100_1 cpuacct.sh 100 1
+ cpuset_regression_test cpuset_regression_test.sh
+ 
+ cgroup_xattr	cgroup_xattr
+-
+-pids_1_1 pids.sh 1 1
+-pids_1_2 pids.sh 1 2
+-pids_1_10 pids.sh 1 10
+-pids_1_50 pids.sh 1 50
+-pids_1_100 pids.sh 1 100
+-pids_2_1 pids.sh 2 1
+-pids_2_2 pids.sh 2 2
+-pids_2_10 pids.sh 2 10
+-pids_2_50 pids.sh 2 50
+-pids_2_100 pids.sh 2 100
+-pids_3_0 pids.sh 3 0
+-pids_3_1 pids.sh 3 1
+-pids_3_10 pids.sh 3 10
+-pids_3_50 pids.sh 3 50
+-pids_3_100 pids.sh 3 100
+-pids_4_1 pids.sh 4 1
+-pids_4_2 pids.sh 4 2
+-pids_4_10 pids.sh 4 10
+-pids_4_50 pids.sh 4 50
+-pids_4_100 pids.sh 4 100
+-pids_5_1 pids.sh 5 1
+-- 
+2.7.4
+

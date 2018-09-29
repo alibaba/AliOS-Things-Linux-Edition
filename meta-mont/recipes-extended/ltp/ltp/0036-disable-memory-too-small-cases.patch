@@ -1,0 +1,90 @@
+From f0005bdbcf1be49e1e014a147a937fd82b063459 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Wed, 22 Aug 2018 12:23:35 +0800
+Subject: [PATCH 3/6] disable memory too small cases
+
+---
+ runtest/math     |  8 ++++----
+ runtest/mm       | 16 ++++++++--------
+ runtest/syscalls |  2 +-
+ 3 files changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/runtest/math b/runtest/math
+index 110c41e..df043ce 100644
+--- a/runtest/math
++++ b/runtest/math
+@@ -3,11 +3,11 @@ abs01 abs01
+ 
+ atof01 atof01
+ 
+-float_bessel cd $LTPROOT/testcases/bin; float_bessel -v
+-float_exp_log cd $LTPROOT/testcases/bin; float_exp_log -v
++#float_bessel cd $LTPROOT/testcases/bin; float_bessel -v
++#float_exp_log cd $LTPROOT/testcases/bin; float_exp_log -v
+ float_iperb cd $LTPROOT/testcases/bin; float_iperb -v
+-float_power cd $LTPROOT/testcases/bin; float_power -v
+-float_trigo cd $LTPROOT/testcases/bin; float_trigo -v
++#float_power cd $LTPROOT/testcases/bin; float_power -v
++#float_trigo cd $LTPROOT/testcases/bin; float_trigo -v
+ 
+ fptest01 fptest01
+ fptest02 fptest02
+diff --git a/runtest/mm b/runtest/mm
+index 0dc82e7..0174d04 100644
+--- a/runtest/mm
++++ b/runtest/mm
+@@ -14,17 +14,17 @@ mtest01w mtest01 -p80 -w
+ 
+ #test for race conditions
+ #mtest05   mmstress
+-mtest06   mmap1 -x 0.05
++#mtest06   mmap1 -x 0.05
+ mtest06_2 mmap2 -x 0.002 -a -p
+-mtest06_3 mmap3 -x 0.002 -p
++#mtest06_3 mmap3 -x 0.002 -p
+ # Remains diabled till the infinite loop problem is solved
+ #mtest-6_4 shmat1 -x 0.00005
+ 
+ mem01 mem01
+-mem02 mem02
++#mem02 mem02
+ mem03 mem03
+ 
+-page01 page01
++#page01 page01
+ page02 page02
+ 
+ data_space data_space
+@@ -60,12 +60,12 @@ mmap10_2 mmap10 -s
+ mmap10_3 mmap10 -a -s
+ mmap10_4 mmap10 -a -s -i 60
+ 
+-ksm01 ksm01
+-ksm01_1 ksm01 -u 128
++#ksm01 ksm01
++#ksm01_1 ksm01 -u 128
+ #ksm02 ksm02
+ #ksm02_1 ksm02 -u 128
+-ksm03 ksm03
+-ksm03_1 ksm03 -u 128
++#ksm03 ksm03
++#ksm03_1 ksm03 -u 128
+ #ksm04 ksm04
+ #ksm04_1 ksm04 -u 128
+ ksm05 ksm05 -I 10
+diff --git a/runtest/syscalls b/runtest/syscalls
+index 024c496..eda5870 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -425,7 +425,7 @@ get_robust_list01 get_robust_list01
+ 
+ getrusage01 getrusage01
+ getrusage02 getrusage02
+-getrusage03 getrusage03
++#getrusage03 getrusage03
+ getrusage04 getrusage04
+ 
+ getsid01 getsid01
+-- 
+2.7.4
+

@@ -1,0 +1,27 @@
+From 8893d61c997f994e6ee5cbdfca7ee58e514a347e Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 31 Jul 2018 15:50:34 +0800
+Subject: [PATCH 19/31] ignore signal 32,33 and 34 when GLIBC is not used
+
+---
+ lib/tst_sig.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/lib/tst_sig.c b/lib/tst_sig.c
+index 36565e1..728c9e2 100644
+--- a/lib/tst_sig.c
++++ b/lib/tst_sig.c
+@@ -169,6 +169,10 @@ void tst_sig(int fork_flag, void (*handler) (), void (*cleanup) ())
+ 		case __SIGRTMAX - 2:
+ 		case __SIGRTMAX - 1:
+ 		case __SIGRTMAX:
++#else
++                case 32:
++                case 33:
++                case 34:
+ #endif
+ #ifdef SIGSWAP
+ 		case SIGSWAP:
+-- 
+2.7.4
+

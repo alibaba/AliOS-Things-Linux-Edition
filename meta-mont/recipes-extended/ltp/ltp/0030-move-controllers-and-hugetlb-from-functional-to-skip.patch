@@ -1,0 +1,43 @@
+From c4bde23387856bddad672a5294aa9eae7f17c566 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Mon, 30 Jul 2018 10:48:52 +0800
+Subject: [PATCH 30/31] move controllers and hugetlb from functional to skipped
+
+---
+ func_test.sh | 1 +
+ functional   | 2 +-
+ skipped      | 2 +-
+ 3 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/func_test.sh b/func_test.sh
+index 97ffc95..4d0fae6 100644
+--- a/func_test.sh
++++ b/func_test.sh
+@@ -17,6 +17,7 @@ echo 12345678 > /etc/hostid
+ echo "*****************************************************"
+ echo "               start functional test                 "
+ echo "*****************************************************"
++./runltp -f hugetlb
+ ./runltp -f `cat functional`
+ echo "*****************************************************"
+ echo "               end functional test     "
+diff --git a/functional b/functional
+index d1007a1..f586abf 100644
+--- a/functional
++++ b/functional
+@@ -1 +1 @@
+-admin_tools,can,cap_bounds,commands,connectors,containers,controllers,cpuhotplug,cve,fcntl-locktests,filecaps,fs_bind,fs_ext4,fs_perms_simple,hugetlb,input,io,kernel_misc,math,mm,modules,net.ipv6_lib,nptl,numa,power_management_tests,securebits,syscalls,timers
++admin_tools,can,cap_bounds,commands,connectors,containers,cpuhotplug,cve,fcntl-locktests,filecaps,fs_bind,fs_ext4,fs_perms_simple,input,io,kernel_misc,math,mm,modules,net.ipv6_lib,nptl,numa,power_management_tests,securebits,syscalls,timers
+diff --git a/skipped b/skipped
+index ea427b4..ccd3103 100644
+--- a/skipped
++++ b/skipped
+@@ -1,4 +1,4 @@
+-crashme,dma_thread_diotest,fs_readonly,ima,lvm.part1,lvm.part2,scsi_debug.part1,ltp-aiodio.part1,ltp-aiodio.part2,ltp-aiodio.part3,ltp-aiodio.part4,net.ipv6,net.multicast,net.rpc,net.rpc_tests,net.sctp,net.tcp_cmds,net.tirpc_tests,network_commands,power_management_tests_exclusive,quickhit,smack,syscalls-ipc,tpm_tools,tracing
++controllers,crashme,dma_thread_diotest,fs_readonly,hugetlb,ima,lvm.part1,lvm.part2,scsi_debug.part1,ltp-aiodio.part1,ltp-aiodio.part2,ltp-aiodio.part3,ltp-aiodio.part4,net.ipv6,net.multicast,net.rpc,net.rpc_tests,net.sctp,net.tcp_cmds,net.tirpc_tests,network_commands,power_management_tests_exclusive,quickhit,smack,syscalls-ipc,tpm_tools,tracing
+ io_cd,io_floppy,ltp-aio-stress.part1,ltp-aio-stress.part2,net.features,net.nfs,net_stress.appl,net_stress.broken_ip,net_stress.interface,net_stress.ipsec_icmp,net_stress.ipsec_tcp,net_stress.ipsec_udp,net_stress.multicast,net_stress.route,stress.part1,stress.part2,stress.part3
+ 
+ #lvm.part1 ms-dos
+-- 
+2.7.4
+

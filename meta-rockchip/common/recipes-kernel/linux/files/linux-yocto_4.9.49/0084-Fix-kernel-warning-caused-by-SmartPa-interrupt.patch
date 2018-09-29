@@ -1,0 +1,97 @@
+From 780ed24fbe355edaedc3abc5838228da46775c04 Mon Sep 17 00:00:00 2001
+From: lr437200361@126.com
+Date: Thu, 13 Sep 2018 16:27:00 +0800
+Subject: [PATCH] Fix kernel warning caused by SmartPa interrupt
+
+---
+ arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi | 3 +--
+ include/sound/cs35l41.h                              | 2 --
+ sound/soc/codecs/cs35l41-i2c.c                       | 3 +--
+ sound/soc/codecs/cs35l41.c                           | 9 ---------
+ 4 files changed, 2 insertions(+), 15 deletions(-)
+
+diff --git a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+index 54d1b21..c5f7c76 100644
+--- a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
++++ b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+@@ -425,8 +425,7 @@
+ 		compatible = "cirrus,cs35l41";
+ 		reg = <0x40>;
+ 		reset-gpios = <&gpio1 RK_PC6 GPIO_ACTIVE_HIGH>;
+-		irq-gpio = <&gpio1 RK_PC4 IRQ_TYPE_EDGE_FALLING>;
+-		rockchip,grf = <&grf1>;
++		cirrus,irq-gpio = <&gpio1 RK_PC7 GPIO_ACTIVE_HIGH>;
+ 		cirrus,boost-peak-milliamp = <4500>;
+ 		cirrus,boost-ind-nanohenry = <1000>;
+ 		cirrus,boost-cap-microfarad = <15>;
+diff --git a/include/sound/cs35l41.h b/include/sound/cs35l41.h
+index 1ecf183..969cec3 100755
+--- a/include/sound/cs35l41.h
++++ b/include/sound/cs35l41.h
+@@ -11,7 +11,6 @@
+ #ifndef __CS35L41_H
+ #define __CS35L41_H
+ 
+-#define GRF_SOC_CON2 0x32c
+ struct classh_cfg {
+ 	bool classh_bst_override;
+ 	bool classh_algo_enable;
+@@ -72,7 +71,6 @@ struct cs35l41_private {
+ 	struct completion global_pup_done;
+ 	struct completion global_pdn_done;
+ 	struct completion mbox_cmd;
+-    struct regmap *grf;
+ };
+ 
+ int cs35l41_probe(struct cs35l41_private *cs35l41,
+diff --git a/sound/soc/codecs/cs35l41-i2c.c b/sound/soc/codecs/cs35l41-i2c.c
+index 14373bb..a549677 100755
+--- a/sound/soc/codecs/cs35l41-i2c.c
++++ b/sound/soc/codecs/cs35l41-i2c.c
+@@ -67,7 +67,7 @@ static int cs35l41_i2c_probe(struct i2c_client *client,
+     int gpio_pin;
+ 	int ret;
+ 
+-    gpio_pin = of_get_named_gpio_flags(np, "irq-gpio", 0, (enum of_gpio_flags
++    gpio_pin = of_get_named_gpio_flags(np, "cirrus,irq-gpio", 0, (enum of_gpio_flags
+             *)&irq_flags);
+     gpio_request(gpio_pin, "cs35l41-irq");
+ 
+@@ -83,7 +83,6 @@ static int cs35l41_i2c_probe(struct i2c_client *client,
+ 	cs35l41->irq = client->irq;
+ 	cs35l41->bus_spi = false;
+ 
+-    cs35l41->grf = syscon_regmap_lookup_by_phandle(np, "rockchip,grf");
+ 	i2c_set_clientdata(client, cs35l41);
+ 	cs35l41->regmap = devm_regmap_init_i2c(client, regmap_config);
+ 	if (IS_ERR(cs35l41->regmap)) {
+diff --git a/sound/soc/codecs/cs35l41.c b/sound/soc/codecs/cs35l41.c
+index 7983052..b5d20ee 100755
+--- a/sound/soc/codecs/cs35l41.c
++++ b/sound/soc/codecs/cs35l41.c
+@@ -926,14 +926,6 @@ static int cs35l41_pcm_hw_params(struct snd_pcm_substream *substream,
+ 	unsigned int rate = params_rate(params);
+ 	u8 asp_width, asp_wl;
+ 
+-    if (IS_ERR(cs35l41->grf))
+-    {
+-        pr_err("Missing rockchip,grf property\n");
+-        return PTR_ERR(cs35l41->grf);
+-    }
+-
+-    regmap_write(cs35l41->grf, GRF_SOC_CON2, 0x00800000);
+-
+ 	for (i = 0; i < ARRAY_SIZE(cs35l41_fs_rates); i++) {
+ 		if (rate == cs35l41_fs_rates[i].rate)
+ 			break;
+@@ -1567,7 +1559,6 @@ static int cs35l41_handle_of_data(struct device *dev,
+ 		ret = of_property_read_u32(sub_node, "cirrus,gpio-src-select",
+ 					&val);
+ 		if (ret >= 0) {
+-			val |= CS35L41_VALID_PDATA;
+ 			irq_gpio2_config->irq_src_sel = val;
+ 		}
+ 	}
+-- 
+2.7.4
+

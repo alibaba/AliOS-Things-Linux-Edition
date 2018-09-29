@@ -1,0 +1,16 @@
+# short-description: Create a GPT disk image
+# long-description: Creates a GPT disk image for Rockchip boards
+
+# 0~32K: gpt
+bootloader --ptable gpt
+# 32K~512K: idblock
+part --source rawcopy --sourceparams="file=idblock.img" --align 32 --no-table
+# 512K~1M: uboot.env
+part --source rawcopy --sourceparams="file=uboot.env" --align 512 --label uboot-env
+# 1~2M: uboot
+part --source rawcopy --sourceparams="file=u-boot-rk.img" --label uboot --align 1024 --size 1
+# 2~3M: trust
+part --source rawcopy --sourceparams="file=trust.img" --label trust --size 1
+part / --source rootfs --fstype ext4 --label root-a --overhead-factor 1 --extra-space 0 --uuid ${RK_ROOTDEV_UUID}
+part / --source rootfs --fstype ext4 --label root-b --overhead-factor 1 --extra-space 0 --uuid ${RK_ROOTDEV_UUID}
+part --source rawcopy --sourceparams="file=data.ext4" --fstype ext4 --label data

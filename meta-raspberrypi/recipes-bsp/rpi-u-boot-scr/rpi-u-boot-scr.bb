@@ -5,12 +5,13 @@ COMPATIBLE_MACHINE = "^rpi$"
 
 DEPENDS = "u-boot-mkimage-native"
 
-SRC_URI = "file://boot.cmd.in"
+BOOT_CMD = "${@bb.utils.contains('DISTRO_FEATURES', 'uota', 'boot.cmd.uota', 'boot.cmd.in', d)}"
+SRC_URI = "file://${BOOT_CMD}"
 
 do_compile() {
     sed -e 's/@@KERNEL_IMAGETYPE@@/${KERNEL_IMAGETYPE}/' \
         -e 's/@@KERNEL_BOOTCMD@@/${KERNEL_BOOTCMD}/' \
-        "${WORKDIR}/boot.cmd.in" > "${WORKDIR}/boot.cmd"
+        "${WORKDIR}/${BOOT_CMD}" > "${WORKDIR}/boot.cmd"
     mkimage -A arm -T script -C none -n "Boot script" -d "${WORKDIR}/boot.cmd" boot.scr
 }
 

@@ -1,0 +1,30 @@
+From eaee8b96f0af15f6e4c3f11e963a452f2a362229 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 24 Jul 2018 11:31:32 +0800
+Subject: [PATCH 23/31] disable rtc01 and cpufreq_boost in kernel_misc
+
+---
+ runtest/kernel_misc | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/runtest/kernel_misc b/runtest/kernel_misc
+index 6ca2ef6..d24f444 100644
+--- a/runtest/kernel_misc
++++ b/runtest/kernel_misc
+@@ -1,11 +1,11 @@
+ kmsg01 kmsg01
+ #fw_load fw_load
+-rtc01 rtc01
++#rtc01 rtc01
+ #block_dev block_dev
+ #tpci tpci
+ #tbio tbio
+ #ltp_acpi ltp_acpi
+-cpufreq_boost cpufreq_boost
++#cpufreq_boost cpufreq_boost
+ #uaccess uaccess
+ #rcu_torture rcu_torture.sh
+ #lock_torture lock_torture.sh
+-- 
+2.7.4
+

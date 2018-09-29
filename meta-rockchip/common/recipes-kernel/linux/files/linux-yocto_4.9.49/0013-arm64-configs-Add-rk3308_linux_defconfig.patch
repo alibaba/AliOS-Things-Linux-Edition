@@ -1,7 +1,7 @@
 From d87920982441e797ea365394b5f29605374a2eff Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 30 May 2018 18:52:33 +0800
-Subject: [PATCH 13/14] arm64: configs: Add rk3308_linux_defconfig
+Subject: [PATCH 13/73] arm64: configs: Add rk3308_linux_defconfig
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

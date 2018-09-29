@@ -1,0 +1,18 @@
+#!/bin/sh
+
+addr=$1
+len=$2
+
+if [ $# = 0 ]; then
+        echo "Usage: dw addr [len]"
+        return
+fi
+
+[ -f /sbin/wlcmd ] &&
+{
+        wlcmd reg get $1 $2
+} ||
+{
+        echo dw $1 $2 > /proc/reg
+        cat /proc/reg
+}

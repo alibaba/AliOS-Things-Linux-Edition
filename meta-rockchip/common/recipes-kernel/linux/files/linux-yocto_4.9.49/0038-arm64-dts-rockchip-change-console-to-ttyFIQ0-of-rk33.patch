@@ -1,0 +1,41 @@
+From 153df6be404b17143e000bb9ba91c9a201ea8959 Mon Sep 17 00:00:00 2001
+From: Huibin Hong <huibin.hong@rock-chips.com>
+Date: Wed, 18 Jul 2018 11:25:33 +0800
+Subject: [PATCH 38/73] arm64: dts: rockchip: change console to ttyFIQ0 of
+ rk3308-evb-v10
+
+Change-Id: Ic3e92887492c102359fbe7cc324d5ca5a24f17d0
+Signed-off-by: Huibin Hong <huibin.hong@rock-chips.com>
+---
+ arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi b/arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi
+index 52c09539afef..4e8bf36fa6fa 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi
+@@ -12,7 +12,7 @@
+ 	compatible = "rockchip,rk3308-evb", "rockchip,rk3308";
+ 
+ 	chosen {
+-		bootargs = "earlyprintk earlycon=uart8250,mmio32,0xff0c0000 swiotlb=1 console=ttyS2,1500000n8 root=PARTUUID=614e0000-0000 rootwait";
++		bootargs = "earlyprintk earlycon=uart8250,mmio32,0xff0c0000 swiotlb=1 console=ttyFIQ0 root=PARTUUID=614e0000-0000 rootwait";
+ 	};
+ 
+ 	adc-keys0 {
+@@ -718,12 +718,6 @@
+ 	};
+ };
+ 
+-&uart2 {
+-        status = "okay";
+-
+-        pinctrl-0 = <&uart2m1_xfer>;
+-};
+-
+ &uart4 {
+ 	pinctrl-names = "default";
+ 	pinctrl-0 = <&uart4_xfer &uart4_cts>;
+-- 
+2.11.0
+

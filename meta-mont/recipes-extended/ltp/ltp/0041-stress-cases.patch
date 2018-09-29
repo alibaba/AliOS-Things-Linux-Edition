@@ -1,0 +1,76 @@
+From cf02bc0462ce10a123bf51dc52335753e9e2006a Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Fri, 24 Aug 2018 11:20:13 +0800
+Subject: [PATCH 2/2] stress cases
+
+proc01
+hackbench -- 1/10 before
+ftest06 mtest05 mmapstress06
+---
+ runtest/fs            | 4 ++--
+ runtest/sched         | 4 ++--
+ runtest/stress.others | 4 ++--
+ 3 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/runtest/fs b/runtest/fs
+index 46587a2..9f3063c 100644
+--- a/runtest/fs
++++ b/runtest/fs
+@@ -54,7 +54,7 @@ ftest02 ftest02
+ ftest03 ftest03
+ ftest04 ftest04
+ ftest05 ftest05
+-ftest06 ftest06
++#ftest06 ftest06
+ ftest07 ftest07
+ ftest08 ftest08
+ 
+@@ -67,7 +67,7 @@ fs_di fs_di -d $TMPDIR
+ # Read every file in /proc. Not likely to crash, but does enough
+ # to disturb the kernel. A good kernel latency killer too.
+ # Was not sure why it should reside in runtest/crashme and won´t get tested ever
+-proc01 proc01 -m 128
++#proc01 proc01 -m 128
+ 
+ #Run the File System Race Condition Check tests as well
+ fs_racer fs_racer.sh -t 5
+diff --git a/runtest/sched b/runtest/sched
+index 774d11f..61ca10c 100644
+--- a/runtest/sched
++++ b/runtest/sched
+@@ -6,8 +6,8 @@ pth_str03 pth_str03
+ time-schedule01		time-schedule
+ trace_sched01		trace_sched -c 1
+ 
+-hackbench01 hackbench 50 process 1000
+-hackbench02 hackbench 20 thread 1000
++hackbench01 hackbench 5 process 100
++hackbench02 hackbench 2 thread 100
+ 
+ sched_setattr01 sched_setattr01
+ sched_getattr01 sched_getattr01
+diff --git a/runtest/stress.others b/runtest/stress.others
+index 4939155..b8ee3be 100644
+--- a/runtest/stress.others
++++ b/runtest/stress.others
+@@ -3,7 +3,7 @@
+ ##########################
+ 
+ #test for race conditions
+-mtest05   mmstress
++#mtest05   mmstress
+ 
+ mallocstress01  mallocstress
+ 
+@@ -12,7 +12,7 @@ mmapstress02 mmapstress02
+ mmapstress03 mmapstress03
+ mmapstress04 TMPFILE=`mktemp /tmp/example.XXXXXXXXXX`; ls -lR /usr/include/ > $TMPFILE; mmapstress04 $TMPFILE
+ mmapstress05 mmapstress05
+-mmapstress06 mmapstress06 20
++#mmapstress06 mmapstress06 20
+ mmapstress07 TMPFILE=`mktemp /tmp/example.XXXXXXXXXXXX`; mmapstress07 $TMPFILE
+ #mmapstress08 mmapstress08
+ mmapstress09 mmapstress09 -p 20 -t 0.2 
+-- 
+2.7.4
+

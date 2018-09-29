@@ -1,0 +1,14 @@
+
+1. prepare boot.img for SD boot
+   unmark "BOOT1_MINI_SDHC=1" in top Makefile and rebuild the boot image
+
+2. get boot.img in boot2  (via TFTP or Xmodem)
+
+3. insert SD card and write the image in boot2, start at block 8
+   e.g.: mmcw 8 256 81000000
+
+   to write the image in Linux, use following command,
+   dd if=boot.img of=/dev/mmcblk0 bs=512 seek=8
+
+4. the system can load & run boot.img in the SD card
+

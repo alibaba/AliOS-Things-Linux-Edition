@@ -1,0 +1,60 @@
+From 2d9c9b53c3537952d10d0d93228cc0a91e8ece26 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Thu, 23 Aug 2018 17:49:19 +0800
+Subject: [PATCH 5/6] disable xattr cases
+
+---
+ runtest/syscalls | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/runtest/syscalls b/runtest/syscalls
+index c83d457..7a2122f 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -275,9 +275,9 @@ fcntl35_64 fcntl35_64
+ fdatasync01 fdatasync01
+ fdatasync02 fdatasync02
+ 
+-flistxattr01 flistxattr01
+-flistxattr02 flistxattr02
+-flistxattr03 flistxattr03
++#flistxattr01 flistxattr01
++#flistxattr02 flistxattr02
++#flistxattr03 flistxattr03
+ 
+ flock01 flock01
+ flock02 flock02
+@@ -520,8 +520,8 @@ lchown03  lchown03
+ #lchown02_16 lchown02_16
+ #lchown03_16 lchown03_16
+ 
+-lgetxattr01 lgetxattr01
+-lgetxattr02 lgetxattr02
++#lgetxattr01 lgetxattr01
++#lgetxattr02 lgetxattr02
+ 
+ link01 symlink01 -T link01
+ link02 link02
+@@ -538,13 +538,13 @@ linkat01 linkat01
+ 
+ listen01 listen01
+ 
+-listxattr01 listxattr01
+-listxattr02 listxattr02
+-listxattr03 listxattr03
++#listxattr01 listxattr01
++#listxattr02 listxattr02
++#listxattr03 listxattr03
+ 
+-llistxattr01 llistxattr01
+-llistxattr02 llistxattr02
+-llistxattr03 llistxattr03
++#llistxattr01 llistxattr01
++#llistxattr02 llistxattr02
++#llistxattr03 llistxattr03
+ 
+ llseek01 llseek01
+ llseek02 llseek02
+-- 
+2.7.4
+

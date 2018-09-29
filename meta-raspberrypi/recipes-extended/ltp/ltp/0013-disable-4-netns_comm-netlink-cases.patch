@@ -1,0 +1,33 @@
+From 0f3c23e4e7e176dc1e9569534d6fee769815b786 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 17 Jul 2018 20:48:26 +0800
+Subject: [PATCH 13/31] disable 4 netns_comm netlink cases
+
+---
+ runtest/containers | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/runtest/containers b/runtest/containers
+index 871cd2a..ede839c 100644
+--- a/runtest/containers
++++ b/runtest/containers
+@@ -33,12 +33,12 @@ netns_breakns_ip_ipv4_netlink netns_breakns.sh ip ipv4 netlink
+ netns_breakns_ip_ipv6_netlink netns_breakns.sh ip ipv6 netlink
+ netns_breakns_ip_ipv4_ioctl netns_breakns.sh ip ipv4 ioctl
+ netns_breakns_ip_ipv6_ioctl netns_breakns.sh ip ipv6 ioctl
+-netns_comm_ns_exec_ipv4_netlink netns_comm.sh ns_exec ipv4 netlink
+-netns_comm_ns_exec_ipv6_netlink netns_comm.sh ns_exec ipv6 netlink
++#netns_comm_ns_exec_ipv4_netlink netns_comm.sh ns_exec ipv4 netlink
++#netns_comm_ns_exec_ipv6_netlink netns_comm.sh ns_exec ipv6 netlink
+ netns_comm_ns_exec_ipv4_ioctl netns_comm.sh ns_exec ipv4 ioctl
+ netns_comm_ns_exec_ipv6_ioctl netns_comm.sh ns_exec ipv6 ioctl
+-netns_comm_ip_ipv4_netlink netns_comm.sh ip ipv4 netlink
+-netns_comm_ip_ipv6_netlink netns_comm.sh ip ipv6 netlink
++#netns_comm_ip_ipv4_netlink netns_comm.sh ip ipv4 netlink
++#netns_comm_ip_ipv6_netlink netns_comm.sh ip ipv6 netlink
+ netns_comm_ip_ipv4_ioctl netns_comm.sh ip ipv4 ioctl
+ netns_comm_ip_ipv6_ioctl netns_comm.sh ip ipv6 ioctl
+ netns_sysfs netns_sysfs.sh
+-- 
+2.7.4
+

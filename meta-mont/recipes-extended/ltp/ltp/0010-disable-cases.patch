@@ -1,0 +1,331 @@
+From 4aa7d9c38db7453b88bea86847b8b920cb4e7b07 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 17 Jul 2018 10:34:47 +0800
+Subject: [PATCH 10/31] disable cases
+
+mkswap01,cron,cgroup,getaddrinfo_01,ht_interrupt,leapsec_timer,
+adjtimex02,thp01,readahead02,rename11,renameat01,
+df01_xfs,df01_exfat,df01_ntfs,mkfs01_xfs,mkfs01_btrfs,mkfs01_minix,mkfs01_ntfs,
+runpwtests01,runpwtests02,runpwtests06,
+memcg_max_usage_in_bytes,memcg_usage_in_bytes,
+su01,cron_allow01,cron_dirs_checks01,utimensat01,
+madvise02,madvise07,swapping01,
+fcntl06,fcntl06_64,fcntl24,fcntl24_64,fcntl25,fcntl25_64,fcntl26,fcntl26_64,fcntl32,fcntl32_64,fcntl33,fcntl33_64,
+ext4-nsec-timestamps,ext4-uninit-groups,ext4-persist-prealloc,ext4-subdir-limit
+fanotify07,keyctl02,quotactl
+---
+ runtest/admin_tools            |  6 +++---
+ runtest/commands               | 18 ++++++++--------
+ runtest/controllers            |  6 +++---
+ runtest/fs_ext4                |  8 +++----
+ runtest/hyperthreading         |  2 +-
+ runtest/mm                     |  4 ++--
+ runtest/net.ipv6_lib           |  2 +-
+ runtest/power_management_tests |  6 +++---
+ runtest/syscalls               | 48 +++++++++++++++++++++---------------------
+ runtest/timers                 |  2 +-
+ 10 files changed, 51 insertions(+), 51 deletions(-)
+
+diff --git a/runtest/admin_tools b/runtest/admin_tools
+index 0a46468..c0bbae7 100644
+--- a/runtest/admin_tools
++++ b/runtest/admin_tools
+@@ -1,9 +1,9 @@
+-su01 export TCbin=$LTPROOT/testcases/bin;su01
++#su01 export TCbin=$LTPROOT/testcases/bin;su01
+ #cron01 cron01
+ cron02 cron02
+ cron_deny01 cron_deny01
+-cron_allow01 cron_allow01
+-cron_dirs_checks01 cron_dirs_checks01
++#cron_allow01 cron_allow01
++#cron_dirs_checks01 cron_dirs_checks01
+ at_deny01 at_deny01
+ at_allow01 at_allow01
+ acl_test01 acl_test01
+diff --git a/runtest/commands b/runtest/commands
+index 00ae0d2..dd77c08 100644
+--- a/runtest/commands
++++ b/runtest/commands
+@@ -5,7 +5,7 @@ ldd01 ldd01
+ nm01 nm01
+ file01 file01.sh
+ tar01  tar_tests.sh
+-cron cron_tests.sh
++#cron cron_tests.sh
+ logrotate export TCdat=$LTPROOT/testcases/bin; logrotate_tests.sh
+ mail export TCdat=$LTPROOT/testcases/bin; mail_tests.sh
+ cpio01 cpio_tests.sh
+@@ -22,21 +22,21 @@ du01 du01.sh
+ df01_ext2 df01.sh -f ext2
+ df01_ext3 df01.sh -f ext3
+ df01_ext4 df01.sh -f ext4
+-df01_xfs df01.sh -f xfs
++#df01_xfs df01.sh -f xfs
+ df01_vfat df01.sh -f vfat
+-df01_exfat df01.sh -f exfat
+-df01_ntfs df01.sh -f ntfs
++#df01_exfat df01.sh -f exfat
++#df01_ntfs df01.sh -f ntfs
+ mkfs01 mkfs01.sh
+ mkfs01_ext2 mkfs01.sh -f ext2
+ mkfs01_ext3 mkfs01.sh -f ext3
+ mkfs01_ext4 mkfs01.sh -f ext4
+-mkfs01_xfs mkfs01.sh -f xfs
+-mkfs01_btrfs mkfs01.sh -f btrfs
+-mkfs01_minix mkfs01.sh -f minix
++#mkfs01_xfs mkfs01.sh -f xfs
++#mkfs01_btrfs mkfs01.sh -f btrfs
++#mkfs01_minix mkfs01.sh -f minix
+ mkfs01_msdos mkfs01.sh -f msdos
+ mkfs01_vfat mkfs01.sh -f vfat
+-mkfs01_ntfs mkfs01.sh -f ntfs
+-mkswap01 mkswap01.sh
++#mkfs01_ntfs mkfs01.sh -f ntfs
++#mkswap01 mkswap01.sh
+ which01 which01.sh
+ lsmod01 lsmod01.sh
+ insmod01 insmod01.sh
+diff --git a/runtest/controllers b/runtest/controllers
+index a6d5387..e0fea9a 100644
+--- a/runtest/controllers
++++ b/runtest/controllers
+@@ -1,5 +1,5 @@
+ #DESCRIPTION:Resource Management testing
+-cgroup		cgroup_regression_test.sh
++#cgroup		cgroup_regression_test.sh
+ memcg_regression	memcg_regression_test.sh
+ memcg_test_3	memcg_test_3
+ memcg_failcnt memcg_failcnt.sh
+@@ -7,12 +7,12 @@ memcg_force_empty memcg_force_empty.sh
+ memcg_limit_in_bytes memcg_limit_in_bytes.sh
+ memcg_stat_rss memcg_stat_rss.sh
+ memcg_subgroup_charge memcg_subgroup_charge.sh
+-memcg_max_usage_in_bytes	memcg_max_usage_in_bytes_test.sh
++#memcg_max_usage_in_bytes	memcg_max_usage_in_bytes_test.sh
+ memcg_move_charge_at_immigrate	memcg_move_charge_at_immigrate_test.sh
+ memcg_memsw_limit_in_bytes	memcg_memsw_limit_in_bytes_test.sh
+ memcg_stat	memcg_stat_test.sh
+ memcg_use_hierarchy	memcg_use_hierarchy_test.sh
+-memcg_usage_in_bytes	memcg_usage_in_bytes_test.sh
++#memcg_usage_in_bytes	memcg_usage_in_bytes_test.sh
+ #memcg_stress		memcg_stress_test.sh
+ memcg_control		memcg_control_test.sh
+ 
+diff --git a/runtest/fs_ext4 b/runtest/fs_ext4
+index 35697c5..e50d479 100644
+--- a/runtest/fs_ext4
++++ b/runtest/fs_ext4
+@@ -1,4 +1,4 @@
+-ext4-nsec-timestamps	ext4_nsec_timestamps_test.sh
+-ext4-uninit-groups	ext4_uninit_groups_test.sh
+-ext4-persist-prealloc	ext4_persist_prealloc_test.sh
+-ext4-subdir-limit	ext4_subdir_limit_test.sh
++#ext4-nsec-timestamps	ext4_nsec_timestamps_test.sh
++#ext4-uninit-groups	ext4_uninit_groups_test.sh
++#ext4-persist-prealloc	ext4_persist_prealloc_test.sh
++#ext4-subdir-limit	ext4_subdir_limit_test.sh
+diff --git a/runtest/hyperthreading b/runtest/hyperthreading
+index a0a2e23..781e5c0 100644
+--- a/runtest/hyperthreading
++++ b/runtest/hyperthreading
+@@ -1,5 +1,5 @@
+ #DESCRIPTION:Hyperthreading stress tests
+ smt_smp_enabled smt_smp_enabled.sh
+ smt_smp_affinity smt_smp_affinity.sh
+-ht_interrupt ht_interrupt
++#ht_interrupt ht_interrupt
+ 
+diff --git a/runtest/mm b/runtest/mm
+index 702e171..9bc9ed8 100644
+--- a/runtest/mm
++++ b/runtest/mm
+@@ -79,9 +79,9 @@ ksm05 ksm05 -I 10
+ #oom04 oom04
+ #oom05 oom05
+ 
+-swapping01 swapping01 -i 5
++#swapping01 swapping01 -i 5
+ 
+-thp01 thp01 -I 120
++#thp01 thp01 -I 120
+ thp02 thp02
+ thp03 thp03
+ 
+diff --git a/runtest/net.ipv6_lib b/runtest/net.ipv6_lib
+index 636232b..322757c 100644
+--- a/runtest/net.ipv6_lib
++++ b/runtest/net.ipv6_lib
+@@ -1,7 +1,7 @@
+ #DESCRIPTION:IPV6 related tests
+ in6_01 in6_01
+ in6_02 in6_02
+-getaddrinfo_01 getaddrinfo_01
++#getaddrinfo_01 getaddrinfo_01
+ asapi_01 asapi_01
+ asapi_02 asapi_02
+ asapi_03 asapi_03
+diff --git a/runtest/power_management_tests b/runtest/power_management_tests
+index 884e615..26de676 100644
+--- a/runtest/power_management_tests
++++ b/runtest/power_management_tests
+@@ -1,7 +1,7 @@
+ #POWER_MANAGEMENT
+-runpwtests01 runpwtests01.sh
+-runpwtests02 runpwtests02.sh
++#runpwtests01 runpwtests01.sh
++#runpwtests02 runpwtests02.sh
+ runpwtests03 runpwtests03.sh
+ runpwtests04 runpwtests04.sh
+ #runpwtests05 runpwtests05.sh
+-runpwtests06 runpwtests06.sh
++#runpwtests06 runpwtests06.sh
+diff --git a/runtest/syscalls b/runtest/syscalls
+index bc2493e..7030c52 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -15,7 +15,7 @@ add_key01 add_key01
+ add_key02 add_key02
+ 
+ adjtimex01 adjtimex01
+-adjtimex02 adjtimex02
++#adjtimex02 adjtimex02
+ 
+ alarm01 alarm01
+ alarm02 alarm02
+@@ -211,8 +211,8 @@ fcntl04 fcntl04
+ fcntl04_64 fcntl04_64
+ fcntl05 fcntl05
+ fcntl05_64 fcntl05_64
+-fcntl06 fcntl06
+-fcntl06_64 fcntl06_64
++#fcntl06 fcntl06
++#fcntl06_64 fcntl06_64
+ fcntl07 fcntl07
+ fcntl07_64 fcntl07_64
+ fcntl08 fcntl08
+@@ -247,12 +247,12 @@ fcntl22 fcntl22
+ fcntl22_64 fcntl22_64
+ fcntl23 fcntl23
+ fcntl23_64 fcntl23_64
+-fcntl24 fcntl24
+-fcntl24_64 fcntl24_64
+-fcntl25 fcntl25
+-fcntl25_64 fcntl25_64
+-fcntl26 fcntl26
+-fcntl26_64 fcntl26_64
++#fcntl24 fcntl24
++#fcntl24_64 fcntl24_64
++#fcntl25 fcntl25
++#fcntl25_64 fcntl25_64
++#fcntl26 fcntl26
++#fcntl26_64 fcntl26_64
+ fcntl27 fcntl27
+ fcntl27_64 fcntl27_64
+ fcntl28 fcntl28
+@@ -263,10 +263,10 @@ fcntl30 fcntl30
+ fcntl30_64 fcntl30_64
+ fcntl31 fcntl31
+ fcntl31_64 fcntl31_64
+-fcntl32 fcntl32
+-fcntl32_64 fcntl32_64
+-fcntl33 fcntl33
+-fcntl33_64 fcntl33_64
++#fcntl32 fcntl32
++#fcntl32_64 fcntl32_64
++#fcntl33 fcntl33
++#fcntl33_64 fcntl33_64
+ fcntl34 fcntl34
+ fcntl34_64 fcntl34_64
+ fcntl35 fcntl35
+@@ -478,7 +478,7 @@ fanotify03 fanotify03
+ fanotify04 fanotify04
+ fanotify05 fanotify05
+ fanotify06 fanotify06
+-fanotify07 fanotify07
++#fanotify07 fanotify07
+ 
+ ioperm01 ioperm01
+ ioperm02 ioperm02
+@@ -493,7 +493,7 @@ io_setup01 io_setup01
+ io_submit01 io_submit01
+ 
+ keyctl01 keyctl01
+-keyctl02 keyctl02
++#keyctl02 keyctl02
+ keyctl03 keyctl03
+ 
+ #kcmp01 kcmp01
+@@ -756,10 +756,10 @@ mincore01 mincore01
+ mincore02 mincore02
+ 
+ madvise01 madvise01
+-madvise02 madvise02
++#madvise02 madvise02
+ madvise05 madvise05
+ madvise06 madvise06
+-madvise07 madvise07
++#madvise07 madvise07
+ madvise08 madvise08
+ madvise09 madvise09
+ 
+@@ -848,9 +848,9 @@ pwritev01_64 pwritev01_64
+ pwritev02 pwritev02
+ pwritev02_64 pwritev02_64
+ 
+-quotactl01 quotactl01
+-quotactl02 quotactl02
+-quotactl03 quotactl03
++#quotactl01 quotactl01
++#quotactl02 quotactl02
++#quotactl03 quotactl03
+ 
+ read01 read01
+ #read02 read02
+@@ -858,7 +858,7 @@ read03 read03
+ read04 read04
+ 
+ readahead01 readahead01
+-readahead02 readahead02
++#readahead02 readahead02
+ 
+ readdir01 readdir01
+ readdir02 readdir02
+@@ -906,13 +906,13 @@ rename07 rename07
+ rename08 rename08
+ rename09 rename09
+ rename10 rename10
+-rename11 rename11
++#rename11 rename11
+ rename12 rename12
+ rename13 rename13
+ rename14 rename14
+ 
+ #renameat test cases
+-renameat01 renameat01
++#renameat01 renameat01
+ 
+ renameat201 renameat201
+ renameat202 renameat202 -i 10
+@@ -1399,7 +1399,7 @@ utime06 utime06
+ utimes01 utimes01
+ 
+ # Introduced from Kernel 2.6.22 onwards
+-utimensat01 utimensat_tests.sh
++#utimensat01 utimensat_tests.sh
+ 
+ vfork01 vfork01
+ vfork02 vfork02
+diff --git a/runtest/timers b/runtest/timers
+index a58ac57..dc2e915 100644
+--- a/runtest/timers
++++ b/runtest/timers
+@@ -10,4 +10,4 @@ timer_delete02 timer_delete02
+ timer_delete03 timer_delete03
+ timer_settime02 timer_settime02
+ timer_settime03 timer_settime03
+-leapsec_timer leapsec_timer
++#leapsec_timer leapsec_timer
+-- 
+2.7.4
+

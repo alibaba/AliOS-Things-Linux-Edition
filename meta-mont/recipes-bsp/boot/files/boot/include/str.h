@@ -1,0 +1,1 @@
+// null str.h

@@ -1,0 +1,69 @@
+From d8cfd44a27d0d87c6ff63014c765884b1f18646f Mon Sep 17 00:00:00 2001
+From: Clement Dransart <clement.dransart@awtce.be>
+Date: Thu, 9 Jun 2016 11:08:00 +0200
+Subject: [meta-ivi][PATCH] keyutils: Use libdir from the Yocto environment
+
+Signed-off-by: Clement Dransart <clement.dransart@awtce.be>
+---
+ Makefile | 30 ++++--------------------------
+ 1 file changed, 4 insertions(+), 26 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index c904eaf..22b74ba 100644
+--- a/Makefile
++++ b/Makefile
+@@ -51,32 +51,11 @@ LIBNAME		:= libkeyutils.so.$(APIVERSION)
+ 
+ ###############################################################################
+ #
+-# Guess at the appropriate lib directory and word size
++# Use libdir from the Yocto environment
+ #
+ ###############################################################################
+-ifeq ($(origin LIBDIR),undefined)
+-LIBDIR		:= $(shell ldd /usr/bin/make | grep '\(/libc\)' | sed -e 's!.*\(/.*\)/libc[.].*!\1!')
+-endif
+-ifeq ($(origin USRLIBDIR),undefined)
+-USRLIBDIR	:= $(patsubst /lib/%,/usr/lib/%,$(LIBDIR))
+-endif
+-BUILDFOR	:= $(shell file /usr/bin/make | sed -e 's!.*ELF \(32\|64\)-bit.*!\1!')-bit
+-
+-LNS		:= ln -sf
+-
+-ifeq ($(origin CFLAGS),undefined)
+-ifeq ($(BUILDFOR),32-bit)
+-CFLAGS		+= -m32
+-LIBDIR		:= /lib
+-USRLIBDIR	:= /usr/lib
+-else
+-ifeq ($(BUILDFOR),64-bit)
+-CFLAGS		+= -m64
+-LIBDIR		:= /lib64
+-USRLIBDIR	:= /usr/lib64
+-endif
+-endif
+-endif
++LIBDIR    := $(libdir)
++USRLIBDIR := $(libdir)
+ 
+ ###############################################################################
+ #
+@@ -161,7 +140,7 @@ endif
+ 	$(INSTALL) -D $(LIBNAME) $(DESTDIR)$(LIBDIR)/$(LIBNAME)
+ 	$(LNS) $(LIBNAME) $(DESTDIR)$(LIBDIR)/$(SONAME)
+ 	mkdir -p $(DESTDIR)$(USRLIBDIR)
+-	$(LNS) $(LIBDIR)/$(SONAME) $(DESTDIR)$(USRLIBDIR)/$(DEVELLIB)
++	$(LNS) $(SONAME) $(DESTDIR)$(USRLIBDIR)/$(DEVELLIB)
+ 	$(INSTALL) -D keyctl $(DESTDIR)$(BINDIR)/keyctl
+ 	$(INSTALL) -D request-key $(DESTDIR)$(SBINDIR)/request-key
+ 	$(INSTALL) -D request-key-debug.sh $(DESTDIR)$(SHAREDIR)/request-key-debug.sh
+@@ -271,6 +250,5 @@ show_vars:
+ 	@echo APIVERSION=$(APIVERSION)
+ 	@echo LIBDIR=$(LIBDIR)
+ 	@echo USRLIBDIR=$(USRLIBDIR)
+-	@echo BUILDFOR=$(BUILDFOR)
+ 	@echo SONAME=$(SONAME)
+ 	@echo LIBNAME=$(LIBNAME)
+-- 
+1.9.1
+
