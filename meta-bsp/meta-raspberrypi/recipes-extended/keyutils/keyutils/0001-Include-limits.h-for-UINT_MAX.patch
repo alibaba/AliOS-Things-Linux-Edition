@@ -1,0 +1,28 @@
+From ab818a7f5818177a3da09fce6aa064ef648da372 Mon Sep 17 00:00:00 2001
+From: Felix Janda <felix.janda@posteo.de>
+Date: Sat, 4 Apr 2015 00:13:21 +0200
+Subject: [PATCH] Include <limits.h> for UINT_MAX
+
+Fixes building with musl libc.
+
+Signed-off-by: Felix Janda <felix.janda@posteo.de>
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
+ key.dns_resolver.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/key.dns_resolver.c b/key.dns_resolver.c
+index c2a9fe5..9c9d458 100644
+--- a/key.dns_resolver.c
++++ b/key.dns_resolver.c
+@@ -42,6 +42,7 @@
+ #include <netinet/in.h>
+ #include <arpa/nameser.h>
+ #include <arpa/inet.h>
++#include <limits.h>
+ #include <resolv.h>
+ #include <getopt.h>
+ #include <sys/types.h>
+-- 
+1.9.1
+

@@ -1,0 +1,106 @@
+From c54d70b7d25013e8f27bcb9f6fa47fbb0651759a Mon Sep 17 00:00:00 2001
+From: Gaurav Kohli <gkohli@codeaurora.org>
+Date: Tue, 23 Jan 2018 13:16:34 +0530
+Subject: [PATCH 40/73] UPSTREAM: tty: fix data race between tty_init_dev and
+ flush of buf
+
+There can be a race, if receive_buf call comes before
+tty initialization completes in n_tty_open and tty->disc_data
+may be NULL.
+
+CPU0					CPU1
+----					----
+ 000|n_tty_receive_buf_common()   	n_tty_open()
+-001|n_tty_receive_buf2()		tty_ldisc_open.isra.3()
+-002|tty_ldisc_receive_buf(inline)	tty_ldisc_setup()
+
+Using ldisc semaphore lock in tty_init_dev till disc_data
+initializes completely.
+
+Reviewed-by: Alan Cox <alan@linux.intel.com>
+Cc: stable <stable@vger.kernel.org>
+
+Change-Id: I202fcd4e4fdb00248f347f5d50848b39ad3ac34c
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Gaurav Kohli <gkohli@codeaurora.org>
+Signed-off-by: Huibin Hong <huibin.hong@rock-chips.com>
+(cherry-picked from commit b027e2298bd588d6fa36ed2eda97447fb3eac078)
+---
+ drivers/tty/tty_io.c    | 8 +++++++-
+ drivers/tty/tty_ldisc.c | 4 ++--
+ include/linux/tty.h     | 2 ++
+ 3 files changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/tty/tty_io.c b/drivers/tty/tty_io.c
+index 734a635e7363..8d9f9a803b42 100644
+--- a/drivers/tty/tty_io.c
++++ b/drivers/tty/tty_io.c
+@@ -1543,6 +1543,9 @@ struct tty_struct *tty_init_dev(struct tty_driver *driver, int idx)
+ 			"%s: %s driver does not set tty->port. This will crash the kernel later. Fix the driver!\n",
+ 			__func__, tty->driver->name);
+ 
++	retval = tty_ldisc_lock(tty, 5 * HZ);
++	if (retval)
++		goto err_release_lock;
+ 	tty->port->itty = tty;
+ 
+ 	/*
+@@ -1553,6 +1556,7 @@ struct tty_struct *tty_init_dev(struct tty_driver *driver, int idx)
+ 	retval = tty_ldisc_setup(tty, tty->link);
+ 	if (retval)
+ 		goto err_release_tty;
++	tty_ldisc_unlock(tty);
+ 	/* Return the tty locked so that it cannot vanish under the caller */
+ 	return tty;
+ 
+@@ -1565,9 +1569,11 @@ struct tty_struct *tty_init_dev(struct tty_driver *driver, int idx)
+ 
+ 	/* call the tty release_tty routine to clean out this slot */
+ err_release_tty:
+-	tty_unlock(tty);
++	tty_ldisc_unlock(tty);
+ 	tty_info_ratelimited(tty, "ldisc open failed (%d), clearing slot %d\n",
+ 			     retval, idx);
++err_release_lock:
++	tty_unlock(tty);
+ 	release_tty(tty, idx);
+ 	return ERR_PTR(retval);
+ }
+diff --git a/drivers/tty/tty_ldisc.c b/drivers/tty/tty_ldisc.c
+index 68947f6de5ad..9f0b0622a16e 100644
+--- a/drivers/tty/tty_ldisc.c
++++ b/drivers/tty/tty_ldisc.c
+@@ -333,7 +333,7 @@ static inline void __tty_ldisc_unlock(struct tty_struct *tty)
+ 	ldsem_up_write(&tty->ldisc_sem);
+ }
+ 
+-static int tty_ldisc_lock(struct tty_struct *tty, unsigned long timeout)
++int tty_ldisc_lock(struct tty_struct *tty, unsigned long timeout)
+ {
+ 	int ret;
+ 
+@@ -344,7 +344,7 @@ static int tty_ldisc_lock(struct tty_struct *tty, unsigned long timeout)
+ 	return 0;
+ }
+ 
+-static void tty_ldisc_unlock(struct tty_struct *tty)
++void tty_ldisc_unlock(struct tty_struct *tty)
+ {
+ 	clear_bit(TTY_LDISC_HALTED, &tty->flags);
+ 	__tty_ldisc_unlock(tty);
+diff --git a/include/linux/tty.h b/include/linux/tty.h
+index 40144f382516..a41244fe58d0 100644
+--- a/include/linux/tty.h
++++ b/include/linux/tty.h
+@@ -394,6 +394,8 @@ extern struct tty_struct *get_current_tty(void);
+ /* tty_io.c */
+ extern int __init tty_init(void);
+ extern const char *tty_name(const struct tty_struct *tty);
++extern int tty_ldisc_lock(struct tty_struct *tty, unsigned long timeout);
++extern void tty_ldisc_unlock(struct tty_struct *tty);
+ #else
+ static inline void console_init(void)
+ { }
+-- 
+2.11.0
+

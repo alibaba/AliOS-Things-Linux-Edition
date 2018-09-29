@@ -1,0 +1,301 @@
+From acf82c12ab295b414b69bb7ea63823426f0d162f Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 2 Aug 2018 17:20:09 +0800
+Subject: [PATCH 6/7] env: Add block device env
+
+Change-Id: I6ad48329aca725f5b398ac6a5c5cf0989b1bc43e
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ cmd/nvedit.c                 |   5 +-
+ env/Kconfig                  |  40 +++++++++++++
+ env/Makefile                 |   1 +
+ env/blk.c                    | 139 +++++++++++++++++++++++++++++++++++++++++++
+ env/env.c                    |   4 +-
+ include/environment.h        |   3 +-
+ scripts/config_whitelist.txt |   2 +
+ 7 files changed, 190 insertions(+), 4 deletions(-)
+ create mode 100644 env/blk.c
+
+diff --git a/cmd/nvedit.c b/cmd/nvedit.c
+index 528b808c2b..290496ab9d 100644
+--- a/cmd/nvedit.c
++++ b/cmd/nvedit.c
+@@ -40,7 +40,8 @@
+ 
+ DECLARE_GLOBAL_DATA_PTR;
+ 
+-#if	!defined(CONFIG_ENV_IS_IN_EEPROM)	&& \
++#if	!defined(CONFIG_ENV_IS_IN_BLK)		&& \
++	!defined(CONFIG_ENV_IS_IN_EEPROM)	&& \
+ 	!defined(CONFIG_ENV_IS_IN_FLASH)	&& \
+ 	!defined(CONFIG_ENV_IS_IN_MMC)		&& \
+ 	!defined(CONFIG_ENV_IS_IN_FAT)		&& \
+@@ -53,7 +54,7 @@ DECLARE_GLOBAL_DATA_PTR;
+ 	!defined(CONFIG_ENV_IS_IN_REMOTE)	&& \
+ 	!defined(CONFIG_ENV_IS_IN_UBI)		&& \
+ 	!defined(CONFIG_ENV_IS_NOWHERE)
+-# error Define one of CONFIG_ENV_IS_IN_{EEPROM|FLASH|MMC|FAT|EXT4|\
++# error Define one of CONFIG_ENV_IS_IN_{BLK|EEPROM|FLASH|MMC|FAT|EXT4|\
+ NAND|NVRAM|ONENAND|SATA|SPI_FLASH|REMOTE|UBI} or CONFIG_ENV_IS_NOWHERE
+ #endif
+ 
+diff --git a/env/Kconfig b/env/Kconfig
+index 25555ec2b8..e6d111283c 100644
+--- a/env/Kconfig
++++ b/env/Kconfig
+@@ -40,6 +40,46 @@ config ENV_IS_NOWHERE
+ 	  stored. U-Boot will therefore always start up with a default
+ 	  environment.
+ 
++config ENV_IS_IN_BLK
++	bool "Environment in a block device"
++	depends on !CHAIN_OF_TRUST
++	help
++	  Define this if you have an block device which you want to use for the
++	  environment.
++
++	  CONFIG_SYS_BLK_ENV_IF:
++	  CONFIG_SYS_BLK_ENV_DEV:
++
++	  Specifies which block device the environment is stored in.
++
++	  CONFIG_ENV_OFFSET:
++	  CONFIG_ENV_SIZE:
++
++	  These two #defines specify the offset and size of the environment
++	  area within the specified block device.
++
++	  These two values are in units of bytes, but must be aligned to a
++	  block sector boundary.
++
++	  CONFIG_ENV_OFFSET_REDUND (optional):
++
++	  Specifies a second storage area, of CONFIG_ENV_SIZE size, used to
++	  hold a redundant copy of the environment data. This provides a
++	  valid backup copy in case the other copy is corrupted, e.g. due
++	  to a power failure during a "saveenv" operation.
++
++	  This value may also be positive or negative; this is handled in the
++	  same way as CONFIG_ENV_OFFSET.
++
++	  This value is also in units of bytes, but must also be aligned to
++	  a block sector boundary.
++
++	  CONFIG_ENV_SIZE_REDUND (optional):
++
++	  This value need not be set, even when CONFIG_ENV_OFFSET_REDUND is
++	  set. If this value is set, it must be set to the same value as
++	  CONFIG_ENV_SIZE.
++
+ config ENV_IS_IN_EEPROM
+ 	bool "Environment in EEPROM"
+ 	depends on !CHAIN_OF_TRUST
+diff --git a/env/Makefile b/env/Makefile
+index 7ce8231d9a..dcbe5d1eea 100644
+--- a/env/Makefile
++++ b/env/Makefile
+@@ -27,6 +27,7 @@ obj-$(CONFIG_ENV_IS_IN_SATA) += sata.o
+ obj-$(CONFIG_ENV_IS_IN_SPI_FLASH) += sf.o
+ obj-$(CONFIG_ENV_IS_IN_REMOTE) += remote.o
+ obj-$(CONFIG_ENV_IS_IN_UBI) += ubi.o
++obj-$(CONFIG_ENV_IS_IN_BLK) += blk.o
+ obj-$(CONFIG_ENV_IS_NOWHERE) += nowhere.o
+ endif
+ 
+diff --git a/env/blk.c b/env/blk.c
+new file mode 100644
+index 0000000000..ed247c55b2
+--- /dev/null
++++ b/env/blk.c
+@@ -0,0 +1,139 @@
++/*
++ * (C) Copyright 2018 Fuzhou Rockchip Electronics Co., Ltd
++ *
++ * SPDX-License-Identifier:	GPL-2.0+
++ */
++
++/* #define DEBUG */
++
++#include <common.h>
++
++#include <command.h>
++#include <environment.h>
++#include <blk.h>
++#include <linux/stddef.h>
++#include <memalign.h>
++#include <search.h>
++#include <errno.h>
++
++#if defined(CONFIG_ENV_SIZE_REDUND) &&  \
++	(CONFIG_ENV_SIZE_REDUND != CONFIG_ENV_SIZE)
++#error CONFIG_ENV_SIZE_REDUND should be the same as CONFIG_ENV_SIZE
++#endif
++
++DECLARE_GLOBAL_DATA_PTR;
++
++#if !defined(CONFIG_ENV_OFFSET)
++#define CONFIG_ENV_OFFSET 0
++#endif
++
++#if defined(CONFIG_CMD_SAVEENV) && !defined(CONFIG_SPL_BUILD)
++static inline int write_env(struct blk_desc *desc, unsigned long size,
++			    unsigned long offset, const void *buffer)
++{
++	uint blk_start, blk_cnt, n;
++
++	blk_start = ALIGN(offset, desc->blksz) / desc->blksz;
++	blk_cnt   = ALIGN(size, desc->blksz) / desc->blksz;
++
++	n = blk_dwrite(desc, blk_start, blk_cnt, (u_char *)buffer);
++
++	return (n == blk_cnt) ? 0 : -1;
++}
++
++static int env_blk_save(void)
++{
++	ALLOC_CACHE_ALIGN_BUFFER(env_t, env_new, 1);
++	struct blk_desc *desc = NULL;
++	int ret, copy = 0;
++
++	desc = blk_get_devnum_by_typename(CONFIG_SYS_BLK_ENV_IF,
++					  CONFIG_SYS_BLK_ENV_DEV);
++	if (desc == NULL) {
++		printf("Unknown blk(%s %d) device for environment!\n",
++		       CONFIG_SYS_BLK_ENV_IF, CONFIG_SYS_BLK_ENV_DEV);
++		return 1;
++	}
++
++	ret = env_export(env_new);
++	if (ret)
++		return 1;
++
++#ifdef CONFIG_ENV_OFFSET_REDUND
++	if (gd->env_valid == ENV_VALID)
++		copy = 1;
++#endif
++
++	printf("Writing to %sblk(%s %d)... ", copy ? "redundant " : "",
++	       CONFIG_SYS_BLK_ENV_IF, CONFIG_SYS_BLK_ENV_DEV);
++	if (write_env(desc, CONFIG_ENV_SIZE,
++		      copy ? CONFIG_ENV_OFFSET : CONFIG_ENV_OFFSET_REDUND,
++		      (u_char *)env_new)) {
++		puts("failed\n");
++		return 1;
++	}
++
++	puts("done\n");
++
++#ifdef CONFIG_ENV_OFFSET_REDUND
++	gd->env_valid = gd->env_valid == ENV_REDUND ? ENV_VALID : ENV_REDUND;
++#endif
++
++	return 0;
++}
++#endif /* CONFIG_CMD_SAVEENV && !CONFIG_SPL_BUILD */
++
++static inline int read_env(struct blk_desc *desc, unsigned long size,
++			   unsigned long offset, const void *buffer)
++{
++	uint blk_start, blk_cnt, n;
++
++	blk_start = ALIGN(offset, desc->blksz) / desc->blksz;
++	blk_cnt   = ALIGN(size, desc->blksz) / desc->blksz;
++
++	n = blk_dread(desc, blk_start, blk_cnt, (uchar *)buffer);
++
++	return (n == blk_cnt) ? 0 : -1;
++}
++
++static int env_blk_load(void)
++{
++#if defined(ENV_IS_EMBEDDED)
++	return 0;
++#else
++	ALLOC_CACHE_ALIGN_BUFFER(env_t, tmp_env1, 1);
++	ALLOC_CACHE_ALIGN_BUFFER(env_t, tmp_env2, 1);
++	struct blk_desc *desc = NULL;
++	int ret;
++
++	desc = blk_get_devnum_by_typename(CONFIG_SYS_BLK_ENV_IF,
++					  CONFIG_SYS_BLK_ENV_DEV);
++	if (desc == NULL) {
++		printf("Unknown desc(%s %d) device for environment!\n",
++		       CONFIG_SYS_BLK_ENV_IF, CONFIG_SYS_BLK_ENV_DEV);
++		return 1;
++	}
++
++	ret = read_env(desc, CONFIG_ENV_SIZE, CONFIG_ENV_OFFSET, tmp_env1);
++
++#ifdef CONFIG_ENV_OFFSET_REDUND
++	ret |= read_env(desc, CONFIG_ENV_SIZE, CONFIG_ENV_OFFSET_REDUND,
++			tmp_env2);
++
++	env_import_redund((char *)tmp_env1, (char *)tmp_env2);
++#else
++	env_import((char *)tmp_env1, 1);
++#endif
++
++	return ret;
++#endif /* ENV_IS_EMBEDDED */
++}
++
++U_BOOT_ENV_LOCATION(blk) = {
++	.location	= ENVL_BLK,
++	ENV_NAME("blk")
++	.load		= env_blk_load,
++#ifndef CONFIG_SPL_BUILD
++	.save		= env_save_ptr(env_blk_save),
++#endif
++};
+diff --git a/env/env.c b/env/env.c
+index 76a5608628..79224e244c 100644
+--- a/env/env.c
++++ b/env/env.c
+@@ -28,7 +28,9 @@ static struct env_driver *env_driver_lookup(enum env_location loc)
+ 
+ static enum env_location env_get_default_location(void)
+ {
+-	if IS_ENABLED(CONFIG_ENV_IS_IN_EEPROM)
++	if IS_ENABLED(CONFIG_ENV_IS_IN_BLK)
++		return ENVL_BLK;
++	else if IS_ENABLED(CONFIG_ENV_IS_IN_EEPROM)
+ 		return ENVL_EEPROM;
+ 	else if IS_ENABLED(CONFIG_ENV_IS_IN_FAT)
+ 		return ENVL_FAT;
+diff --git a/include/environment.h b/include/environment.h
+index 7b98216389..cfea9d45b2 100644
+--- a/include/environment.h
++++ b/include/environment.h
+@@ -60,7 +60,7 @@
+ # endif
+ #endif	/* CONFIG_ENV_IS_IN_FLASH */
+ 
+-#if defined(CONFIG_ENV_IS_IN_MMC)
++#if defined(CONFIG_ENV_IS_IN_MMC) || defined(CONFIG_ENV_IS_IN_BLK)
+ # ifdef CONFIG_ENV_OFFSET_REDUND
+ #  define CONFIG_SYS_REDUNDAND_ENVIRONMENT
+ # endif
+@@ -198,6 +198,7 @@ enum env_valid {
+ };
+ 
+ enum env_location {
++	ENVL_BLK,
+ 	ENVL_EEPROM,
+ 	ENVL_EXT4,
+ 	ENVL_FAT,
+diff --git a/scripts/config_whitelist.txt b/scripts/config_whitelist.txt
+index de92384d40..b5577b9cc0 100644
+--- a/scripts/config_whitelist.txt
++++ b/scripts/config_whitelist.txt
+@@ -2385,6 +2385,8 @@ CONFIG_SYS_BFTIC3_SIZE
+ CONFIG_SYS_BITBANG_PHY_PORT
+ CONFIG_SYS_BITBANG_PHY_PORTS
+ CONFIG_SYS_BLACK_IN_WRITE
++CONFIG_SYS_BLK_ENV_DEV
++CONFIG_SYS_BLK_ENV_IF
+ CONFIG_SYS_BMAN_CENA_BASE
+ CONFIG_SYS_BMAN_CENA_SIZE
+ CONFIG_SYS_BMAN_CINH_BASE
+-- 
+2.11.0
+

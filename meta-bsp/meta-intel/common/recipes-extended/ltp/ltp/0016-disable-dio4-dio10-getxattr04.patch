@@ -1,0 +1,48 @@
+From 04d27aa96e68ff465564d85148d880e9db8f0dd0 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Wed, 18 Jul 2018 14:28:28 +0800
+Subject: [PATCH 16/31] disable dio4,dio10,getxattr04
+
+---
+ runtest/dio            | 4 ++--
+ runtest/notmpfs.others | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/runtest/dio b/runtest/dio
+index 185cd57..fe3c6cb 100644
+--- a/runtest/dio
++++ b/runtest/dio
+@@ -3,7 +3,7 @@
+ dio01 diotest1
+ dio02 diotest2
+ dio03 diotest3
+-dio04 diotest4
++#dio04 diotest4
+ dio05 diotest5
+ dio06 diotest6
+ 
+@@ -11,7 +11,7 @@ dio06 diotest6
+ dio07 diotest1 -b 65536
+ dio08 diotest2 -b 65536
+ dio09 diotest3 -b 65536
+-dio10 diotest4 -b 65536
++#dio10 diotest4 -b 65536
+ dio11 diotest5 -b 65536
+ dio12 diotest6 -b 65536
+ 
+diff --git a/runtest/notmpfs.others b/runtest/notmpfs.others
+index baf1cb0..85661ba 100644
+--- a/runtest/notmpfs.others
++++ b/runtest/notmpfs.others
+@@ -3,7 +3,7 @@ fallocate04 fallocate04
+ getxattr01 getxattr01
+ getxattr02 getxattr02
+ getxattr03 getxattr03
+-getxattr04 getxattr04
++#getxattr04 getxattr04
+ 
+ linkat02 linkat02
+ 
+-- 
+2.7.4
+

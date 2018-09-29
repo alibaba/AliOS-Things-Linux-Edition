@@ -1,0 +1,22 @@
+#!/bin/sh
+
+addr=$1
+val=$2
+
+if [ $# = 0 ]; then
+        echo "Usage: ew addr val"
+        return
+fi
+
+[ -f /sbin/wlcmd ] &&
+{
+        wlcmd reg set $addr $val
+} ||
+{
+        [ -z $val ] &&
+        echo "Usage: ew addr val" ||
+        {
+                echo ew $1 $2 > /proc/reg
+                cat /proc/reg
+        }
+}

@@ -1,0 +1,129 @@
+From cb0b049de960048892da7101dd576bedd506980c Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Wed, 22 Aug 2018 14:58:47 +0800
+Subject: [PATCH 4/6] disable cases
+
+thp02 thp03       -- Transparent Huge Page
+clone09           -- CONFIG_NET_NS
+mmap15            -- only for 64bits
+overcommit_memory -- not designed for 32bits
+futex_wake04      -- Huge page
+setns02           -- CONFIG_IPC_NS, CONFIG_UTS_NS
+perf_event_open01 -- PERF_COUNT_HW_CACHE_MISSES, PERF_COUNT_HW_CACHE_REFERENCES
+input03           -- /dev/input/mice
+lsmod01           -- no modules installed
+---
+ runtest/commands |  2 +-
+ runtest/input    |  2 +-
+ runtest/mm       | 12 ++++++------
+ runtest/syscalls | 10 +++++-----
+ 4 files changed, 13 insertions(+), 13 deletions(-)
+
+diff --git a/runtest/commands b/runtest/commands
+index 4c66198..f798ced 100644
+--- a/runtest/commands
++++ b/runtest/commands
+@@ -38,7 +38,7 @@ mkfs01_ext3 mkfs01.sh -f ext3
+ #mkfs01_ntfs mkfs01.sh -f ntfs
+ #mkswap01 mkswap01.sh
+ which01 which01.sh
+-lsmod01 lsmod01.sh
++#lsmod01 lsmod01.sh
+ insmod01 insmod01.sh
+ wc01 wc01.sh
+ keyctl01 keyctl01.sh
+diff --git a/runtest/input b/runtest/input
+index 775338c..afe31c4 100644
+--- a/runtest/input
++++ b/runtest/input
+@@ -1,6 +1,6 @@
+ input01 input01
+ input02 input02
+-input03 input03
++#input03 input03
+ input04 input04
+ input05 input05
+ input06 input06
+diff --git a/runtest/mm b/runtest/mm
+index 0174d04..2a94a95 100644
+--- a/runtest/mm
++++ b/runtest/mm
+@@ -82,20 +82,20 @@ ksm05 ksm05 -I 10
+ #swapping01 swapping01 -i 5
+ 
+ #thp01 thp01 -I 120
+-thp02 thp02
+-thp03 thp03
++#thp02 thp02
++#thp03 thp03
+ 
+ vma01 vma01
+ #vma02 vma02
+ #vma03 vma03
+ #vma04 vma04
+ 
+-overcommit_memory01 overcommit_memory
++#overcommit_memory01 overcommit_memory
+ #overcommit_memory02 overcommit_memory -R 0
+ #overcommit_memory03 overcommit_memory -R 30
+-overcommit_memory04 overcommit_memory -R 80
+-overcommit_memory05 overcommit_memory -R 100
+-overcommit_memory06 overcommit_memory -R 200
++#overcommit_memory04 overcommit_memory -R 80
++#overcommit_memory05 overcommit_memory -R 100
++#overcommit_memory06 overcommit_memory -R 200
+ 
+ max_map_count max_map_count -i 10
+ 
+diff --git a/runtest/syscalls b/runtest/syscalls
+index eda5870..c83d457 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -85,7 +85,7 @@ clone05 clone05
+ clone06 clone06
+ clone07 clone07
+ clone08 clone08
+-clone09 clone09
++#clone09 clone09
+ 
+ close01 close01
+ close02 close02
+@@ -626,7 +626,7 @@ mmap13 mmap13
+ mmap14 mmap14
+ # test is broken, mask it for now.
+ #mmap11 mmap11 -i 30000
+-mmap15 mmap15
++#mmap15 mmap15
+ #mmap16 mmap16
+ 
+ #modify_ldt01 modify_ldt01
+@@ -1077,7 +1077,7 @@ setitimer02 setitimer02
+ setitimer03 setitimer03
+ 
+ setns01 setns01
+-setns02 setns02
++#setns02 setns02
+ 
+ setpgid01 setpgid01
+ setpgid02 setpgid02
+@@ -1445,7 +1445,7 @@ writev05 writev05
+ writev06 writev06
+ writev07 writev07
+ 
+-perf_event_open01 perf_event_open01
++#perf_event_open01 perf_event_open01
+ perf_event_open02 perf_event_open02
+ 
+ futex_wait01 futex_wait01
+@@ -1456,7 +1456,7 @@ futex_wait05 futex_wait05
+ futex_wake01 futex_wake01
+ futex_wake02 futex_wake02
+ futex_wake03 futex_wake03
+-futex_wake04 futex_wake04
++#futex_wake04 futex_wake04
+ futex_wait_bitset01 futex_wait_bitset01
+ futex_wait_bitset02 futex_wait_bitset02
+ 
+-- 
+2.7.4
+

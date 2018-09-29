@@ -1,7 +1,7 @@
 From 98473f2bb4a66dce4d4b78f5140feff9697e4c62 Mon Sep 17 00:00:00 2001
 From: Ziyuan Xu <xzy.xu@rock-chips.com>
 Date: Thu, 5 Apr 2018 18:34:03 +0800
-Subject: [PATCH 10/14] Sync BSP kernel's mmc
+Subject: [PATCH 10/73] Sync BSP kernel's mmc
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

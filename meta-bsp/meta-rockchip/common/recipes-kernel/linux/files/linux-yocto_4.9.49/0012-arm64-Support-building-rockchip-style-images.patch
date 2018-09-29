@@ -1,7 +1,7 @@
 From bd2a9dc6b4c67ad3e6ccb02199acffd721b236c6 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 30 May 2018 18:38:44 +0800
-Subject: [PATCH 12/14] arm64: Support building rockchip style images
+Subject: [PATCH 12/73] arm64: Support building rockchip style images
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

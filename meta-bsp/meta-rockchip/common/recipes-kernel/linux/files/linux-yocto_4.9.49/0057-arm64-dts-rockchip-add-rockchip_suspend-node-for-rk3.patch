@@ -1,0 +1,97 @@
+From c6f7184cab1976fe610f2969dd7b57f08f1cba72 Mon Sep 17 00:00:00 2001
+From: Andy Yan <andy.yan@rock-chips.com>
+Date: Tue, 31 Jul 2018 15:06:49 +0800
+Subject: [PATCH 57/73] arm64: dts: rockchip: add rockchip_suspend node for
+ rk3308
+
+Sync from develop-4.4 b053b22930("arm64: dts: rockchip: rk3308: add
+rockchip_suspend node")
+
+Change-Id: I54ae280b9e5448449ea4f626de46b3091fff6c1b
+Signed-off-by: Andy Yan <andy.yan@rock-chips.com>
+---
+ arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi | 10 ++++++++++
+ arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi | 10 ++++++++++
+ arch/arm64/boot/dts/rockchip/rk3308.dtsi         | 17 +++++++++++++++++
+ 3 files changed, 37 insertions(+)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi b/arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi
+index 4e8bf36fa6fa..e8beed80341e 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi
+@@ -669,6 +669,16 @@
+ 	status = "okay";
+ };
+ 
++&rockchip_suspend {
++        rockchip,pwm-regulator-config = <
++                (0
++                | RKPM_PWM_REGULATOR
++                )
++        >;
++
++        status = "okay";
++};
++
+ &tsadc {
+ 	rockchip,hw-tshut-mode = <0>; /* tshut mode 0:CRU 1:GPIO */
+ 	rockchip,hw-tshut-polarity = <1>; /* tshut polarity 0:LOW 1:HIGH */
+diff --git a/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi b/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi
+index 34ab63d9242e..2aa9d3e07db0 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi
+@@ -687,6 +687,16 @@
+ 	status = "disabled";
+ };
+ 
++&rockchip_suspend {
++	rockchip,pwm-regulator-config = <
++		(0
++		| RKPM_PWM_REGULATOR
++		)
++	>;
++
++	status = "okay";
++};
++
+ &tsadc {
+ 	rockchip,hw-tshut-mode = <0>; /* tshut mode 0:CRU 1:GPIO */
+ 	rockchip,hw-tshut-polarity = <1>; /* tshut polarity 0:LOW 1:HIGH */
+diff --git a/arch/arm64/boot/dts/rockchip/rk3308.dtsi b/arch/arm64/boot/dts/rockchip/rk3308.dtsi
+index ff0a000a0a64..3f33525ead9c 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3308.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3308.dtsi
+@@ -10,6 +10,7 @@
+ #include <dt-bindings/interrupt-controller/irq.h>
+ #include <dt-bindings/pinctrl/rockchip.h>
+ #include <dt-bindings/soc/rockchip,boot-mode.h>
++#include <dt-bindings/suspend/rockchip-rk3308.h>
+ #include <dt-bindings/thermal/thermal.h>
+ 
+ / {
+@@ -259,6 +260,22 @@
+ 		};
+ 	};
+ 
++	rockchip_suspend: rockchip-suspend {
++		compatible = "rockchip,pm-rk3308";
++		status = "disabled";
++		rockchip,sleep-mode-config = <
++			(0
++			| RKPM_PMU_HW_PLLS_PD
++			| RKPM_DBG_FSM_SOUT
++			)
++		>;
++		rockchip,wakeup-config = <
++			(0
++			| RKPM_GPIO0_WAKEUP_EN
++			)
++		>;
++	};
++
+ 	timer {
+ 		compatible = "arm,armv8-timer";
+ 		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_HIGH)>,
+-- 
+2.11.0
+

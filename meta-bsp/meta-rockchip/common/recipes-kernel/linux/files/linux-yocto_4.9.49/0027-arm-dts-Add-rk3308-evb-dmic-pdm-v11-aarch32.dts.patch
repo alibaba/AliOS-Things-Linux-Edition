@@ -1,0 +1,55 @@
+From a6312f93f6d561c3930bc0b2eb5eeb06dd076f0d Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Wed, 30 May 2018 18:53:01 +0800
+Subject: [PATCH 27/73] arm: dts: Add rk3308-evb-dmic-pdm-v11-aarch32.dts
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ arch/arm/boot/dts/Makefile                           |  3 ++-
+ .../arm/boot/dts/rk3308-evb-dmic-pdm-v11-aarch32.dts | 20 ++++++++++++++++++++
+ 2 files changed, 22 insertions(+), 1 deletion(-)
+ create mode 100644 arch/arm/boot/dts/rk3308-evb-dmic-pdm-v11-aarch32.dts
+
+diff --git a/arch/arm/boot/dts/Makefile b/arch/arm/boot/dts/Makefile
+index 7037201c5e3a..86dd118cff65 100644
+--- a/arch/arm/boot/dts/Makefile
++++ b/arch/arm/boot/dts/Makefile
+@@ -660,7 +660,8 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += \
+ 	rk3288-veyron-mickey.dtb \
+ 	rk3288-veyron-minnie.dtb \
+ 	rk3288-veyron-pinky.dtb \
+-	rk3288-veyron-speedy.dtb
++	rk3288-veyron-speedy.dtb \
++	rk3308-evb-dmic-i2s-v10-aarch32.dtb
+ dtb-$(CONFIG_ARCH_S3C24XX) += \
+ 	s3c2416-smdk2416.dtb
+ dtb-$(CONFIG_ARCH_S3C64XX) += \
+diff --git a/arch/arm/boot/dts/rk3308-evb-dmic-pdm-v11-aarch32.dts b/arch/arm/boot/dts/rk3308-evb-dmic-pdm-v11-aarch32.dts
+new file mode 100644
+index 000000000000..462fdb1d98bd
+--- /dev/null
++++ b/arch/arm/boot/dts/rk3308-evb-dmic-pdm-v11-aarch32.dts
+@@ -0,0 +1,20 @@
++// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
++/*
++ * Copyright (c) 2018 Fuzhou Rockchip Electronics Co., Ltd
++ */
++
++#include "arm64/rockchip/rk3308-evb-dmic-pdm-v11.dts"
++
++/ {
++	model = "Rockchip RK3308 evb digital-pdm mic v11 board (AArch32)";
++	compatible = "rockchip,rk3308-evb-dmic-pdm-v11", "rockchip,rk3308";
++};
++
++&ramoops_mem {
++	reg = <0x0 0x30000 0x0 0x20000>;
++};
++
++&ramoops {
++	record-size = <0x0 0x00000>;
++	console-size = <0x0 0x20000>;
++};
+-- 
+2.11.0
+

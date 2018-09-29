@@ -1,0 +1,36 @@
+From a37036eef113bc8b01824bbba69a2f396d934258 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 24 Jul 2018 11:41:51 +0800
+Subject: [PATCH 25/31] disable space too small cases
+
+---
+ runtest/syscalls | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/runtest/syscalls b/runtest/syscalls
+index cb10635..5c05f4b 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -300,7 +300,7 @@ fork09 fork09
+ fork10 fork10
+ fork11 fork11
+ fork13 fork13 -i 1000000
+-fork14 fork14
++#fork14 fork14
+ 
+ fpathconf01 fpathconf01
+ 
+@@ -1017,8 +1017,8 @@ sendfile07 sendfile07
+ sendfile07_64 sendfile07_64
+ sendfile08 sendfile08
+ sendfile08_64 sendfile08_64
+-sendfile09 sendfile09
+-sendfile09_64 sendfile09_64
++#sendfile09 sendfile09
++#sendfile09_64 sendfile09_64
+ 
+ 
+ sendmsg01 sendmsg01
+-- 
+2.7.4
+

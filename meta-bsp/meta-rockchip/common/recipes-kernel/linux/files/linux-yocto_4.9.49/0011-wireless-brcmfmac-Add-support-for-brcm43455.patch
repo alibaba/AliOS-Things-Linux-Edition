@@ -1,7 +1,7 @@
 From 4a8b253df69da516a59052e2de4e0fa855f9a73c Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Fri, 1 Jun 2018 14:58:34 +0800
-Subject: [PATCH 11/14] wireless: brcmfmac: Add support for brcm43455
+Subject: [PATCH 11/73] wireless: brcmfmac: Add support for brcm43455
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

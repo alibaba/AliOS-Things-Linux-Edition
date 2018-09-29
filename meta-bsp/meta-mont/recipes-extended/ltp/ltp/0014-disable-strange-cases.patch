@@ -1,0 +1,59 @@
+From a147e8c439401c54678ea75e236fd0c4a202ab36 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Wed, 18 Jul 2018 14:05:34 +0800
+Subject: [PATCH 14/31] disable strange cases
+
+memcg_stat,memcg_use_hierarchy,cpuacct_1_1,cpuacct_100_100,msgctl10,msgctl11
+---
+ runtest/controllers | 8 ++++----
+ runtest/syscalls    | 4 ++--
+ 2 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/runtest/controllers b/runtest/controllers
+index e0fea9a..391795c 100644
+--- a/runtest/controllers
++++ b/runtest/controllers
+@@ -10,8 +10,8 @@ memcg_subgroup_charge memcg_subgroup_charge.sh
+ #memcg_max_usage_in_bytes	memcg_max_usage_in_bytes_test.sh
+ memcg_move_charge_at_immigrate	memcg_move_charge_at_immigrate_test.sh
+ memcg_memsw_limit_in_bytes	memcg_memsw_limit_in_bytes_test.sh
+-memcg_stat	memcg_stat_test.sh
+-memcg_use_hierarchy	memcg_use_hierarchy_test.sh
++#memcg_stat	memcg_stat_test.sh
++#memcg_use_hierarchy	memcg_use_hierarchy_test.sh
+ #memcg_usage_in_bytes	memcg_usage_in_bytes_test.sh
+ #memcg_stress		memcg_stress_test.sh
+ memcg_control		memcg_control_test.sh
+@@ -331,12 +331,12 @@ cgroup_fj_function_hugetlb cgroup_fj_function.sh hugetlb
+ 
+ controllers	test_controllers.sh
+ 
+-cpuacct_1_1 cpuacct.sh 1 1
++#cpuacct_1_1 cpuacct.sh 1 1
+ cpuacct_1_10 cpuacct.sh 1 10
+ cpuacct_10_10 cpuacct.sh 10 10
+ cpuacct_1_100 cpuacct.sh 1 100
+ cpuacct_100_1 cpuacct.sh 100 1
+-cpuacct_100_100 cpuacct.sh 100 100
++#cpuacct_100_100 cpuacct.sh 100 100
+ 
+ #cpuset_base_ops	cpuset_base_ops_testset.sh
+ #cpuset_inherit	cpuset_inherit_testset.sh
+diff --git a/runtest/syscalls b/runtest/syscalls
+index 7030c52..1dd6c09 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -680,8 +680,8 @@ msgctl06 msgctl06
+ msgctl07 msgctl07
+ msgctl08 msgctl08
+ msgctl09 msgctl09
+-msgctl10 msgctl10
+-msgctl11 msgctl11
++#msgctl10 msgctl10
++#msgctl11 msgctl11
+ msgctl12 msgctl12
+ msgctl13 msgctl13
+ 
+-- 
+2.7.4
+

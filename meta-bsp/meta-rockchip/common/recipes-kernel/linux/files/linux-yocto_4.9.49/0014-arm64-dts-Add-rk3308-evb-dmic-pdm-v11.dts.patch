@@ -1,7 +1,7 @@
-From a4ce8404563e5c91607a8a99c4d45c4caa9fd419 Mon Sep 17 00:00:00 2001
+From 887499d842ab58fb1c7b50afde1adda213404743 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 30 May 2018 18:53:01 +0800
-Subject: [PATCH 14/14] arm64: dts: Add rk3308-evb-dmic-pdm-v11.dts
+Subject: [PATCH 14/73] arm64: dts: Add rk3308-evb-dmic-pdm-v11.dts
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

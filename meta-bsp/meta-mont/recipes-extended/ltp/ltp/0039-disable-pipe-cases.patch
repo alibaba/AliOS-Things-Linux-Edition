@@ -1,0 +1,36 @@
+From 57d5f019c42624493e70957c51e3a7e2f7da88a1 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Thu, 23 Aug 2018 17:50:40 +0800
+Subject: [PATCH 6/6] disable pipe cases
+
+---
+ runtest/syscalls | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/runtest/syscalls b/runtest/syscalls
+index 7a2122f..2b7b16e 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -269,8 +269,8 @@ fcntl31_64 fcntl31_64
+ #fcntl33_64 fcntl33_64
+ fcntl34 fcntl34
+ fcntl34_64 fcntl34_64
+-fcntl35 fcntl35
+-fcntl35_64 fcntl35_64
++#fcntl35 fcntl35
++#fcntl35_64 fcntl35_64
+ 
+ fdatasync01 fdatasync01
+ fdatasync02 fdatasync02
+@@ -1436,7 +1436,7 @@ waitid02 waitid02
+ 
+ write01 write01
+ write03 write03
+-write04 write04
++#write04 write04
+ write05 write05
+ 
+ writev01 writev01
+-- 
+2.7.4
+

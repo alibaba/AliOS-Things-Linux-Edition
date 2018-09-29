@@ -1,4 +1,5 @@
 KERNEL_FEATURES_INTEL_COMMON = ""
+require linux-yocto-ltp.inc
 
 COMPATIBLE_MACHINE_core2-32-intel-common = "${MACHINE}"
 KMACHINE_core2-32-intel-common = "intel-core2-32"

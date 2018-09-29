@@ -1,0 +1,110 @@
+From 25e30a9cf40c20898c1f235357bb31552cee00f0 Mon Sep 17 00:00:00 2001
+From: jichi <jichi.lr@alibaba-inc.com>
+Date: Thu, 2 Aug 2018 18:05:17 +0800
+Subject: [PATCH 4/5] Remove Debug Info
+
+---
+ sound/soc/codecs/tlv320dac3100.c            | 9 +--------
+ sound/soc/rockchip/rockchip_tlv320dac3100.c | 4 ----
+ 2 files changed, 1 insertion(+), 12 deletions(-)
+
+diff --git a/sound/soc/codecs/tlv320dac3100.c b/sound/soc/codecs/tlv320dac3100.c
+index 803c1fdbaf0f..788c22a96d3d 100755
+--- a/sound/soc/codecs/tlv320dac3100.c
++++ b/sound/soc/codecs/tlv320dac3100.c
+@@ -386,7 +386,7 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 	int clkin;
+ 	int err;
+     regmap_write(dac->grf, GRF_SOC_CON2, 0x00800000);
+-    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
++	
+ 	/* Check the word length */
+ 	switch (params_format(params)) {
+ 	case SNDRV_PCM_FORMAT_S16_LE:
+@@ -417,7 +417,6 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 		dosr_round = 8;
+ 	}
+ 
+-    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	/* TODO: When implementing filters replace this with a table lookup
+ 	 * to choose the best processing block. */
+ 	switch(filter) {
+@@ -452,7 +451,6 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 		return -EINVAL;
+ 	}
+ 
+-    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	/* If the mclk is not a multiple of the samplerate
+ 	 * we need to use the fractional PLL to produce such a rate */
+ 	if (dac->clkin_rate % fs) {
+@@ -492,7 +490,6 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 		}
+ 	}
+ 
+-    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	/* Find the highest possible DOSR value */
+ 	dosr = DAC3100_DAC_MOD_CLK_MAX / fs;
+ 	dosr = dosr / dosr_round * dosr_round;
+@@ -544,7 +541,6 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 	if (err)
+ 		goto error;
+ 
+-    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	/* Setup the clock mux */
+ 	clkmux = dac->clkin_src & 3;
+ 	if (jd > 10000)
+@@ -576,7 +572,6 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 		msleep(10);
+ 	}
+ 
+-    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	/* Configure the dividers */
+ 	err = snd_soc_write(codec, DAC3100_DAC_NDAC, (ndac & 0x7f) | BIT(7));
+ 	if (err)
+@@ -591,7 +586,6 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 	if (err)
+ 		goto error_mdac;
+ 
+-    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	/* Setup the word size */
+ 	err = snd_soc_update_bits(codec, DAC3100_CODEC_IFACE_CTRL1,
+ 				3 << 4, word_len << 4);
+@@ -603,7 +597,6 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 	if (err)
+ 		goto error_mdac;
+ 
+-    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	return 0;
+ 
+ error_mdac:
+diff --git a/sound/soc/rockchip/rockchip_tlv320dac3100.c b/sound/soc/rockchip/rockchip_tlv320dac3100.c
+index 46f575075342..e9f9df5f74f6 100755
+--- a/sound/soc/rockchip/rockchip_tlv320dac3100.c
++++ b/sound/soc/rockchip/rockchip_tlv320dac3100.c
+@@ -76,15 +76,12 @@ static int rk_tlv320dac3100_hw_params(struct snd_pcm_substream *substream,
+     unsigned int pll_out = 0, dai_fmt = rtd->card->dai_link->dai_fmt;
+     int ret;
+ 
+-    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+-
+     /* set codec DAI configuration */
+     ret = snd_soc_dai_set_fmt(codec_dai, dai_fmt);
+     if (ret < 0) {
+         printk("%s():failed to set the format for codec side\n", __FUNCTION__);
+         return ret;
+     }
+-    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 
+     /* set cpu DAI configuration */
+     ret = snd_soc_dai_set_fmt(cpu_dai, dai_fmt);
+@@ -92,7 +89,6 @@ static int rk_tlv320dac3100_hw_params(struct snd_pcm_substream *substream,
+         printk("%s():failed to set the format for cpu side\n", __FUNCTION__);
+         return ret;
+     }
+-    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 
+     switch(params_rate(params)) {
+     case 8000:
+-- 
+2.11.0
+

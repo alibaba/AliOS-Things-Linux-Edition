@@ -1,0 +1,110 @@
+From f5ee0e48783069c2173c981f9503b39d6e8ee787 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 17 Jul 2018 15:44:10 +0800
+Subject: [PATCH 04/31] disable unsupported syscall cases
+
+---
+ runtest/syscalls | 30 +++++++++++++++---------------
+ 1 file changed, 15 insertions(+), 15 deletions(-)
+
+diff --git a/runtest/syscalls b/runtest/syscalls
+index 0bf3d8d..fdedbe3 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -29,7 +29,7 @@ asyncio02 asyncio02
+ bind01 bind01
+ bind02 bind02
+ 
+-bdflush01 bdflush01
++#bdflush01 bdflush01
+ 
+ brk01 brk01
+ 
+@@ -39,7 +39,7 @@ capget02 capget02
+ capset01 capset01
+ capset02 capset02
+ 
+-cacheflush01 cacheflush01
++#cacheflush01 cacheflush01
+ 
+ chdir01 chdir01
+ chdir01A symlink01 -T chdir01
+@@ -496,9 +496,9 @@ keyctl01 keyctl01
+ keyctl02 keyctl02
+ keyctl03 keyctl03
+ 
+-kcmp01 kcmp01
+-kcmp02 kcmp02
+-kcmp03 kcmp03
++#kcmp01 kcmp01
++#kcmp02 kcmp02
++#kcmp03 kcmp03
+ 
+ kill01 kill01
+ kill02 kill02
+@@ -862,7 +862,7 @@ readahead02 readahead02
+ 
+ readdir01 readdir01
+ readdir02 readdir02
+-readdir21 readdir21
++#readdir21 readdir21
+ 
+ readlink01A symlink01 -T readlink01
+ readlink01 readlink01
+@@ -1057,7 +1057,7 @@ setgid03 setgid03
+ setegid01 setegid01
+ setegid02 setegid02
+ 
+-sgetmask01 sgetmask01
++#sgetmask01 sgetmask01
+ 
+ setgroups01 setgroups01
+ #setgroups01_16 setgroups01_16
+@@ -1138,7 +1138,7 @@ setrlimit02 setrlimit02
+ setrlimit03 setrlimit03
+ 
+ set_robust_list01 set_robust_list01
+-set_thread_area01 set_thread_area01
++#set_thread_area01 set_thread_area01
+ set_tid_address01 set_tid_address01
+ 
+ setsid01 setsid01
+@@ -1213,7 +1213,7 @@ sigsuspend01 sigsuspend01
+ socket01 socket01
+ socket02 socket02
+ 
+-socketcall01 socketcall01
++#socketcall01 socketcall01
+ socketcall02 socketcall02
+ socketcall03 socketcall03
+ socketcall04 socketcall04
+@@ -1232,7 +1232,7 @@ splice05 splice05
+ tee01 tee01
+ tee02 tee02
+ 
+-ssetmask01 ssetmask01
++#ssetmask01 ssetmask01
+ 
+ stat01 stat01
+ stat01_64 stat01_64
+@@ -1289,12 +1289,12 @@ sync_file_range01 sync_file_range01
+ 
+ syscall01 syscall01
+ 
+-sysconf01 sysconf01
++#sysconf01 sysconf01
+ 
+-sysctl01 sysctl01
+-sysctl03 sysctl03
+-sysctl04 sysctl04
+-sysctl05 sysctl05
++#sysctl01 sysctl01
++#sysctl03 sysctl03
++#sysctl04 sysctl04
++#sysctl05 sysctl05
+ 
+ sysfs01 sysfs01
+ sysfs02 sysfs02
+-- 
+2.7.4
+

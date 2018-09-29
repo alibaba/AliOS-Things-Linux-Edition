@@ -1,7 +1,7 @@
 From 6f3f82c135f541cb6204dac82b5cd191eabbb791 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Mon, 11 Jun 2018 10:35:56 +0800
-Subject: [PATCH] Sync BSP kernel's pdm mic
+Subject: [PATCH 15/73] Sync BSP kernel's pdm mic
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

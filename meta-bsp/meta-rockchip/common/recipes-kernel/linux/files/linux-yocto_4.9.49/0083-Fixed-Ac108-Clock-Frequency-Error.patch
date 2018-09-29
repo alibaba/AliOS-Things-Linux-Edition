@@ -1,0 +1,84 @@
+From 5c7c1609110c3c5c13e058452f2dbdb6f2f682c0 Mon Sep 17 00:00:00 2001
+From: jichi <jichi.lr@alibaba-inc.com>
+Date: Tue, 21 Aug 2018 18:15:33 +0800
+Subject: [PATCH] Fixed Ac108 Clock Frequency Error
+
+---
+ sound/soc/codecs/ac108.c            | 11 ++++++-----
+ sound/soc/rockchip/rockchip_ac108.c | 14 ++++++++++++++
+ 2 files changed, 20 insertions(+), 5 deletions(-)
+
+diff --git a/sound/soc/codecs/ac108.c b/sound/soc/codecs/ac108.c
+index d9909ea..1544d3f 100755
+--- a/sound/soc/codecs/ac108.c
++++ b/sound/soc/codecs/ac108.c
+@@ -746,7 +746,7 @@ static int ac108_multi_chips_update_bits(u8 reg, u8 mask, u8 value)
+ static void ac108_hw_init(struct i2c_client *i2c)
+ {
+ 	/*** Chip reset ***/
+-	//ac108_write(CHIP_AUDIO_RST, 0x12, i2c);	/*0x00=0x12: reset all registers to their default state*/
++	ac108_write(CHIP_AUDIO_RST, 0x12, i2c);	/*0x00=0x12: reset all registers to their default state*/
+ 
+ 	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ #if !AC108_DMIC_EN
+@@ -757,9 +757,9 @@ static void ac108_hw_init(struct i2c_client *i2c)
+ 	ac108_write(ANA_ADC3_CTRL7, 0x0b, i2c);	/*DSM low power mode enable, Control bias current for DSM integrator opamps*/
+ #endif
+ 	//Config PLL DIV param M1/M2/N/K1/K2
+-	ac108_write(PLL_CTRL2, 0x09,i2c);
++	ac108_write(PLL_CTRL2, 0x0C,i2c);
+ 	ac108_write(PLL_CTRL3, 0x02,i2c);
+-	ac108_write(PLL_CTRL4, 0x00,i2c);
++	ac108_write(PLL_CTRL4, 0x8A,i2c);
+ 	ac108_write(PLL_CTRL5, 0x18,i2c);
+ 
+ 	ac108_write(PLL_LOCK_CTRL, 0x01,i2c);						//PLL CLK lock enable
+@@ -775,10 +775,10 @@ static void ac108_hw_init(struct i2c_client *i2c)
+ 	ac108_write(I2S_CTRL, 0x35, i2c);	/*SDO1 enable, SDO2 Enable*/
+ 	//ac108_write(I2S_BCLK_CTRL, 0x1<<EDGE_TRANSFER, 0x0<<EDGE_TRANSFER, i2c);	/*SDO drive data and SDI sample data at the different BCLK edge*/
+ 	//ac108_write(I2S_LRCK_CTRL1, 0x3<<LRCK_PERIODH, ((AC108_LRCK_PERIOD-1) >> 8)<<LRCK_PERIODH, i2c);
+-	ac108_write(I2S_LRCK_CTRL2, 0x0f, i2c);	/*config LRCK period: 16bit * 8ch = 128, 32bit * 8ch = 256, 32bit *16ch =512*/
++	ac108_write(I2S_LRCK_CTRL2, 0x1F, i2c);	/*config LRCK period: 16bit * 8ch = 128, 32bit * 8ch = 256, 32bit *16ch =512*/
+ 	/*Encoding mode enable, Turn to hi-z state (TDM) when not transferring slot*/
+ 	ac108_write(I2S_FMT_CTRL1, 0x1d, i2c);
+-	ac108_write(I2S_FMT_CTRL2, 0x33, i2c);		/*8/12/16/20/24/28/32bit Slot Width*/
++	ac108_write(I2S_FMT_CTRL2, 0x73, i2c);		/*8/12/16/20/24/28/32bit Slot Width*/
+ 	/*0x36=0x70: TX MSB first, TX2 Mute, Transfer 0 after each sample in each slot(sample resolution < slot width), LRCK = 1 BCLK width (short frame), Linear PCM Data Mode*/
+ 	ac108_write(I2S_FMT_CTRL3, 0x60, i2c);
+ 
+@@ -1182,6 +1182,7 @@ static int ac108_hw_free(struct snd_pcm_substream *substream, struct snd_soc_dai
+ 
+ 	AC108_DEBUG("AC108 reset all register to their default value\n\n");
+ 	ac108_multi_chips_write(CHIP_AUDIO_RST, 0x12);
++	mdelay(200);
+ #endif
+ 
+ 	return 0;
+diff --git a/sound/soc/rockchip/rockchip_ac108.c b/sound/soc/rockchip/rockchip_ac108.c
+index cf3509f..d26c604 100755
+--- a/sound/soc/rockchip/rockchip_ac108.c
++++ b/sound/soc/rockchip/rockchip_ac108.c
+@@ -72,6 +72,20 @@ static int rk_ac108_hw_params(struct snd_pcm_substream *substream,
+ 
+     dev_err(codec_dai->dev, "Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 
++    ret = snd_soc_dai_set_sysclk(codec_dai, 1,
++        12288000 /*11289600*/, SND_SOC_CLOCK_IN);
++    if (ret < 0) {
++        printk(KERN_ERR "Failed to set ac108 SYSCLK: %d\n", ret);
++        return ret;
++    }
++
++    ret = snd_soc_dai_set_pll(codec_dai, 0,
++        0/*unused*/, 12288000, 24576000);
++    if (ret < 0) {
++        printk(KERN_ERR "Failed to set ac108 pll: %d\n", ret);
++        return ret;
++    }
++
+     /* set codec DAI configuration */
+     ret = snd_soc_dai_set_fmt(codec_dai, dai_fmt);
+     if (ret < 0) {
+-- 
+2.7.4
+

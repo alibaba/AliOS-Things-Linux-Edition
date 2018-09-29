@@ -1,0 +1,36 @@
+From 11a5d4929541ca490de21505ef33466d92b4d02b Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Mon, 30 Jul 2018 10:36:29 +0800
+Subject: [PATCH 29/31] disable madvise01 and fanotify03
+
+madvise01 -- MADV_HWPOISON is not supported
+fanotify03 -- CONFIG_FANOTIFY_ACCESS_PERMISSIONS not configured
+---
+ runtest/syscalls | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/runtest/syscalls b/runtest/syscalls
+index 8f653b2..8916e53 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -474,7 +474,7 @@ inotify06 inotify06
+ 
+ fanotify01 fanotify01
+ fanotify02 fanotify02
+-fanotify03 fanotify03
++#fanotify03 fanotify03
+ fanotify04 fanotify04
+ fanotify05 fanotify05
+ fanotify06 fanotify06
+@@ -755,7 +755,7 @@ openat03 openat03
+ mincore01 mincore01
+ mincore02 mincore02
+ 
+-madvise01 madvise01
++#madvise01 madvise01
+ #madvise02 madvise02
+ madvise05 madvise05
+ #madvise06 madvise06
+-- 
+2.7.4
+

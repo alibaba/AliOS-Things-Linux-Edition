@@ -1,0 +1,70 @@
+From 573026ceb8209194569cece259a13d0e1e4789ec Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Wed, 18 Jul 2018 15:12:35 +0800
+Subject: [PATCH 17/31] add func_test.sh and stress_test.sh
+
+---
+ func_test.sh   | 33 +++++++++++++++++++++++++++++++++
+ stress_test.sh | 10 ++++++++++
+ 2 files changed, 43 insertions(+)
+ create mode 100644 func_test.sh
+ create mode 100644 stress_test.sh
+
+diff --git a/func_test.sh b/func_test.sh
+new file mode 100644
+index 0000000..97ffc95
+--- /dev/null
++++ b/func_test.sh
+@@ -0,0 +1,33 @@
++#!/bin/sh
++
++UNAME=`uname -a`
++
++echo "*****************************************************"
++if [[ $UNAME == *raspberrypi* ]]
++then
++    export LHOST_IFACES=eth0
++elif [[ $UNAME == *x86_64* ]]
++then
++    export LHOST_IFACES=enp0s31f6
++fi
++echo "*****************************************************"
++
++echo 12345678 > /etc/hostid
++
++echo "*****************************************************"
++echo "               start functional test                 "
++echo "*****************************************************"
++./runltp -f `cat functional`
++echo "*****************************************************"
++echo "               end functional test     "
++echo "*****************************************************"
++
++echo "*****************************************************"
++echo "    start test should executed in notmpfs    "
++echo "*****************************************************"
++mkdir tmpdir
++./runltp -d tmpdir -f `cat notmpfs`
++rm -rf tmpdir
++echo "*****************************************************"
++echo "    end test should executed in notmpfs    "
++echo "*****************************************************"
+diff --git a/stress_test.sh b/stress_test.sh
+new file mode 100644
+index 0000000..4b13b47
+--- /dev/null
++++ b/stress_test.sh
+@@ -0,0 +1,10 @@
++#!/bin/sh
++rm /dev/memcg -rf
++
++echo "*****************************************************"
++echo "    start stress test     "
++echo "*****************************************************"
++./runltp -f `cat stress`
++echo "*****************************************************"
++echo "    end stress test     "
++echo "*****************************************************"
+-- 
+2.7.4
+

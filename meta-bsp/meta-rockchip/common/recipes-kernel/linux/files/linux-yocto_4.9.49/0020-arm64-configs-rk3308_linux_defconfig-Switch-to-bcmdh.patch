@@ -1,0 +1,41 @@
+From 65df09d5a3b7686bb920e33988b468b81c3992c8 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 25 Jun 2018 18:20:44 +0800
+Subject: [PATCH 20/73] arm64: configs: rk3308_linux_defconfig: Switch to
+ bcmdhd
+
+Switch from brcmfmac to bcmdhd.
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ arch/arm64/configs/rk3308_linux_defconfig | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/arch/arm64/configs/rk3308_linux_defconfig b/arch/arm64/configs/rk3308_linux_defconfig
+index e7429680cfc4..18a936f40510 100644
+--- a/arch/arm64/configs/rk3308_linux_defconfig
++++ b/arch/arm64/configs/rk3308_linux_defconfig
+@@ -73,6 +73,7 @@ CONFIG_BT_HCIUART=y
+ CONFIG_BT_HCIUART_H4=y
+ CONFIG_BT_HCIUART_LL=y
+ CONFIG_CFG80211=y
++CONFIG_MAC80211=y
+ CONFIG_RFKILL=y
+ CONFIG_DEVTMPFS=y
+ CONFIG_DEVTMPFS_MOUNT=y
+@@ -81,7 +82,11 @@ CONFIG_DEVTMPFS_MOUNT=y
+ CONFIG_NETDEVICES=y
+ # CONFIG_NET_CORE is not set
+ # CONFIG_ETHERNET is not set
+-CONFIG_BRCMFMAC=m
++CONFIG_BCMDHD=y
++CONFIG_BCMDHD_FW_PATH="/lib/firmware/brcm/brcmfmac43455-sdio.bin"
++CONFIG_BCMDHD_NVRAM_PATH="/lib/firmware/brcm/brcmfmac43455-sdio.txt"
++# CONFIG_BCMDHD_OOB is not set
++CONFIG_BCMDHD_SDIO_IRQ=y
+ # CONFIG_INPUT_MOUSEDEV is not set
+ CONFIG_INPUT_EVDEV=y
+ CONFIG_KEYBOARD_ADC=y
+-- 
+2.11.0
+

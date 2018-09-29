@@ -1,0 +1,26 @@
+From 6aa1478e57ec8ac715f4236fb3ec7c2e190b84fc Mon Sep 17 00:00:00 2001
+From: Joseph Chen <chenjh@rock-chips.com>
+Date: Mon, 23 Jul 2018 15:45:51 +0800
+Subject: [PATCH 45/73] configs: rk3308-aarch32: enable rockchip sip
+
+Change-Id: I3fffeac44832b6906aca41384d2dff169faf7308
+Signed-off-by: Joseph Chen <chenjh@rock-chips.com>
+---
+ arch/arm/configs/rk3308_linux_aarch32_defconfig | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/arch/arm/configs/rk3308_linux_aarch32_defconfig b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+index 33a9a35d5da3..db7c1460a8a2 100644
+--- a/arch/arm/configs/rk3308_linux_aarch32_defconfig
++++ b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+@@ -202,6 +202,7 @@ CONFIG_RK_FLASH=y
+ CONFIG_RK_NANDC_NAND=y
+ CONFIG_RK_SFC_NAND=y
+ CONFIG_RK_SFC_NOR=y
++CONFIG_ROCKCHIP_SIP=y
+ CONFIG_EXT4_FS=y
+ # CONFIG_DNOTIFY is not set
+ CONFIG_VFAT_FS=m
+-- 
+2.11.0
+

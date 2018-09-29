@@ -1,0 +1,261 @@
+From d5c04ddd8f075487862309baabafdec549f047a3 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Thu, 12 Jul 2018 10:13:19 +0800
+Subject: [PATCH 01/31] disable 16bit syscall tests
+
+---
+ runtest/syscalls | 122 +++++++++++++++++++++++++++----------------------------
+ 1 file changed, 61 insertions(+), 61 deletions(-)
+
+diff --git a/runtest/syscalls b/runtest/syscalls
+index be617e3..1ac9e39 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -57,15 +57,15 @@ chmod06 chmod06
+ chmod07 chmod07
+ 
+ chown01 chown01
+-chown01_16 chown01_16
++#chown01_16 chown01_16
+ chown02 chown02
+-chown02_16 chown02_16
++#chown02_16 chown02_16
+ chown03 chown03
+-chown03_16 chown03_16
++#chown03_16 chown03_16
+ chown04 chown04
+-chown04_16 chown04_16
++#chown04_16 chown04_16
+ chown05 chown05
+-chown05_16 chown05_16
++#chown05_16 chown05_16
+ 
+ chroot01 chroot01
+ chroot02 chroot02
+@@ -187,15 +187,15 @@ fchmod07 fchmod07
+ fchmodat01 fchmodat01
+ 
+ fchown01 fchown01
+-fchown01_16 fchown01_16
++#fchown01_16 fchown01_16
+ fchown02 fchown02
+-fchown02_16 fchown02_16
++#fchown02_16 fchown02_16
+ fchown03 fchown03
+-fchown03_16 fchown03_16
++#fchown03_16 fchown03_16
+ fchown04 fchown04
+-fchown04_16 fchown04_16
++#fchown04_16 fchown04_16
+ fchown05 fchown05
+-fchown05_16 fchown05_16
++#fchown05_16 fchown05_16
+ 
+ #fchownat test case
+ fchownat01 fchownat01
+@@ -357,24 +357,24 @@ getdomainname01 getdomainname01
+ getdtablesize01 getdtablesize01
+ 
+ getegid01 getegid01
+-getegid01_16 getegid01_16
++#getegid01_16 getegid01_16
+ getegid02 getegid02
+-getegid02_16 getegid02_16
++#getegid02_16 getegid02_16
+ 
+ geteuid01 geteuid01
+-geteuid01_16 geteuid01_16
++#geteuid01_16 geteuid01_16
+ geteuid02 geteuid02
+-geteuid02_16 geteuid02_16
++#geteuid02_16 geteuid02_16
+ 
+ getgid01 getgid01
+-getgid01_16 getgid01_16
++#getgid01_16 getgid01_16
+ getgid03 getgid03
+-getgid03_16 getgid03_16
++#getgid03_16 getgid03_16
+ 
+ getgroups01 getgroups01
+-getgroups01_16 getgroups01_16
++#getgroups01_16 getgroups01_16
+ getgroups03 getgroups03
+-getgroups03_16 getgroups03_16
++#getgroups03_16 getgroups03_16
+ 
+ gethostbyname_r01 gethostbyname_r01
+ 
+@@ -442,9 +442,9 @@ gettimeofday01 gettimeofday01
+ gettimeofday02 gettimeofday02
+ 
+ getuid01 getuid01
+-getuid01_16 getuid01_16
++#getuid01_16 getuid01_16
+ getuid03 getuid03
+-getuid03_16 getuid03_16
++#getuid03_16 getuid03_16
+ 
+ getxattr01 getxattr01
+ getxattr02 getxattr02
+@@ -514,11 +514,11 @@ kill11 kill11
+ kill12 kill12
+ 
+ lchown01 lchown01
+-lchown01_16 lchown01_16
++#lchown01_16 lchown01_16
+ lchown02  lchown02
+ lchown03  lchown03
+-lchown02_16 lchown02_16
+-lchown03_16 lchown03_16
++#lchown02_16 lchown02_16
++#lchown03_16 lchown03_16
+ 
+ lgetxattr01 lgetxattr01
+ lgetxattr02 lgetxattr02
+@@ -1032,27 +1032,27 @@ setdomainname02	setdomainname02
+ setdomainname03	setdomainname03
+ 
+ setfsgid01 setfsgid01
+-setfsgid01_16 setfsgid01_16
++#setfsgid01_16 setfsgid01_16
+ setfsgid02 setfsgid02
+-setfsgid02_16 setfsgid02_16
++#setfsgid02_16 setfsgid02_16
+ setfsgid03 setfsgid03
+-setfsgid03_16 setfsgid03_16
++#setfsgid03_16 setfsgid03_16
+ 
+ setfsuid01 setfsuid01
+-setfsuid01_16 setfsuid01_16
++#setfsuid01_16 setfsuid01_16
+ setfsuid02 setfsuid02
+-setfsuid02_16 setfsuid02_16
++#setfsuid02_16 setfsuid02_16
+ setfsuid03 setfsuid03
+-setfsuid03_16 setfsuid03_16
++#setfsuid03_16 setfsuid03_16
+ setfsuid04 setfsuid04
+-setfsuid04_16 setfsuid04_16
++#setfsuid04_16 setfsuid04_16
+ 
+ setgid01 setgid01
+-setgid01_16 setgid01_16
++#setgid01_16 setgid01_16
+ setgid02 setgid02
+-setgid02_16 setgid02_16
++#setgid02_16 setgid02_16
+ setgid03 setgid03
+-setgid03_16 setgid03_16
++#setgid03_16 setgid03_16
+ 
+ setegid01 setegid01
+ setegid02 setegid02
+@@ -1060,13 +1060,13 @@ setegid02 setegid02
+ sgetmask01 sgetmask01
+ 
+ setgroups01 setgroups01
+-setgroups01_16 setgroups01_16
++#setgroups01_16 setgroups01_16
+ setgroups02 setgroups02
+-setgroups02_16 setgroups02_16
++#setgroups02_16 setgroups02_16
+ setgroups03 setgroups03
+-setgroups03_16 setgroups03_16
++#setgroups03_16 setgroups03_16
+ setgroups04 setgroups04
+-setgroups04_16 setgroups04_16
++#setgroups04_16 setgroups04_16
+ 
+ sethostname01 sethostname01
+ sethostname02 sethostname02
+@@ -1090,48 +1090,48 @@ setpriority01 setpriority01
+ setpriority02 setpriority02
+ 
+ setregid01 setregid01
+-setregid01_16 setregid01_16
++#setregid01_16 setregid01_16
+ setregid02 setregid02
+-setregid02_16 setregid02_16
++#setregid02_16 setregid02_16
+ setregid03 setregid03
+-setregid03_16 setregid03_16
++#setregid03_16 setregid03_16
+ setregid04 setregid04
+-setregid04_16 setregid04_16
++#setregid04_16 setregid04_16
+ 
+ setresgid01 setresgid01
+-setresgid01_16 setresgid01_16
++#setresgid01_16 setresgid01_16
+ setresgid02 setresgid02
+-setresgid02_16 setresgid02_16
++#setresgid02_16 setresgid02_16
+ setresgid03 setresgid03
+-setresgid03_16 setresgid03_16
++#setresgid03_16 setresgid03_16
+ setresgid04 setresgid04
+-setresgid04_16 setresgid04_16
++#setresgid04_16 setresgid04_16
+ 
+ setresuid01 setresuid01
+-setresuid01_16 setresuid01_16
++#setresuid01_16 setresuid01_16
+ setresuid02 setresuid02
+-setresuid02_16 setresuid02_16
++#setresuid02_16 setresuid02_16
+ setresuid03 setresuid03
+-setresuid03_16 setresuid03_16
++#setresuid03_16 setresuid03_16
+ setresuid04 setresuid04
+-setresuid04_16 setresuid04_16
++#setresuid04_16 setresuid04_16
+ setresuid05 setresuid05
+-setresuid05_16 setresuid05_16
++#setresuid05_16 setresuid05_16
+ 
+ setreuid01 setreuid01
+-setreuid01_16 setreuid01_16
++#setreuid01_16 setreuid01_16
+ setreuid02 setreuid02
+-setreuid02_16 setreuid02_16
++#setreuid02_16 setreuid02_16
+ setreuid03 setreuid03
+-setreuid03_16 setreuid03_16
++#setreuid03_16 setreuid03_16
+ setreuid04 setreuid04
+-setreuid04_16 setreuid04_16
++#setreuid04_16 setreuid04_16
+ setreuid05 setreuid05
+-setreuid05_16 setreuid05_16
++#setreuid05_16 setreuid05_16
+ setreuid06 setreuid06
+-setreuid06_16 setreuid06_16
++#setreuid06_16 setreuid06_16
+ setreuid07 setreuid07
+-setreuid07_16 setreuid07_16
++#setreuid07_16 setreuid07_16
+ 
+ setrlimit01 setrlimit01
+ setrlimit02 setrlimit02
+@@ -1150,13 +1150,13 @@ settimeofday01 settimeofday01
+ settimeofday02 settimeofday02
+ 
+ setuid01 setuid01
+-setuid01_16 setuid01_16
++#setuid01_16 setuid01_16
+ setuid02 setuid02
+-setuid02_16 setuid02_16
++#setuid02_16 setuid02_16
+ setuid03 setuid03
+-setuid03_16 setuid03_16
++#setuid03_16 setuid03_16
+ setuid04 setuid04
+-setuid04_16 setuid04_16
++#setuid04_16 setuid04_16
+ 
+ setxattr01 setxattr01
+ setxattr02 setxattr02
+-- 
+2.7.4
+

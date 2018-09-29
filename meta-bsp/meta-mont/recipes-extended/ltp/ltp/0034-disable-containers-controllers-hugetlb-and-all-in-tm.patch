@@ -1,0 +1,389 @@
+From 7b2e2a09cd75d898aa7f0fa57db30e048f8fe072 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Wed, 22 Aug 2018 11:26:43 +0800
+Subject: [PATCH 1/6] disable containers, controllers, hugetlb and
+ all-in-tmpdir
+
+---
+ func_test.sh          |   8 +-
+ functional            |   2 +-
+ runtest/stress.others | 305 --------------------------------------------------
+ skipped               |   2 +-
+ stress_test.sh        |   4 +-
+ 5 files changed, 11 insertions(+), 310 deletions(-)
+
+diff --git a/func_test.sh b/func_test.sh
+index 4d0fae6..f0fa8e9 100644
+--- a/func_test.sh
++++ b/func_test.sh
+@@ -6,6 +6,9 @@ echo "*****************************************************"
+ if [[ $UNAME == *raspberrypi* ]]
+ then
+     export LHOST_IFACES=eth0
++elif [[ $UNAME == *mont* ]]
++then
++    export LHOST_IFACES=eth0
+ elif [[ $UNAME == *x86_64* ]]
+ then
+     export LHOST_IFACES=enp0s31f6
+@@ -17,8 +20,9 @@ echo 12345678 > /etc/hostid
+ echo "*****************************************************"
+ echo "               start functional test                 "
+ echo "*****************************************************"
+-./runltp -f hugetlb
+-./runltp -f `cat functional`
++mkdir tmpdir
++./runltp -d tmpdir -f `cat functional`
++rm -rf tmpdir
+ echo "*****************************************************"
+ echo "               end functional test     "
+ echo "*****************************************************"
+diff --git a/functional b/functional
+index f586abf..8803d8d 100644
+--- a/functional
++++ b/functional
+@@ -1 +1 @@
+-admin_tools,can,cap_bounds,commands,connectors,containers,cpuhotplug,cve,fcntl-locktests,filecaps,fs_bind,fs_ext4,fs_perms_simple,input,io,kernel_misc,math,mm,modules,net.ipv6_lib,nptl,numa,power_management_tests,securebits,syscalls,timers
++admin_tools,can,cap_bounds,commands,connectors,cpuhotplug,cve,fcntl-locktests,filecaps,fs_bind,fs_ext4,fs_perms_simple,input,io,kernel_misc,math,mm,modules,net.ipv6_lib,nptl,numa,power_management_tests,securebits,syscalls,timers
+diff --git a/runtest/stress.others b/runtest/stress.others
+index 44c1f67..4939155 100644
+--- a/runtest/stress.others
++++ b/runtest/stress.others
+@@ -1,309 +1,4 @@
+ ##########################
+-#controllers
+-##########################
+-
+-memcg_stress            memcg_stress_test.sh
+-# Stress test for debug cgroup
+-cgroup_fj_stress_debug_2_2_none cgroup_fj_stress.sh debug 2 2 none
+-cgroup_fj_stress_debug_3_3_none cgroup_fj_stress.sh debug 3 3 none
+-cgroup_fj_stress_debug_4_4_none cgroup_fj_stress.sh debug 4 4 none
+-cgroup_fj_stress_debug_2_9_none cgroup_fj_stress.sh debug 2 9 none
+-cgroup_fj_stress_debug_10_3_none cgroup_fj_stress.sh debug 10 3 none
+-cgroup_fj_stress_debug_1_200_none cgroup_fj_stress.sh debug 1 200 none
+-cgroup_fj_stress_debug_200_1_none cgroup_fj_stress.sh debug 200 1 none
+-
+-cgroup_fj_stress_debug_2_2_one cgroup_fj_stress.sh debug 2 2 one
+-cgroup_fj_stress_debug_3_3_one cgroup_fj_stress.sh debug 3 3 one
+-cgroup_fj_stress_debug_4_4_one cgroup_fj_stress.sh debug 4 4 one
+-cgroup_fj_stress_debug_2_9_one cgroup_fj_stress.sh debug 2 9 one
+-cgroup_fj_stress_debug_10_3_one cgroup_fj_stress.sh debug 10 3 one
+-cgroup_fj_stress_debug_1_200_one cgroup_fj_stress.sh debug 1 200 one
+-cgroup_fj_stress_debug_200_1_one cgroup_fj_stress.sh debug 200 1 one
+-
+-cgroup_fj_stress_debug_2_2_each cgroup_fj_stress.sh debug 2 2 each
+-cgroup_fj_stress_debug_3_3_each cgroup_fj_stress.sh debug 3 3 each
+-cgroup_fj_stress_debug_4_4_each cgroup_fj_stress.sh debug 4 4 each
+-cgroup_fj_stress_debug_2_9_each cgroup_fj_stress.sh debug 2 9 each
+-cgroup_fj_stress_debug_10_3_each cgroup_fj_stress.sh debug 10 3 each
+-cgroup_fj_stress_debug_1_200_each cgroup_fj_stress.sh debug 1 200 each
+-cgroup_fj_stress_debug_200_1_each cgroup_fj_stress.sh debug 200 1 each
+-
+-# Stress test for cpuset cgroup
+-cgroup_fj_stress_cpuset_2_2_none cgroup_fj_stress.sh cpuset 2 2 none
+-cgroup_fj_stress_cpuset_3_3_none cgroup_fj_stress.sh cpuset 3 3 none
+-cgroup_fj_stress_cpuset_4_4_none cgroup_fj_stress.sh cpuset 4 4 none
+-cgroup_fj_stress_cpuset_2_9_none cgroup_fj_stress.sh cpuset 2 9 none
+-cgroup_fj_stress_cpuset_10_3_none cgroup_fj_stress.sh cpuset 10 3 none
+-cgroup_fj_stress_cpuset_1_200_none cgroup_fj_stress.sh cpuset 1 200 none
+-cgroup_fj_stress_cpuset_200_1_none cgroup_fj_stress.sh cpuset 200 1 none
+-
+-cgroup_fj_stress_cpuset_2_2_one cgroup_fj_stress.sh cpuset 2 2 one
+-cgroup_fj_stress_cpuset_3_3_one cgroup_fj_stress.sh cpuset 3 3 one
+-cgroup_fj_stress_cpuset_4_4_one cgroup_fj_stress.sh cpuset 4 4 one
+-cgroup_fj_stress_cpuset_2_9_one cgroup_fj_stress.sh cpuset 2 9 one
+-cgroup_fj_stress_cpuset_10_3_one cgroup_fj_stress.sh cpuset 10 3 one
+-cgroup_fj_stress_cpuset_1_200_one cgroup_fj_stress.sh cpuset 1 200 one
+-cgroup_fj_stress_cpuset_200_1_one cgroup_fj_stress.sh cpuset 200 1 one
+-
+-cgroup_fj_stress_cpuset_2_2_each cgroup_fj_stress.sh cpuset 2 2 each
+-cgroup_fj_stress_cpuset_3_3_each cgroup_fj_stress.sh cpuset 3 3 each
+-cgroup_fj_stress_cpuset_4_4_each cgroup_fj_stress.sh cpuset 4 4 each
+-cgroup_fj_stress_cpuset_2_9_each cgroup_fj_stress.sh cpuset 2 9 each
+-cgroup_fj_stress_cpuset_10_3_each cgroup_fj_stress.sh cpuset 10 3 each
+-cgroup_fj_stress_cpuset_1_200_each cgroup_fj_stress.sh cpuset 1 200 each
+-cgroup_fj_stress_cpuset_200_1_each cgroup_fj_stress.sh cpuset 200 1 each
+-
+-# Stress test for cpu cgroup
+-cgroup_fj_stress_cpu_2_2_none cgroup_fj_stress.sh cpu 2 2 none
+-cgroup_fj_stress_cpu_3_3_none cgroup_fj_stress.sh cpu 3 3 none
+-cgroup_fj_stress_cpu_4_4_none cgroup_fj_stress.sh cpu 4 4 none
+-cgroup_fj_stress_cpu_2_9_none cgroup_fj_stress.sh cpu 2 9 none
+-cgroup_fj_stress_cpu_10_3_none cgroup_fj_stress.sh cpu 10 3 none
+-cgroup_fj_stress_cpu_1_200_none cgroup_fj_stress.sh cpu 1 200 none
+-cgroup_fj_stress_cpu_200_1_none cgroup_fj_stress.sh cpu 200 1 none
+-
+-cgroup_fj_stress_cpu_2_2_one cgroup_fj_stress.sh cpu 2 2 one
+-cgroup_fj_stress_cpu_3_3_one cgroup_fj_stress.sh cpu 3 3 one
+-cgroup_fj_stress_cpu_4_4_one cgroup_fj_stress.sh cpu 4 4 one
+-cgroup_fj_stress_cpu_2_9_one cgroup_fj_stress.sh cpu 2 9 one
+-cgroup_fj_stress_cpu_10_3_one cgroup_fj_stress.sh cpu 10 3 one
+-cgroup_fj_stress_cpu_1_200_one cgroup_fj_stress.sh cpu 1 200 one
+-cgroup_fj_stress_cpu_200_1_one cgroup_fj_stress.sh cpu 200 1 one
+-
+-cgroup_fj_stress_cpu_2_2_each cgroup_fj_stress.sh cpu 2 2 each
+-cgroup_fj_stress_cpu_3_3_each cgroup_fj_stress.sh cpu 3 3 each
+-cgroup_fj_stress_cpu_4_4_each cgroup_fj_stress.sh cpu 4 4 each
+-cgroup_fj_stress_cpu_2_9_each cgroup_fj_stress.sh cpu 2 9 each
+-cgroup_fj_stress_cpu_10_3_each cgroup_fj_stress.sh cpu 10 3 each
+-cgroup_fj_stress_cpu_1_200_each cgroup_fj_stress.sh cpu 1 200 each
+-cgroup_fj_stress_cpu_200_1_each cgroup_fj_stress.sh cpu 200 1 each
+-
+-# Stress test for cpuacct cgroup
+-cgroup_fj_stress_cpuacct_2_2_none cgroup_fj_stress.sh cpuacct 2 2 none
+-cgroup_fj_stress_cpuacct_3_3_none cgroup_fj_stress.sh cpuacct 3 3 none
+-cgroup_fj_stress_cpuacct_4_4_none cgroup_fj_stress.sh cpuacct 4 4 none
+-cgroup_fj_stress_cpuacct_2_9_none cgroup_fj_stress.sh cpuacct 2 9 none
+-cgroup_fj_stress_cpuacct_10_3_none cgroup_fj_stress.sh cpuacct 10 3 none
+-cgroup_fj_stress_cpuacct_1_200_none cgroup_fj_stress.sh cpuacct 1 200 none
+-cgroup_fj_stress_cpuacct_200_1_none cgroup_fj_stress.sh cpuacct 200 1 none
+-
+-cgroup_fj_stress_cpuacct_2_2_one cgroup_fj_stress.sh cpuacct 2 2 one
+-cgroup_fj_stress_cpuacct_3_3_one cgroup_fj_stress.sh cpuacct 3 3 one
+-cgroup_fj_stress_cpuacct_4_4_one cgroup_fj_stress.sh cpuacct 4 4 one
+-cgroup_fj_stress_cpuacct_2_9_one cgroup_fj_stress.sh cpuacct 2 9 one
+-cgroup_fj_stress_cpuacct_10_3_one cgroup_fj_stress.sh cpuacct 10 3 one
+-cgroup_fj_stress_cpuacct_1_200_one cgroup_fj_stress.sh cpuacct 1 200 one
+-cgroup_fj_stress_cpuacct_200_1_one cgroup_fj_stress.sh cpuacct 200 1 one
+-
+-cgroup_fj_stress_cpuacct_2_2_each cgroup_fj_stress.sh cpuacct 2 2 each
+-cgroup_fj_stress_cpuacct_3_3_each cgroup_fj_stress.sh cpuacct 3 3 each
+-cgroup_fj_stress_cpuacct_4_4_each cgroup_fj_stress.sh cpuacct 4 4 each
+-cgroup_fj_stress_cpuacct_2_9_each cgroup_fj_stress.sh cpuacct 2 9 each
+-cgroup_fj_stress_cpuacct_10_3_each cgroup_fj_stress.sh cpuacct 10 3 each
+-cgroup_fj_stress_cpuacct_1_200_each cgroup_fj_stress.sh cpuacct 1 200 each
+-cgroup_fj_stress_cpuacct_200_1_each cgroup_fj_stress.sh cpuacct 200 1 each
+-
+-# Stress test for memory cgroup
+-cgroup_fj_stress_memory_2_2_none cgroup_fj_stress.sh memory 2 2 none
+-cgroup_fj_stress_memory_3_3_none cgroup_fj_stress.sh memory 3 3 none
+-cgroup_fj_stress_memory_4_4_none cgroup_fj_stress.sh memory 4 4 none
+-cgroup_fj_stress_memory_2_9_none cgroup_fj_stress.sh memory 2 9 none
+-cgroup_fj_stress_memory_10_3_none cgroup_fj_stress.sh memory 10 3 none
+-cgroup_fj_stress_memory_1_200_none cgroup_fj_stress.sh memory 1 200 none
+-cgroup_fj_stress_memory_200_1_none cgroup_fj_stress.sh memory 200 1 none
+-
+-cgroup_fj_stress_memory_2_2_one cgroup_fj_stress.sh memory 2 2 one
+-cgroup_fj_stress_memory_3_3_one cgroup_fj_stress.sh memory 3 3 one
+-cgroup_fj_stress_memory_4_4_one cgroup_fj_stress.sh memory 4 4 one
+-cgroup_fj_stress_memory_2_9_one cgroup_fj_stress.sh memory 2 9 one
+-cgroup_fj_stress_memory_10_3_one cgroup_fj_stress.sh memory 10 3 one
+-cgroup_fj_stress_memory_1_200_one cgroup_fj_stress.sh memory 1 200 one
+-cgroup_fj_stress_memory_200_1_one cgroup_fj_stress.sh memory 200 1 one
+-
+-cgroup_fj_stress_memory_2_2_each cgroup_fj_stress.sh memory 2 2 each
+-cgroup_fj_stress_memory_3_3_each cgroup_fj_stress.sh memory 3 3 each
+-cgroup_fj_stress_memory_4_4_each cgroup_fj_stress.sh memory 4 4 each
+-cgroup_fj_stress_memory_2_9_each cgroup_fj_stress.sh memory 2 9 each
+-cgroup_fj_stress_memory_10_3_each cgroup_fj_stress.sh memory 10 3 each
+-cgroup_fj_stress_memory_1_200_each cgroup_fj_stress.sh memory 1 200 each
+-cgroup_fj_stress_memory_200_1_each cgroup_fj_stress.sh memory 200 1 each
+-
+-# Stress test for freezer cgroup
+-cgroup_fj_stress_freezer_2_2_none cgroup_fj_stress.sh freezer 2 2 none
+-cgroup_fj_stress_freezer_3_3_none cgroup_fj_stress.sh freezer 3 3 none
+-cgroup_fj_stress_freezer_4_4_none cgroup_fj_stress.sh freezer 4 4 none
+-cgroup_fj_stress_freezer_2_9_none cgroup_fj_stress.sh freezer 2 9 none
+-cgroup_fj_stress_freezer_10_3_none cgroup_fj_stress.sh freezer 10 3 none
+-cgroup_fj_stress_freezer_1_200_none cgroup_fj_stress.sh freezer 1 200 none
+-cgroup_fj_stress_freezer_200_1_none cgroup_fj_stress.sh freezer 200 1 none
+-
+-cgroup_fj_stress_freezer_2_2_one cgroup_fj_stress.sh freezer 2 2 one
+-cgroup_fj_stress_freezer_3_3_one cgroup_fj_stress.sh freezer 3 3 one
+-cgroup_fj_stress_freezer_4_4_one cgroup_fj_stress.sh freezer 4 4 one
+-cgroup_fj_stress_freezer_2_9_one cgroup_fj_stress.sh freezer 2 9 one
+-cgroup_fj_stress_freezer_10_3_one cgroup_fj_stress.sh freezer 10 3 one
+-cgroup_fj_stress_freezer_1_200_one cgroup_fj_stress.sh freezer 1 200 one
+-cgroup_fj_stress_freezer_200_1_one cgroup_fj_stress.sh freezer 200 1 one
+-
+-cgroup_fj_stress_freezer_2_2_each cgroup_fj_stress.sh freezer 2 2 each
+-cgroup_fj_stress_freezer_3_3_each cgroup_fj_stress.sh freezer 3 3 each
+-cgroup_fj_stress_freezer_4_4_each cgroup_fj_stress.sh freezer 4 4 each
+-cgroup_fj_stress_freezer_2_9_each cgroup_fj_stress.sh freezer 2 9 each
+-cgroup_fj_stress_freezer_10_3_each cgroup_fj_stress.sh freezer 10 3 each
+-cgroup_fj_stress_freezer_1_200_each cgroup_fj_stress.sh freezer 1 200 each
+-cgroup_fj_stress_freezer_200_1_each cgroup_fj_stress.sh freezer 200 1 each
+-
+-# Stress test for devices cgroup
+-cgroup_fj_stress_devices_2_2_none cgroup_fj_stress.sh devices 2 2 none
+-cgroup_fj_stress_devices_3_3_none cgroup_fj_stress.sh devices 3 3 none
+-cgroup_fj_stress_devices_4_4_none cgroup_fj_stress.sh devices 4 4 none
+-cgroup_fj_stress_devices_2_9_none cgroup_fj_stress.sh devices 2 9 none
+-cgroup_fj_stress_devices_10_3_none cgroup_fj_stress.sh devices 10 3 none
+-cgroup_fj_stress_devices_1_200_none cgroup_fj_stress.sh devices 1 200 none
+-cgroup_fj_stress_devices_200_1_none cgroup_fj_stress.sh devices 200 1 none
+-
+-cgroup_fj_stress_devices_2_2_one cgroup_fj_stress.sh devices 2 2 one
+-cgroup_fj_stress_devices_3_3_one cgroup_fj_stress.sh devices 3 3 one
+-cgroup_fj_stress_devices_4_4_one cgroup_fj_stress.sh devices 4 4 one
+-cgroup_fj_stress_devices_2_9_one cgroup_fj_stress.sh devices 2 9 one
+-cgroup_fj_stress_devices_10_3_one cgroup_fj_stress.sh devices 10 3 one
+-cgroup_fj_stress_devices_1_200_one cgroup_fj_stress.sh devices 1 200 one
+-cgroup_fj_stress_devices_200_1_one cgroup_fj_stress.sh devices 200 1 one
+-
+-cgroup_fj_stress_devices_2_2_each cgroup_fj_stress.sh devices 2 2 each
+-cgroup_fj_stress_devices_3_3_each cgroup_fj_stress.sh devices 3 3 each
+-cgroup_fj_stress_devices_4_4_each cgroup_fj_stress.sh devices 4 4 each
+-cgroup_fj_stress_devices_2_9_each cgroup_fj_stress.sh devices 2 9 each
+-cgroup_fj_stress_devices_10_3_each cgroup_fj_stress.sh devices 10 3 each
+-cgroup_fj_stress_devices_1_200_each cgroup_fj_stress.sh devices 1 200 each
+-cgroup_fj_stress_devices_200_1_each cgroup_fj_stress.sh devices 200 1 each
+-
+-# Stress test for blkio cgroup
+-cgroup_fj_stress_blkio_2_2_none cgroup_fj_stress.sh blkio 2 2 none
+-cgroup_fj_stress_blkio_3_3_none cgroup_fj_stress.sh blkio 3 3 none
+-cgroup_fj_stress_blkio_4_4_none cgroup_fj_stress.sh blkio 4 4 none
+-cgroup_fj_stress_blkio_2_9_none cgroup_fj_stress.sh blkio 2 9 none
+-cgroup_fj_stress_blkio_10_3_none cgroup_fj_stress.sh blkio 10 3 none
+-cgroup_fj_stress_blkio_1_200_none cgroup_fj_stress.sh blkio 1 200 none
+-cgroup_fj_stress_blkio_200_1_none cgroup_fj_stress.sh blkio 200 1 none
+-
+-cgroup_fj_stress_blkio_2_2_one cgroup_fj_stress.sh blkio 2 2 one
+-cgroup_fj_stress_blkio_3_3_one cgroup_fj_stress.sh blkio 3 3 one
+-cgroup_fj_stress_blkio_4_4_one cgroup_fj_stress.sh blkio 4 4 one
+-cgroup_fj_stress_blkio_2_9_one cgroup_fj_stress.sh blkio 2 9 one
+-cgroup_fj_stress_blkio_10_3_one cgroup_fj_stress.sh blkio 10 3 one
+-cgroup_fj_stress_blkio_1_200_one cgroup_fj_stress.sh blkio 1 200 one
+-cgroup_fj_stress_blkio_200_1_one cgroup_fj_stress.sh blkio 200 1 one
+-
+-cgroup_fj_stress_blkio_2_2_each cgroup_fj_stress.sh blkio 2 2 each
+-cgroup_fj_stress_blkio_3_3_each cgroup_fj_stress.sh blkio 3 3 each
+-cgroup_fj_stress_blkio_4_4_each cgroup_fj_stress.sh blkio 4 4 each
+-cgroup_fj_stress_blkio_2_9_each cgroup_fj_stress.sh blkio 2 9 each
+-cgroup_fj_stress_blkio_10_3_each cgroup_fj_stress.sh blkio 10 3 each
+-cgroup_fj_stress_blkio_1_200_each cgroup_fj_stress.sh blkio 1 200 each
+-cgroup_fj_stress_blkio_200_1_each cgroup_fj_stress.sh blkio 200 1 each
+-
+-# Stress test for net_cls cgroup
+-cgroup_fj_stress_net_cls_2_2_none cgroup_fj_stress.sh net_cls 2 2 none
+-cgroup_fj_stress_net_cls_3_3_none cgroup_fj_stress.sh net_cls 3 3 none
+-cgroup_fj_stress_net_cls_4_4_none cgroup_fj_stress.sh net_cls 4 4 none
+-cgroup_fj_stress_net_cls_2_9_none cgroup_fj_stress.sh net_cls 2 9 none
+-cgroup_fj_stress_net_cls_10_3_none cgroup_fj_stress.sh net_cls 10 3 none
+-cgroup_fj_stress_net_cls_1_200_none cgroup_fj_stress.sh net_cls 1 200 none
+-cgroup_fj_stress_net_cls_200_1_none cgroup_fj_stress.sh net_cls 200 1 none
+-
+-cgroup_fj_stress_net_cls_2_2_one cgroup_fj_stress.sh net_cls 2 2 one
+-cgroup_fj_stress_net_cls_3_3_one cgroup_fj_stress.sh net_cls 3 3 one
+-cgroup_fj_stress_net_cls_4_4_one cgroup_fj_stress.sh net_cls 4 4 one
+-cgroup_fj_stress_net_cls_2_9_one cgroup_fj_stress.sh net_cls 2 9 one
+-cgroup_fj_stress_net_cls_10_3_one cgroup_fj_stress.sh net_cls 10 3 one
+-cgroup_fj_stress_net_cls_1_200_one cgroup_fj_stress.sh net_cls 1 200 one
+-cgroup_fj_stress_net_cls_200_1_one cgroup_fj_stress.sh net_cls 200 1 one
+-
+-cgroup_fj_stress_net_cls_2_2_each cgroup_fj_stress.sh net_cls 2 2 each
+-cgroup_fj_stress_net_cls_3_3_each cgroup_fj_stress.sh net_cls 3 3 each
+-cgroup_fj_stress_net_cls_4_4_each cgroup_fj_stress.sh net_cls 4 4 each
+-cgroup_fj_stress_net_cls_2_9_each cgroup_fj_stress.sh net_cls 2 9 each
+-cgroup_fj_stress_net_cls_10_3_each cgroup_fj_stress.sh net_cls 10 3 each
+-cgroup_fj_stress_net_cls_1_200_each cgroup_fj_stress.sh net_cls 1 200 each
+-cgroup_fj_stress_net_cls_200_1_each cgroup_fj_stress.sh net_cls 200 1 each
+-
+-# Stress test for perf_event cgroup
+-cgroup_fj_stress_perf_event_2_2_none cgroup_fj_stress.sh perf_event 2 2 none
+-cgroup_fj_stress_perf_event_3_3_none cgroup_fj_stress.sh perf_event 3 3 none
+-cgroup_fj_stress_perf_event_4_4_none cgroup_fj_stress.sh perf_event 4 4 none
+-cgroup_fj_stress_perf_event_2_9_none cgroup_fj_stress.sh perf_event 2 9 none
+-cgroup_fj_stress_perf_event_10_3_none cgroup_fj_stress.sh perf_event 10 3 none
+-cgroup_fj_stress_perf_event_1_200_none cgroup_fj_stress.sh perf_event 1 200 none
+-cgroup_fj_stress_perf_event_200_1_none cgroup_fj_stress.sh perf_event 200 1 none
+-
+-cgroup_fj_stress_perf_event_2_2_one cgroup_fj_stress.sh perf_event 2 2 one
+-cgroup_fj_stress_perf_event_3_3_one cgroup_fj_stress.sh perf_event 3 3 one
+-cgroup_fj_stress_perf_event_4_4_one cgroup_fj_stress.sh perf_event 4 4 one
+-cgroup_fj_stress_perf_event_2_9_one cgroup_fj_stress.sh perf_event 2 9 one
+-cgroup_fj_stress_perf_event_10_3_one cgroup_fj_stress.sh perf_event 10 3 one
+-cgroup_fj_stress_perf_event_1_200_one cgroup_fj_stress.sh perf_event 1 200 one
+-cgroup_fj_stress_perf_event_200_1_one cgroup_fj_stress.sh perf_event 200 1 one
+-
+-cgroup_fj_stress_perf_event_2_2_each cgroup_fj_stress.sh perf_event 2 2 each
+-cgroup_fj_stress_perf_event_3_3_each cgroup_fj_stress.sh perf_event 3 3 each
+-cgroup_fj_stress_perf_event_4_4_each cgroup_fj_stress.sh perf_event 4 4 each
+-cgroup_fj_stress_perf_event_2_9_each cgroup_fj_stress.sh perf_event 2 9 each
+-cgroup_fj_stress_perf_event_10_3_each cgroup_fj_stress.sh perf_event 10 3 each
+-cgroup_fj_stress_perf_event_1_200_each cgroup_fj_stress.sh perf_event 1 200 each
+-cgroup_fj_stress_perf_event_200_1_each cgroup_fj_stress.sh perf_event 200 1 each
+-
+-# Stress test for net_prio cgroup
+-cgroup_fj_stress_net_prio_2_2_none cgroup_fj_stress.sh net_prio 2 2 none
+-cgroup_fj_stress_net_prio_3_3_none cgroup_fj_stress.sh net_prio 3 3 none
+-cgroup_fj_stress_net_prio_4_4_none cgroup_fj_stress.sh net_prio 4 4 none
+-cgroup_fj_stress_net_prio_2_9_none cgroup_fj_stress.sh net_prio 2 9 none
+-cgroup_fj_stress_net_prio_10_3_none cgroup_fj_stress.sh net_prio 10 3 none
+-cgroup_fj_stress_net_prio_1_200_none cgroup_fj_stress.sh net_prio 1 200 none
+-cgroup_fj_stress_net_prio_200_1_none cgroup_fj_stress.sh net_prio 200 1 none
+-
+-cgroup_fj_stress_net_prio_2_2_one cgroup_fj_stress.sh net_prio 2 2 one
+-cgroup_fj_stress_net_prio_3_3_one cgroup_fj_stress.sh net_prio 3 3 one
+-cgroup_fj_stress_net_prio_4_4_one cgroup_fj_stress.sh net_prio 4 4 one
+-cgroup_fj_stress_net_prio_2_9_one cgroup_fj_stress.sh net_prio 2 9 one
+-cgroup_fj_stress_net_prio_10_3_one cgroup_fj_stress.sh net_prio 10 3 one
+-cgroup_fj_stress_net_prio_1_200_one cgroup_fj_stress.sh net_prio 1 200 one
+-cgroup_fj_stress_net_prio_200_1_one cgroup_fj_stress.sh net_prio 200 1 one
+-
+-cgroup_fj_stress_net_prio_2_2_each cgroup_fj_stress.sh net_prio 2 2 each
+-cgroup_fj_stress_net_prio_3_3_each cgroup_fj_stress.sh net_prio 3 3 each
+-cgroup_fj_stress_net_prio_4_4_each cgroup_fj_stress.sh net_prio 4 4 each
+-cgroup_fj_stress_net_prio_2_9_each cgroup_fj_stress.sh net_prio 2 9 each
+-cgroup_fj_stress_net_prio_10_3_each cgroup_fj_stress.sh net_prio 10 3 each
+-cgroup_fj_stress_net_prio_1_200_each cgroup_fj_stress.sh net_prio 1 200 each
+-cgroup_fj_stress_net_prio_200_1_each cgroup_fj_stress.sh net_prio 200 1 each
+-
+-# Stress test for hugetlb cgroup
+-cgroup_fj_stress_hugetlb_2_2_none cgroup_fj_stress.sh hugetlb 2 2 none
+-cgroup_fj_stress_hugetlb_3_3_none cgroup_fj_stress.sh hugetlb 3 3 none
+-cgroup_fj_stress_hugetlb_4_4_none cgroup_fj_stress.sh hugetlb 4 4 none
+-cgroup_fj_stress_hugetlb_2_9_none cgroup_fj_stress.sh hugetlb 2 9 none
+-cgroup_fj_stress_hugetlb_10_3_none cgroup_fj_stress.sh hugetlb 10 3 none
+-cgroup_fj_stress_hugetlb_1_200_none cgroup_fj_stress.sh hugetlb 1 200 none
+-cgroup_fj_stress_hugetlb_200_1_none cgroup_fj_stress.sh hugetlb 200 1 none
+-
+-cgroup_fj_stress_hugetlb_2_2_one cgroup_fj_stress.sh hugetlb 2 2 one
+-cgroup_fj_stress_hugetlb_3_3_one cgroup_fj_stress.sh hugetlb 3 3 one
+-cgroup_fj_stress_hugetlb_4_4_one cgroup_fj_stress.sh hugetlb 4 4 one
+-cgroup_fj_stress_hugetlb_2_9_one cgroup_fj_stress.sh hugetlb 2 9 one
+-cgroup_fj_stress_hugetlb_10_3_one cgroup_fj_stress.sh hugetlb 10 3 one
+-cgroup_fj_stress_hugetlb_1_200_one cgroup_fj_stress.sh hugetlb 1 200 one
+-cgroup_fj_stress_hugetlb_200_1_one cgroup_fj_stress.sh hugetlb 200 1 one
+-
+-cgroup_fj_stress_hugetlb_2_2_each cgroup_fj_stress.sh hugetlb 2 2 each
+-cgroup_fj_stress_hugetlb_3_3_each cgroup_fj_stress.sh hugetlb 3 3 each
+-cgroup_fj_stress_hugetlb_4_4_each cgroup_fj_stress.sh hugetlb 4 4 each
+-cgroup_fj_stress_hugetlb_2_9_each cgroup_fj_stress.sh hugetlb 2 9 each
+-cgroup_fj_stress_hugetlb_10_3_each cgroup_fj_stress.sh hugetlb 10 3 each
+-cgroup_fj_stress_hugetlb_1_200_each cgroup_fj_stress.sh hugetlb 1 200 each
+-cgroup_fj_stress_hugetlb_200_1_each cgroup_fj_stress.sh hugetlb 200 1 each
+-
+-##########################
+ #mm
+ ##########################
+ 
+diff --git a/skipped b/skipped
+index ccd3103..b05a796 100644
+--- a/skipped
++++ b/skipped
+@@ -1,4 +1,4 @@
+-controllers,crashme,dma_thread_diotest,fs_readonly,hugetlb,ima,lvm.part1,lvm.part2,scsi_debug.part1,ltp-aiodio.part1,ltp-aiodio.part2,ltp-aiodio.part3,ltp-aiodio.part4,net.ipv6,net.multicast,net.rpc,net.rpc_tests,net.sctp,net.tcp_cmds,net.tirpc_tests,network_commands,power_management_tests_exclusive,quickhit,smack,syscalls-ipc,tpm_tools,tracing
++containers,controllers,crashme,dma_thread_diotest,fs_readonly,hugetlb,ima,lvm.part1,lvm.part2,scsi_debug.part1,ltp-aiodio.part1,ltp-aiodio.part2,ltp-aiodio.part3,ltp-aiodio.part4,net.ipv6,net.multicast,net.rpc,net.rpc_tests,net.sctp,net.tcp_cmds,net.tirpc_tests,network_commands,power_management_tests_exclusive,quickhit,smack,syscalls-ipc,tpm_tools,tracing
+ io_cd,io_floppy,ltp-aio-stress.part1,ltp-aio-stress.part2,net.features,net.nfs,net_stress.appl,net_stress.broken_ip,net_stress.interface,net_stress.ipsec_icmp,net_stress.ipsec_tcp,net_stress.ipsec_udp,net_stress.multicast,net_stress.route,stress.part1,stress.part2,stress.part3
+ 
+ #lvm.part1 ms-dos
+diff --git a/stress_test.sh b/stress_test.sh
+index 4b13b47..9983d76 100644
+--- a/stress_test.sh
++++ b/stress_test.sh
+@@ -4,7 +4,9 @@ rm /dev/memcg -rf
+ echo "*****************************************************"
+ echo "    start stress test     "
+ echo "*****************************************************"
+-./runltp -f `cat stress`
++mkdir tmpdir
++./runltp -d tmpdir -f `cat stress`
++rm -rf tmpdir
+ echo "*****************************************************"
+ echo "    end stress test     "
+ echo "*****************************************************"
+-- 
+2.7.4
+

@@ -1,7 +1,7 @@
 From d42c47694c65ada53bb37bae0aa1b53fdf706fb0 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 30 May 2018 18:58:22 +0800
-Subject: [PATCH 08/14] Sync BSP kernel's rockchip-io-domain
+Subject: [PATCH 08/73] Sync BSP kernel's rockchip-io-domain
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

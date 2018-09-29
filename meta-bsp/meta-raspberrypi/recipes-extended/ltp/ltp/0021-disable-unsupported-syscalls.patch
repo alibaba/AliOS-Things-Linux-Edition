@@ -1,0 +1,68 @@
+From 8622778dc256ff9374f25ae9ba3e25bfa61bbb2f Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 24 Jul 2018 11:08:35 +0800
+Subject: [PATCH 21/31] disable unsupported syscalls
+
+eventfd01 __NR_eventfd
+futimesat01 __NR_futimesat
+getdents01 getdents01 __NR_getdents
+sysfs01-06 __NR_sysfs
+---
+ runtest/syscalls | 20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/runtest/syscalls b/runtest/syscalls
+index 0e4ec51..4ff46ef 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -129,7 +129,7 @@ epoll_wait02 epoll_wait02
+ epoll_wait03 epoll_wait03
+ epoll_pwait01 epoll_pwait01
+ 
+-eventfd01 eventfd01
++#eventfd01 eventfd01
+ 
+ eventfd2_01 eventfd2_01
+ eventfd2_02 eventfd2_02
+@@ -335,7 +335,7 @@ ftruncate04 ftruncate04
+ ftruncate04_64 ftruncate04_64
+ 
+ #futimesat test cases
+-futimesat01 futimesat01
++#futimesat01 futimesat01
+ 
+ getcontext01 getcontext01
+ 
+@@ -346,8 +346,8 @@ getcwd02 getcwd02
+ getcwd03 getcwd03
+ getcwd04 getcwd04
+ 
+-getdents01 getdents01
+-getdents02 getdents02
++#getdents01 getdents01
++#getdents02 getdents02
+ 
+ getdents01_64 getdents01 -l
+ getdents02_64 getdents02 -l
+@@ -1296,12 +1296,12 @@ syscall01 syscall01
+ #sysctl04 sysctl04
+ #sysctl05 sysctl05
+ 
+-sysfs01 sysfs01
+-sysfs02 sysfs02
+-sysfs03 sysfs03
+-sysfs04 sysfs04
+-sysfs05 sysfs05
+-sysfs06 sysfs06
++#sysfs01 sysfs01
++#sysfs02 sysfs02
++#sysfs03 sysfs03
++#sysfs04 sysfs04
++#sysfs05 sysfs05
++#sysfs06 sysfs06
+ 
+ sysinfo01 sysinfo01
+ sysinfo02 sysinfo02
+-- 
+2.7.4
+

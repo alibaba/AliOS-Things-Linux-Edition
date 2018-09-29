@@ -1,0 +1,60 @@
+From 4d7a21cc3cb9e19d98453fda6e0f9125fb6e5d3d Mon Sep 17 00:00:00 2001
+From: Huibin Hong <huibin.hong@rock-chips.com>
+Date: Thu, 19 Jul 2018 10:14:22 +0800
+Subject: [PATCH 41/73] arm64: dts: rockchip: modify ramoops of rk3308
+
+Change-Id: I2b72fcc597bd066dfacc091279e8974c33a64f5c
+Signed-off-by: Huibin Hong <huibin.hong@rock-chips.com>
+---
+ arch/arm/boot/dts/rk3308-evb-dmic-pdm-v11-aarch32.dts |  5 +----
+ arch/arm64/boot/dts/rockchip/rk3308.dtsi              | 15 +++++----------
+ 2 files changed, 6 insertions(+), 14 deletions(-)
+
+diff --git a/arch/arm/boot/dts/rk3308-evb-dmic-pdm-v11-aarch32.dts b/arch/arm/boot/dts/rk3308-evb-dmic-pdm-v11-aarch32.dts
+index 462fdb1d98bd..eb4a2b0630c0 100644
+--- a/arch/arm/boot/dts/rk3308-evb-dmic-pdm-v11-aarch32.dts
++++ b/arch/arm/boot/dts/rk3308-evb-dmic-pdm-v11-aarch32.dts
+@@ -10,11 +10,8 @@
+ 	compatible = "rockchip,rk3308-evb-dmic-pdm-v11", "rockchip,rk3308";
+ };
+ 
+-&ramoops_mem {
+-	reg = <0x0 0x30000 0x0 0x20000>;
+-};
+-
+ &ramoops {
++	reg = <0x0 0x30000 0x0 0x20000>;
+ 	record-size = <0x0 0x00000>;
+ 	console-size = <0x0 0x20000>;
+ };
+diff --git a/arch/arm64/boot/dts/rockchip/rk3308.dtsi b/arch/arm64/boot/dts/rockchip/rk3308.dtsi
+index 732d5ce06742..ff0a000a0a64 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3308.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3308.dtsi
+@@ -214,18 +214,13 @@
+ 		method = "smc";
+ 	};
+ 
+-	ramoops_mem: ramoops_mem {
+-		reg = <0x0 0x110000 0x0 0xf0000>;
+-		reg-names = "ramoops_mem";
+-	};
+-
+ 	ramoops: ramoops {
+ 		compatible = "ramoops";
+-		record-size = <0x0 0x30000>;
+-		console-size = <0x0 0xc0000>;
+-		ftrace-size = <0x0 0x00000>;
+-		pmsg-size = <0x0 0x00000>;
+-		memory-region = <&ramoops_mem>;
++		reg = <0x0 0x110000 0x0 0xf0000>;
++		record-size = <0x30000>;
++		console-size = <0xc0000>;
++		ftrace-size = <0x0000>;
++		pmsg-size = <0x0000>;
+ 	};
+ 
+ 	rgb: rgb {
+-- 
+2.11.0
+

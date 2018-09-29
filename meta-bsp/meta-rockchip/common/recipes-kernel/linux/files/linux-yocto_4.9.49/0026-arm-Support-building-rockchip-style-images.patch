@@ -1,0 +1,49 @@
+From 9ca7641a7864e0a4b19f15e5c22efa2b645db7a9 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 13 Jul 2018 19:56:35 +0800
+Subject: [PATCH 26/73] arm: Support building rockchip style images
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ arch/arm/Makefile | 28 ++++++++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
+
+diff --git a/arch/arm/Makefile b/arch/arm/Makefile
+index 67dacf13f28b..ec4a79efe70a 100644
+--- a/arch/arm/Makefile
++++ b/arch/arm/Makefile
+@@ -380,3 +380,31 @@ define archhelp
+   echo  '                  install to $$(INSTALL_PATH) and run lilo'
+   echo  '  vdso_install  - Install unstripped vdso.so to $$(INSTALL_MOD_PATH)/vdso'
+ endef
++
++kernel.img: zImage
++	$(Q)$(srctree)/scripts/mkkrnlimg $(objtree)/arch/arm/boot/zImage $(objtree)/kernel.img >/dev/null
++	@echo '  Image:  kernel.img (with zImage) is ready'
++
++ifdef CONFIG_FB
++LOGO := $(notdir $(wildcard $(srctree)/logo.bmp))
++LOGO_KERNEL := $(notdir $(wildcard $(srctree)/logo_kernel.bmp))
++endif
++%.img: %.dtb kernel.img $(LOGO) $(LOGO_KERNEL)
++	$(Q) if [ -f $(srctree)/$(LOGO) -a "$(srctree)" != "$(objtree)" ]; then cp -a $(srctree)/$(LOGO) $(objtree)/; fi
++	$(Q) if [ -f $(srctree)/$(LOGO_KERNEL) -a "$(srctree)" != "$(objtree)" ]; then cp -a $(srctree)/$(LOGO_KERNEL) $(objtree)/; fi
++	$(Q)$(srctree)/scripts/resource_tool $(objtree)/arch/arm/boot/dts/$*.dtb $(LOGO) $(LOGO_KERNEL)
++	@echo '  Image:  resource.img (with $*.dtb $(LOGO) $(LOGO_KERNEL)) is ready'
++	$(Q) if [ -x $(srctree)/scripts/mkbootimg ]; then \
++		$(srctree)/scripts/mkbootimg \
++			--kernel $(objtree)/arch/arm/boot/Image \
++			--second resource.img \
++			-o boot.img && \
++		echo '  Image:  boot.img (with Image resource.img) is ready'; \
++		$(srctree)/scripts/mkbootimg \
++			--kernel $(objtree)/arch/arm/boot/zImage \
++			--second resource.img \
++			-o zboot.img && \
++		echo '  Image:  zboot.img (with zImage resource.img) is ready'; \
++	fi
++
++CLEAN_FILES += boot.img kernel.img resource.img zboot.img
+-- 
+2.11.0
+

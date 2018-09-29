@@ -1,0 +1,46 @@
+From eb98af091cbfd2ff25412d47ab24b7b1de7f2e43 Mon Sep 17 00:00:00 2001
+From: Bin Yang <yangbin@rock-chips.com>
+Date: Fri, 23 Sep 2016 10:51:58 +0800
+Subject: [PATCH 59/73] extcon: Add EXTCON_USB_VBUS_EN for USB Type-C
+
+Add the new extcon EXTCON_USB_VBUS_EN to enable
+vbus output.
+
+Change-Id: I83fb75b2a82ad617dc292967bb4917bbfbcb84cb
+Signed-off-by: Bin Yang <yangbin@rock-chips.com>
+---
+ drivers/extcon/extcon.c | 5 +++++
+ include/linux/extcon.h  | 1 +
+ 2 files changed, 6 insertions(+)
+
+diff --git a/drivers/extcon/extcon.c b/drivers/extcon/extcon.c
+index 7c1e3a7b14e0..0efcaa2adb0c 100644
+--- a/drivers/extcon/extcon.c
++++ b/drivers/extcon/extcon.c
+@@ -61,6 +61,11 @@ struct __extcon_info {
+ 		.id = EXTCON_USB_HOST,
+ 		.name = "USB_HOST",
+ 	},
++	[EXTCON_USB_VBUS_EN] = {
++		.type = EXTCON_TYPE_USB,
++		.id = EXTCON_USB_VBUS_EN,
++		.name = "USB_VBUS_EN",
++	},
+ 
+ 	/* Charging external connector */
+ 	[EXTCON_CHG_USB_SDP] = {
+diff --git a/include/linux/extcon.h b/include/linux/extcon.h
+index b871c0cb1f02..1db8bda369db 100644
+--- a/include/linux/extcon.h
++++ b/include/linux/extcon.h
+@@ -45,6 +45,7 @@
+ /* USB external connector */
+ #define EXTCON_USB		1
+ #define EXTCON_USB_HOST		2
++#define EXTCON_USB_VBUS_EN	3
+ 
+ /* Charging external connector */
+ #define EXTCON_CHG_USB_SDP	5	/* Standard Downstream Port */
+-- 
+2.11.0
+

@@ -1,0 +1,40 @@
+From 2b084923acb8de5c16473cf0d27560c1637b5651 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 17 Jul 2018 20:38:09 +0800
+Subject: [PATCH 12/31] fix arguments in netns_helper.sh
+
+---
+ testcases/kernel/containers/netns/netns_helper.sh | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/testcases/kernel/containers/netns/netns_helper.sh b/testcases/kernel/containers/netns/netns_helper.sh
+index a95cdf2..e125e33 100755
+--- a/testcases/kernel/containers/netns/netns_helper.sh
++++ b/testcases/kernel/containers/netns/netns_helper.sh
+@@ -265,9 +265,9 @@ netns_set_ip()
+ 
+ 	case $USE_IFCONFIG in
+ 	1)
+-		$NS_EXEC $NS_HANDLE0 $NS_TYPE ifconfig veth0 $IFCONF_IN6_ARG $IP0/$NETMASK ||
++		$NS_EXEC $NS_HANDLE0 $NS_TYPE ifconfig veth0 $IP0 ||
+ 			tst_brkm TBROK "adding address to veth0 failed"
+-		$NS_EXEC $NS_HANDLE1 $NS_TYPE ifconfig veth1 $IFCONF_IN6_ARG $IP1/$NETMASK ||
++		$NS_EXEC $NS_HANDLE1 $NS_TYPE ifconfig veth1 $IP1 ||
+ 			tst_brkm TBROK "adding address to veth1 failed"
+ 		$NS_EXEC $NS_HANDLE0 $NS_TYPE ifconfig veth0 up ||
+ 			tst_brkm TBROK "enabling veth0 device failed"
+@@ -275,9 +275,9 @@ netns_set_ip()
+ 			tst_brkm TBROK "enabling veth1 device failed"
+ 		;;
+ 	*)
+-		$NS_EXEC $NS_HANDLE0 $NS_TYPE ip address add $IP0/$NETMASK dev veth0 ||
++		$NS_EXEC $NS_HANDLE0 $NS_TYPE ip address add $IP0 dev veth0 ||
+ 			tst_brkm TBROK "adding address to veth0 failed"
+-		$NS_EXEC $NS_HANDLE1 $NS_TYPE ip address add $IP1/$NETMASK dev veth1 ||
++		$NS_EXEC $NS_HANDLE1 $NS_TYPE ip address add $IP1 dev veth1 ||
+ 			tst_brkm TBROK "adding address to veth1 failed"
+ 		$NS_EXEC $NS_HANDLE0 $NS_TYPE ip link set veth0 up ||
+ 			tst_brkm TBROK "enabling veth0 device failed"
+-- 
+2.7.4
+

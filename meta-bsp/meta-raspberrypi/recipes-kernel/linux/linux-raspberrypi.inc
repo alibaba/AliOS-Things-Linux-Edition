@@ -32,6 +32,9 @@ CMDLINE_append += ' ${@base_conditional("DISABLE_RPI_BOOT_LOGO", "1", "logo.nolo
 CMDLINE_DEBUG ?= ""
 CMDLINE_append = " ${CMDLINE_DEBUG}"
 
+CMDLINE_remove = '${@bb.utils.contains("DISTRO_FEATURES", "uota", "root=/dev/mmcblk0p2", "", d)}'
+CMDLINE_append = ' ${@bb.utils.contains("DISTRO_FEATURES", "uota", "root=\x5c\x24\x7bmender_kernel_root\x7d", "", d)}'
+
 # Quirk for udev greater or equal 141
 UDEV_GE_141 ?= "1"
 

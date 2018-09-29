@@ -1,0 +1,93 @@
+From aaef57edd11846ef3ebe1aa07688b4a15bb8a325 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 24 Jul 2018 11:40:45 +0800
+Subject: [PATCH 24/31] disable memory too small cases
+
+---
+ runtest/fs             |  2 +-
+ runtest/hugetlb        | 12 ++++++------
+ runtest/mm             |  4 ++--
+ runtest/notmpfs.others |  2 +-
+ runtest/syscalls       |  2 +-
+ 5 files changed, 11 insertions(+), 11 deletions(-)
+
+diff --git a/runtest/fs b/runtest/fs
+index 8565a7c..46587a2 100644
+--- a/runtest/fs
++++ b/runtest/fs
+@@ -73,6 +73,6 @@ proc01 proc01 -m 128
+ fs_racer fs_racer.sh -t 5
+ 
+ #Run the Quota Remount Test introduced in linux-2.6.26
+-quota_remount_test01 quota_remount_test01.sh
++#quota_remount_test01 quota_remount_test01.sh
+ 
+ #isofs isofs.sh
+diff --git a/runtest/hugetlb b/runtest/hugetlb
+index f719217..3832e82 100644
+--- a/runtest/hugetlb
++++ b/runtest/hugetlb
+@@ -1,16 +1,16 @@
+ hugemmap01 hugemmap01
+ hugemmap02 hugemmap02
+ hugemmap04 hugemmap04
+-hugemmap05 hugemmap05
+-hugemmap06 hugemmap06
+-hugemmap05_1 hugemmap05 -m
+-hugemmap05_2 hugemmap05 -s
+-hugemmap05_3 hugemmap05 -s -m
++#hugemmap05 hugemmap05
++#hugemmap06 hugemmap06
++#hugemmap05_1 hugemmap05 -m
++#hugemmap05_2 hugemmap05 -s
++#hugemmap05_3 hugemmap05 -s -m
+ 
+ hugeshmat01 hugeshmat01 -i 5
+ hugeshmat02 hugeshmat02 -i 5
+ hugeshmat03 hugeshmat03 -i 5
+-hugeshmat04 hugeshmat04 -i 5
++#hugeshmat04 hugeshmat04 -i 5
+ hugeshmat05 hugeshmat05 -i 5
+ 
+ hugeshmctl01 hugeshmctl01 -i 5
+diff --git a/runtest/mm b/runtest/mm
+index 9bc9ed8..0dc82e7 100644
+--- a/runtest/mm
++++ b/runtest/mm
+@@ -91,8 +91,8 @@ vma01 vma01
+ #vma04 vma04
+ 
+ overcommit_memory01 overcommit_memory
+-overcommit_memory02 overcommit_memory -R 0
+-overcommit_memory03 overcommit_memory -R 30
++#overcommit_memory02 overcommit_memory -R 0
++#overcommit_memory03 overcommit_memory -R 30
+ overcommit_memory04 overcommit_memory -R 80
+ overcommit_memory05 overcommit_memory -R 100
+ overcommit_memory06 overcommit_memory -R 200
+diff --git a/runtest/notmpfs.others b/runtest/notmpfs.others
+index 3cb8076..5fd4ba0 100644
+--- a/runtest/notmpfs.others
++++ b/runtest/notmpfs.others
+@@ -1,4 +1,4 @@
+-fallocate04 fallocate04
++#fallocate04 fallocate04
+ 
+ getxattr01 getxattr01
+ getxattr02 getxattr02
+diff --git a/runtest/syscalls b/runtest/syscalls
+index 156b596..cb10635 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -758,7 +758,7 @@ mincore02 mincore02
+ madvise01 madvise01
+ #madvise02 madvise02
+ madvise05 madvise05
+-madvise06 madvise06
++#madvise06 madvise06
+ #madvise07 madvise07
+ madvise08 madvise08
+ madvise09 madvise09
+-- 
+2.7.4
+

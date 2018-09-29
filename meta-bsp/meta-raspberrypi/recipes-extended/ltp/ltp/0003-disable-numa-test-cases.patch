@@ -1,0 +1,182 @@
+From 41670f55457bd6d27c76d5c8d40f8df6eb6b91d5 Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Tue, 17 Jul 2018 15:43:21 +0800
+Subject: [PATCH 03/31] disable numa test cases
+
+---
+ runtest/controllers | 22 +++++++++++-----------
+ runtest/mm          | 20 ++++++++++----------
+ runtest/numa        | 26 +++++++++++++-------------
+ runtest/syscalls    | 32 ++++++++++++++++----------------
+ 4 files changed, 50 insertions(+), 50 deletions(-)
+
+diff --git a/runtest/controllers b/runtest/controllers
+index 2c43d0b..91fc8a9 100644
+--- a/runtest/controllers
++++ b/runtest/controllers
+@@ -338,17 +338,17 @@ cpuacct_1_100 cpuacct.sh 1 100
+ cpuacct_100_1 cpuacct.sh 100 1
+ cpuacct_100_100 cpuacct.sh 100 100
+ 
+-cpuset_base_ops	cpuset_base_ops_testset.sh
+-cpuset_inherit	cpuset_inherit_testset.sh
+-cpuset_exclusive	cpuset_exclusive_test.sh
+-cpuset_hierarchy	cpuset_hierarchy_test.sh
+-cpuset_syscall	cpuset_syscall_testset.sh
+-cpuset_sched_domains	cpuset_sched_domains_test.sh
+-cpuset_load_balance	cpuset_load_balance_test.sh
+-cpuset_hotplug	cpuset_hotplug_test.sh
+-cpuset_memory	cpuset_memory_testset.sh
+-cpuset_memory_pressure	cpuset_memory_pressure_testset.sh
+-cpuset_memory_spread	cpuset_memory_spread_testset.sh
++#cpuset_base_ops	cpuset_base_ops_testset.sh
++#cpuset_inherit	cpuset_inherit_testset.sh
++#cpuset_exclusive	cpuset_exclusive_test.sh
++#cpuset_hierarchy	cpuset_hierarchy_test.sh
++#cpuset_syscall	cpuset_syscall_testset.sh
++#cpuset_sched_domains	cpuset_sched_domains_test.sh
++#cpuset_load_balance	cpuset_load_balance_test.sh
++#cpuset_hotplug	cpuset_hotplug_test.sh
++#cpuset_memory	cpuset_memory_testset.sh
++#cpuset_memory_pressure	cpuset_memory_pressure_testset.sh
++#cpuset_memory_spread	cpuset_memory_spread_testset.sh
+ 
+ cpuset_regression_test cpuset_regression_test.sh
+ 
+diff --git a/runtest/mm b/runtest/mm
+index d108d18..8dc742d 100644
+--- a/runtest/mm
++++ b/runtest/mm
+@@ -62,16 +62,16 @@ mmap10_4 mmap10 -a -s -i 60
+ 
+ ksm01 ksm01
+ ksm01_1 ksm01 -u 128
+-ksm02 ksm02
+-ksm02_1 ksm02 -u 128
++#ksm02 ksm02
++#ksm02_1 ksm02 -u 128
+ ksm03 ksm03
+ ksm03_1 ksm03 -u 128
+-ksm04 ksm04
+-ksm04_1 ksm04 -u 128
++#ksm04 ksm04
++#ksm04_1 ksm04 -u 128
+ ksm05 ksm05 -I 10
+-ksm06 ksm06
+-ksm06_1 ksm06 -n 10
+-ksm06_2 ksm06 -n 10000
++#ksm06 ksm06
++#ksm06_1 ksm06 -n 10
++#ksm06_2 ksm06 -n 10000
+ 
+ oom01 oom01
+ oom02 oom02
+@@ -86,9 +86,9 @@ thp02 thp02
+ thp03 thp03
+ 
+ vma01 vma01
+-vma02 vma02
+-vma03 vma03
+-vma04 vma04
++#vma02 vma02
++#vma03 vma03
++#vma04 vma04
+ 
+ overcommit_memory01 overcommit_memory
+ overcommit_memory02 overcommit_memory -R 0
+diff --git a/runtest/numa b/runtest/numa
+index dcf4948..ed11541 100644
+--- a/runtest/numa
++++ b/runtest/numa
+@@ -1,13 +1,13 @@
+-Numa-testcases numa01.sh
+-move_pages01 move_pages.sh 01
+-move_pages02 move_pages.sh 02
+-move_pages03 cd $LTPROOT/testcases/bin && chown root move_pages03 && chmod 04755 move_pages03 && move_pages.sh 03
+-move_pages04 move_pages.sh 04
+-move_pages05 move_pages.sh 05
+-move_pages06 move_pages.sh 06
+-move_pages07 move_pages.sh 07
+-move_pages08 move_pages.sh 08
+-move_pages09 move_pages.sh 09
+-move_pages10 move_pages.sh 10
+-move_pages11 cd $LTPROOT/testcases/bin && chown root move_pages11 && chmod 04755 move_pages11 && move_pages.sh 11
+-move_pages12 move_pages12
++#Numa-testcases numa01.sh
++#move_pages01 move_pages.sh 01
++#move_pages02 move_pages.sh 02
++#move_pages03 cd $LTPROOT/testcases/bin && chown root move_pages03 && chmod 04755 move_pages03 && move_pages.sh 03
++#move_pages04 move_pages.sh 04
++#move_pages05 move_pages.sh 05
++#move_pages06 move_pages.sh 06
++#move_pages07 move_pages.sh 07
++#move_pages08 move_pages.sh 08
++#move_pages09 move_pages.sh 09
++#move_pages10 move_pages.sh 10
++#move_pages11 cd $LTPROOT/testcases/bin && chown root move_pages11 && chmod 04755 move_pages11 && move_pages.sh 11
++#move_pages12 move_pages12
+diff --git a/runtest/syscalls b/runtest/syscalls
+index 682fa89..0bf3d8d 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -420,7 +420,7 @@ getresuid03 getresuid03
+ getrlimit01 getrlimit01
+ getrlimit02 getrlimit02
+ 
+-get_mempolicy01 get_mempolicy01
++#get_mempolicy01 get_mempolicy01
+ get_robust_list01 get_robust_list01
+ 
+ getrusage01 getrusage01
+@@ -566,14 +566,14 @@ lstat03_64 lstat03_64
+ 
+ mallopt01 mallopt01
+ 
+-mbind01 mbind01
++#mbind01 mbind01
+ 
+ memset01 memset01
+ memcmp01 memcmp01
+ memcpy01 memcpy01
+ 
+-migrate_pages01 migrate_pages01
+-migrate_pages02 migrate_pages02
++#migrate_pages01 migrate_pages01
++#migrate_pages02 migrate_pages02
+ 
+ mlockall01 mlockall01
+ mlockall02 mlockall02
+@@ -640,18 +640,18 @@ mount04 mount04
+ mount05 mount05
+ mount06 mount06
+ 
+-move_pages01 move_pages.sh 01
+-move_pages02 move_pages.sh 02
+-move_pages03 cd $LTPROOT/testcases/bin && chown root move_pages03 && chmod 04755 move_pages03 && move_pages.sh 03
+-move_pages04 move_pages.sh 04
+-move_pages05 move_pages.sh 05
+-move_pages06 move_pages.sh 06
+-move_pages07 move_pages.sh 07
+-move_pages08 move_pages.sh 08
+-move_pages09 move_pages.sh 09
+-move_pages10 move_pages.sh 10
+-move_pages11 cd $LTPROOT/testcases/bin && chown root move_pages11 && chmod 04755 move_pages11 && move_pages.sh 11
+-move_pages12 move_pages12
++#move_pages01 move_pages.sh 01
++#move_pages02 move_pages.sh 02
++#move_pages03 cd $LTPROOT/testcases/bin && chown root move_pages03 && chmod 04755 move_pages03 && move_pages.sh 03
++#move_pages04 move_pages.sh 04
++#move_pages05 move_pages.sh 05
++#move_pages06 move_pages.sh 06
++#move_pages07 move_pages.sh 07
++#move_pages08 move_pages.sh 08
++#move_pages09 move_pages.sh 09
++#move_pages10 move_pages.sh 10
++#move_pages11 cd $LTPROOT/testcases/bin && chown root move_pages11 && chmod 04755 move_pages11 && move_pages.sh 11
++#move_pages12 move_pages12
+ 
+ mprotect01 mprotect01
+ mprotect02 mprotect02
+-- 
+2.7.4
+

@@ -1,0 +1,9 @@
+Please do the following items to build Montage bsp
+1. Modify file (build/conf/local.conf)
+  -MACHINE ??= "intel-corei7-64"
+  +MACHINE ??= "mont-panther"
+2. Modify file (build/conf/bblayers.conf)
+  -   ${TOPDIR}/../meta-bsp/meta-intel \
+  +   ${TOPDIR}/../meta-bsp/meta-mont \
+3. soure oe-init-build-env
+4. bitbake core-image-mont

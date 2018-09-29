@@ -1,7 +1,7 @@
 From 948372fdebfa3ede1b32cf34f70fb1c6cb09d2fc Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 30 May 2018 18:54:26 +0800
-Subject: [PATCH 02/14] Sync BSP kernel's clk for rk3308
+Subject: [PATCH 02/73] Sync BSP kernel's clk for rk3308
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---

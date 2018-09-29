@@ -1,0 +1,41 @@
+From 48efc5ae680592b2c3f4f2d98d1e0c8fe122c4c1 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 2 Aug 2018 18:04:33 +0800
+Subject: [PATCH] config_mender: Support env blk
+
+Change-Id: Ic94290469b55cff9928bd2ee67ed75770be63087
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ include/config_mender.h | 9 ++-------
+ 1 file changed, 2 insertions(+), 7 deletions(-)
+
+diff --git a/include/config_mender.h b/include/config_mender.h
+index 63a32a6f26..1e298708e3 100644
+--- a/include/config_mender.h
++++ b/include/config_mender.h
+@@ -24,10 +24,6 @@
+ 
+ #include <config_mender_defines.h>
+ 
+-#if !defined(CONFIG_ENV_IS_IN_MMC) && !defined(CONFIG_ENV_IS_IN_NAND) && !defined(CONFIG_ENV_IS_IN_FLASH)
+-# error CONFIG_ENV_IS_IN_MMC, CONFIG_ENV_IS_IN_NAND or CONFIG_ENV_IS_IN_FLASH is required for Mender to work
+-#endif
+-
+ #ifndef CONFIG_BOOTCOUNT_LIMIT
+ # error CONFIG_BOOTCOUNT_LIMIT is required for Mender to work
+ #endif
+@@ -72,9 +68,8 @@
+ 
+ #endif  /* MENDER_BOOTENV_RANGE */
+ 
+-#define CONFIG_SYS_MMC_ENV_DEV   MENDER_UBOOT_STORAGE_DEVICE
+-/* Use MMC partition zero to select whole user area of memory card. */
+-#define CONFIG_SYS_MMC_ENV_PART  0
++#define CONFIG_SYS_BLK_ENV_IF    MENDER_UBOOT_STORAGE_INTERFACE
++#define CONFIG_SYS_BLK_ENV_DEV   MENDER_UBOOT_STORAGE_DEVICE
+ #define CONFIG_ENV_OFFSET        MENDER_UBOOT_ENV_STORAGE_DEVICE_OFFSET_1
+ #define CONFIG_ENV_OFFSET_REDUND MENDER_UBOOT_ENV_STORAGE_DEVICE_OFFSET_2
+ 
+-- 
+2.11.0
+

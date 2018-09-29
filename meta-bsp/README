@@ -8,6 +8,10 @@ meta-intel
 
     => Intel BSP.
 
+meta-mont
+
+    => Montage LZ BSP.
+
 meta-raspberrypi
 
     => Raspberry Pi3 BSP.

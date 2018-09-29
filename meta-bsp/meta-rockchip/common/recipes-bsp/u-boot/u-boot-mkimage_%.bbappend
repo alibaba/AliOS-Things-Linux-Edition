@@ -3,8 +3,8 @@
 
 FILESEXTRAPATHS_prepend := "${THISDIR}/${PN}:"
 SRC_URI = " \
-    git://github.com/rockchip-linux/u-boot.git;branch=release \
+    git://github.com/rockchip-linux/u-boot.git;branch=29mirror; \
     file://0001-mkimage-rkcommon-Add-rk3326.patch \
     file://0001-mkimage-rkcommon-Add-rk3308.patch \
 "
-SRCREV = "328b7e77a21a34b046eaf9a7cf41c7d7c1a82047"
+SRCREV = "bcf9093629cab1bad23d1df024aa508ac0797803"

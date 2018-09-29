@@ -1,0 +1,365 @@
+From d3b4a8478c6e1b05357026b69854519ad4dc646b Mon Sep 17 00:00:00 2001
+From: Teng Hu <huteng.ht@alibaba-inc.com>
+Date: Thu, 19 Jul 2018 14:16:49 +0800
+Subject: [PATCH 18/31] modify Makefile of
+ insmod,dummy_del_mod,dummy_del_mod_dep
+
+---
+ testcases/commands/insmod/Makefile                 | 24 ++------
+ testcases/kernel/module/Makefile                   |  2 +-
+ .../kernel/module/delete_module/dummy_del_mod.c    | 64 ----------------------
+ .../module/delete_module/dummy_del_mod_dep.c       | 56 -------------------
+ testcases/kernel/module/dummy_del_mod/Makefile     |  8 +++
+ .../kernel/module/dummy_del_mod/dummy_del_mod.c    | 64 ++++++++++++++++++++++
+ testcases/kernel/module/dummy_del_mod_dep/Makefile |  8 +++
+ .../module/dummy_del_mod_dep/dummy_del_mod_dep.c   | 56 +++++++++++++++++++
+ 8 files changed, 142 insertions(+), 140 deletions(-)
+ delete mode 100644 testcases/kernel/module/delete_module/dummy_del_mod.c
+ delete mode 100644 testcases/kernel/module/delete_module/dummy_del_mod_dep.c
+ create mode 100644 testcases/kernel/module/dummy_del_mod/Makefile
+ create mode 100644 testcases/kernel/module/dummy_del_mod/dummy_del_mod.c
+ create mode 100644 testcases/kernel/module/dummy_del_mod_dep/Makefile
+ create mode 100644 testcases/kernel/module/dummy_del_mod_dep/dummy_del_mod_dep.c
+
+diff --git a/testcases/commands/insmod/Makefile b/testcases/commands/insmod/Makefile
+index e5e68b6..633e89a 100644
+--- a/testcases/commands/insmod/Makefile
++++ b/testcases/commands/insmod/Makefile
+@@ -12,25 +12,11 @@
+ #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ #    GNU General Public License for more details.
+ #
+-
+-ifneq ($(KERNELRELEASE),)
+-
+ obj-m := ltp_insmod01.o
+ 
+-else
+-
+-top_srcdir		?= ../../..
+-include $(top_srcdir)/include/mk/testcases.mk
+-
+-REQ_VERSION_MAJOR       := 2
+-REQ_VERSION_PATCH       := 6
+-MAKE_TARGETS            := ltp_insmod01.ko
+-
+-include $(top_srcdir)/include/mk/env_pre.mk
+-
+-INSTALL_TARGETS		:= insmod01.sh
+-
+-include $(top_srcdir)/include/mk/module.mk
+-include $(top_srcdir)/include/mk/generic_leaf_target.mk
++CURRENT_PATH := $(shell pwd)
++LDFLAGS :=
++all:
++	$(MAKE) -C $(KERNEL_SRC) M=$(CURRENT_PATH) modules
+ 
+-endif
++install: insmod01.sh ltp_insmod01.ko
+diff --git a/testcases/kernel/module/Makefile b/testcases/kernel/module/Makefile
+index cc2a0e0..0bcf618 100644
+--- a/testcases/kernel/module/Makefile
++++ b/testcases/kernel/module/Makefile
+@@ -25,6 +25,6 @@ top_srcdir	?= ../../..
+ include $(top_srcdir)/include/mk/env_pre.mk
+ 
+ # Only delete_module works at this time...
+-SUBDIRS		:= delete_module
++SUBDIRS		:= delete_module dummy_del_mod  dummy_del_mod_dep
+ 
+ include $(top_srcdir)/include/mk/generic_trunk_target.mk
+diff --git a/testcases/kernel/module/delete_module/dummy_del_mod.c b/testcases/kernel/module/delete_module/dummy_del_mod.c
+deleted file mode 100644
+index 10932d0..0000000
+--- a/testcases/kernel/module/delete_module/dummy_del_mod.c
++++ /dev/null
+@@ -1,64 +0,0 @@
+-/*
+- * Copyright (c) Wipro Technologies Ltd, 2002.  All Rights Reserved.
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of version 2 of the GNU General Public License as
+- * published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it would be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+- *
+- * You should have received a copy of the GNU General Public License along
+- * with this program; if not, write the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+- *
+- */
+-/*************************************************************************
+- * Description: This is a kernel loadable module programme used by
+- *		delete_module03 testcase which inserts this module as part
+- *		setup.
+- *************************************************************************/
+-
+-#ifndef MODULE
+-#define MODULE
+-#endif
+-
+-/* #define __KERNEL__    Commented this line out b/c it causes errors with
+- *			 module.h when it calls /usr/include/linux/version.h
+- *			 -11/22/02 Robbie Williamson <robbiew@us.ibm.com>
+- */
+-
+-#include <asm/atomic.h>
+-#include <linux/module.h>
+-#include <linux/init.h>
+-#include <linux/proc_fs.h>
+-#include <linux/kernel.h>
+-
+-static int dummy_func_test(void);
+-
+-/* Dummy function called by dependent module */
+-
+-static int dummy_func_test()
+-{
+-	return 0;
+-}
+-
+-static int __init dummy_init(void)
+-{
+-	struct proc_dir_entry *proc_dummy;
+-
+-	proc_dummy = proc_mkdir("dummy", 0);
+-	return 0;
+-}
+-
+-static void __exit dummy_exit(void)
+-{
+-
+-	remove_proc_entry("dummy", 0);
+-}
+-
+-module_init(dummy_init);
+-module_exit(dummy_exit);
+-EXPORT_SYMBOL(dummy_func_test);
+-MODULE_LICENSE("GPL");
+diff --git a/testcases/kernel/module/delete_module/dummy_del_mod_dep.c b/testcases/kernel/module/delete_module/dummy_del_mod_dep.c
+deleted file mode 100644
+index c9f60e3..0000000
+--- a/testcases/kernel/module/delete_module/dummy_del_mod_dep.c
++++ /dev/null
+@@ -1,56 +0,0 @@
+-/*
+- * Copyright (c) Wipro Technologies Ltd, 2002.  All Rights Reserved.
+- *
+- * This program is free software; you can redistribute it and/or modify it
+- * under the terms of version 2 of the GNU General Public License as
+- * published by the Free Software Foundation.
+- *
+- * This program is distributed in the hope that it would be useful, but
+- * WITHOUT ANY WARRANTY; without even the implied warranty of
+- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+- *
+- * You should have received a copy of the GNU General Public License along
+- * with this program; if not, write the Free Software Foundation, Inc.,
+- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+- *
+- */
+-/*************************************************************************
+- * Description: This is a kernel loadable module programme used by
+- *		delete_module03 testcase which inserts this module as part
+- *		of setup. This module has dependency on dummy_del_mod module
+- *		(calls function of dummy_del_mod during initialization).
+- *************************************************************************/
+-
+-#ifndef MODULE
+-#define MODULE
+-#endif
+-/* #define __KERNEL__    Commented this line out b/c it causes errors with
+- *                       module.h when it calls /usr/include/linux/version.h
+- *                       -11/22/02 Robbie Williamson <robbiew@us.ibm.com>
+- */
+-
+-#include <asm/atomic.h>
+-#include <linux/module.h>
+-#include <linux/init.h>
+-#include <linux/proc_fs.h>
+-#include <linux/kernel.h>
+-
+-extern int dummy_func_test(void);
+-
+-static int __init dummy_init(void)
+-{
+-	struct proc_dir_entry *proc_dummy;
+-
+-	proc_dummy = proc_mkdir("dummy_dep", 0);
+-	dummy_func_test();
+-	return 0;
+-}
+-
+-static void __exit dummy_exit(void)
+-{
+-	remove_proc_entry("dummy_dep", 0);
+-}
+-
+-module_init(dummy_init);
+-module_exit(dummy_exit);
+-MODULE_LICENSE("GPL");
+diff --git a/testcases/kernel/module/dummy_del_mod/Makefile b/testcases/kernel/module/dummy_del_mod/Makefile
+new file mode 100644
+index 0000000..a4e4e30
+--- /dev/null
++++ b/testcases/kernel/module/dummy_del_mod/Makefile
+@@ -0,0 +1,8 @@
++obj-m := dummy_del_mod.o
++
++CURRENT_PATH := $(shell pwd)
++LDFLAGS :=
++all:
++	$(MAKE) -C $(KERNEL_SRC) M=$(CURRENT_PATH) modules
++
++install: dummy_del_mod.ko
+diff --git a/testcases/kernel/module/dummy_del_mod/dummy_del_mod.c b/testcases/kernel/module/dummy_del_mod/dummy_del_mod.c
+new file mode 100644
+index 0000000..10932d0
+--- /dev/null
++++ b/testcases/kernel/module/dummy_del_mod/dummy_del_mod.c
+@@ -0,0 +1,64 @@
++/*
++ * Copyright (c) Wipro Technologies Ltd, 2002.  All Rights Reserved.
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of version 2 of the GNU General Public License as
++ * published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it would be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program; if not, write the Free Software Foundation, Inc.,
++ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ */
++/*************************************************************************
++ * Description: This is a kernel loadable module programme used by
++ *		delete_module03 testcase which inserts this module as part
++ *		setup.
++ *************************************************************************/
++
++#ifndef MODULE
++#define MODULE
++#endif
++
++/* #define __KERNEL__    Commented this line out b/c it causes errors with
++ *			 module.h when it calls /usr/include/linux/version.h
++ *			 -11/22/02 Robbie Williamson <robbiew@us.ibm.com>
++ */
++
++#include <asm/atomic.h>
++#include <linux/module.h>
++#include <linux/init.h>
++#include <linux/proc_fs.h>
++#include <linux/kernel.h>
++
++static int dummy_func_test(void);
++
++/* Dummy function called by dependent module */
++
++static int dummy_func_test()
++{
++	return 0;
++}
++
++static int __init dummy_init(void)
++{
++	struct proc_dir_entry *proc_dummy;
++
++	proc_dummy = proc_mkdir("dummy", 0);
++	return 0;
++}
++
++static void __exit dummy_exit(void)
++{
++
++	remove_proc_entry("dummy", 0);
++}
++
++module_init(dummy_init);
++module_exit(dummy_exit);
++EXPORT_SYMBOL(dummy_func_test);
++MODULE_LICENSE("GPL");
+diff --git a/testcases/kernel/module/dummy_del_mod_dep/Makefile b/testcases/kernel/module/dummy_del_mod_dep/Makefile
+new file mode 100644
+index 0000000..d764b09
+--- /dev/null
++++ b/testcases/kernel/module/dummy_del_mod_dep/Makefile
+@@ -0,0 +1,8 @@
++obj-m := dummy_del_mod_dep.o
++
++CURRENT_PATH := $(shell pwd)
++LDFLAGS :=
++all:
++	$(MAKE) -C $(KERNEL_SRC) M=$(CURRENT_PATH) modules
++
++install: dummy_del_mod_dep.ko
+diff --git a/testcases/kernel/module/dummy_del_mod_dep/dummy_del_mod_dep.c b/testcases/kernel/module/dummy_del_mod_dep/dummy_del_mod_dep.c
+new file mode 100644
+index 0000000..c9f60e3
+--- /dev/null
++++ b/testcases/kernel/module/dummy_del_mod_dep/dummy_del_mod_dep.c
+@@ -0,0 +1,56 @@
++/*
++ * Copyright (c) Wipro Technologies Ltd, 2002.  All Rights Reserved.
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of version 2 of the GNU General Public License as
++ * published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it would be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
++ *
++ * You should have received a copy of the GNU General Public License along
++ * with this program; if not, write the Free Software Foundation, Inc.,
++ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ */
++/*************************************************************************
++ * Description: This is a kernel loadable module programme used by
++ *		delete_module03 testcase which inserts this module as part
++ *		of setup. This module has dependency on dummy_del_mod module
++ *		(calls function of dummy_del_mod during initialization).
++ *************************************************************************/
++
++#ifndef MODULE
++#define MODULE
++#endif
++/* #define __KERNEL__    Commented this line out b/c it causes errors with
++ *                       module.h when it calls /usr/include/linux/version.h
++ *                       -11/22/02 Robbie Williamson <robbiew@us.ibm.com>
++ */
++
++#include <asm/atomic.h>
++#include <linux/module.h>
++#include <linux/init.h>
++#include <linux/proc_fs.h>
++#include <linux/kernel.h>
++
++extern int dummy_func_test(void);
++
++static int __init dummy_init(void)
++{
++	struct proc_dir_entry *proc_dummy;
++
++	proc_dummy = proc_mkdir("dummy_dep", 0);
++	dummy_func_test();
++	return 0;
++}
++
++static void __exit dummy_exit(void)
++{
++	remove_proc_entry("dummy_dep", 0);
++}
++
++module_init(dummy_init);
++module_exit(dummy_exit);
++MODULE_LICENSE("GPL");
+-- 
+2.7.4
+

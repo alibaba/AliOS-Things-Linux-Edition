@@ -1,0 +1,1733 @@
+From dc715a841aff4c1819aef41d5c9f4f885437423d Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 26 Jul 2018 12:22:03 +0800
+Subject: [PATCH 66/73] Port BSK kernel's bcmdhd
+
+Change-Id: I44975519b5a9c0b99cec2745d632e7efedcda5d4
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ drivers/mmc/core/sdio.c                            |  41 ++++++++
+ drivers/net/wireless/Kconfig                       |   1 -
+ drivers/net/wireless/Makefile                      |   1 -
+ drivers/net/wireless/rockchip_wlan/Kconfig         |   2 +
+ drivers/net/wireless/rockchip_wlan/rkwifi/Kconfig  |  20 ++++
+ drivers/net/wireless/rockchip_wlan/rkwifi/Makefile |  10 ++
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/Kconfig      |   1 +
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/Makefile     |  12 +--
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/aiutils.c    |   0
+ .../rkwifi}/bcmdhd/bcm_app_utils.c                 |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/bcmevent.c   |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/bcmsdh.c     |   0
+ .../rkwifi}/bcmdhd/bcmsdh_linux.c                  |   0
+ .../rkwifi}/bcmdhd/bcmsdh_sdmmc.c                  |   0
+ .../rkwifi}/bcmdhd/bcmsdh_sdmmc_linux.c            |   0
+ .../rkwifi}/bcmdhd/bcmsdspi_linux.c                |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/bcmspibrcm.c |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/bcmutils.c   |   0
+ .../rkwifi}/bcmdhd/bcmwifi_channels.c              |   0
+ .../rkwifi}/bcmdhd/bcmwifi_channels.h              |   0
+ .../rkwifi}/bcmdhd/bcmwifi_rates.h                 |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/bcmxtlv.c    |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd.h        |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_bus.h    |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_buzzz.h  |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_cdc.c    |   0
+ .../rkwifi}/bcmdhd/dhd_cfg80211.c                  |   0
+ .../rkwifi}/bcmdhd/dhd_cfg80211.h                  |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_common.c |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_config.c |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_config.h |   0
+ .../rkwifi}/bcmdhd/dhd_custom_gpio.c               |   0
+ .../rkwifi}/bcmdhd/dhd_custom_memprealloc.c        |   0
+ .../rkwifi}/bcmdhd/dhd_custom_msm.c                |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_dbg.h    |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_debug.c  |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_debug.h  |   0
+ .../rkwifi}/bcmdhd/dhd_debug_linux.c               |   0
+ .../rkwifi}/bcmdhd/dhd_flowring.c                  |   0
+ .../rkwifi}/bcmdhd/dhd_flowring.h                  |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_gpio.c   |   2 +
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_ip.c     |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_ip.h     |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_linux.c  |   4 +
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_linux.h  |   0
+ .../rkwifi}/bcmdhd/dhd_linux_platdev.c             |   0
+ .../rkwifi}/bcmdhd/dhd_linux_sched.c               |   0
+ .../rkwifi}/bcmdhd/dhd_linux_wq.c                  |   0
+ .../rkwifi}/bcmdhd/dhd_linux_wq.h                  |   0
+ .../rkwifi}/bcmdhd/dhd_mschdbg.c                   |   0
+ .../rkwifi}/bcmdhd/dhd_mschdbg.h                   |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_msgbuf.c |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_pcie.c   |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_pcie.h   |   0
+ .../rkwifi}/bcmdhd/dhd_pcie_linux.c                |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_pno.c    |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_pno.h    |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_proto.h  |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_rtt.c    |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_rtt.h    |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_sdio.c   |   0
+ .../rkwifi}/bcmdhd/dhd_static_buf.c                |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_wlfc.c   |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_wlfc.h   |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dngl_stats.h |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/dngl_wlhdr.h |   0
+ .../rkwifi}/bcmdhd/hnd_pktpool.c                   |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/hnd_pktq.c   |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/hndpmu.c     |   0
+ .../rkwifi}/bcmdhd/include/802.11.h                |   0
+ .../rkwifi}/bcmdhd/include/802.11e.h               |   0
+ .../rkwifi}/bcmdhd/include/802.11s.h               |   0
+ .../rkwifi}/bcmdhd/include/802.1d.h                |   0
+ .../rkwifi}/bcmdhd/include/802.3.h                 |   0
+ .../rkwifi}/bcmdhd/include/aidmp.h                 |   0
+ .../rkwifi}/bcmdhd/include/bcm_cfg.h               |   0
+ .../rkwifi}/bcmdhd/include/bcm_mpool_pub.h         |   0
+ .../rkwifi}/bcmdhd/include/bcm_ring.h              |   0
+ .../rkwifi}/bcmdhd/include/bcmcdc.h                |   0
+ .../rkwifi}/bcmdhd/include/bcmdefs.h               |   0
+ .../rkwifi}/bcmdhd/include/bcmdevs.h               |   0
+ .../rkwifi}/bcmdhd/include/bcmdhcp.h               |   0
+ .../rkwifi}/bcmdhd/include/bcmendian.h             |   0
+ .../rkwifi}/bcmdhd/include/bcmeth.h                |   0
+ .../rkwifi}/bcmdhd/include/bcmevent.h              |   0
+ .../rkwifi}/bcmdhd/include/bcmip.h                 |   0
+ .../rkwifi}/bcmdhd/include/bcmipv6.h               |   0
+ .../rkwifi}/bcmdhd/include/bcmmsgbuf.h             |   0
+ .../rkwifi}/bcmdhd/include/bcmnvram.h              |   0
+ .../rkwifi}/bcmdhd/include/bcmpcie.h               |   0
+ .../rkwifi}/bcmdhd/include/bcmpcispi.h             |   0
+ .../rkwifi}/bcmdhd/include/bcmperf.h               |   0
+ .../rkwifi}/bcmdhd/include/bcmsdbus.h              |   0
+ .../rkwifi}/bcmdhd/include/bcmsdh.h                |   0
+ .../rkwifi}/bcmdhd/include/bcmsdh_sdmmc.h          |   0
+ .../rkwifi}/bcmdhd/include/bcmsdpcm.h              |   0
+ .../rkwifi}/bcmdhd/include/bcmsdspi.h              |   0
+ .../rkwifi}/bcmdhd/include/bcmsdstd.h              |   0
+ .../rkwifi}/bcmdhd/include/bcmspi.h                |   0
+ .../rkwifi}/bcmdhd/include/bcmspibrcm.h            |   0
+ .../rkwifi}/bcmdhd/include/bcmsrom_fmt.h           |   0
+ .../rkwifi}/bcmdhd/include/bcmsrom_tbl.h           |   0
+ .../rkwifi}/bcmdhd/include/bcmtcp.h                |   0
+ .../rkwifi}/bcmdhd/include/bcmudp.h                |   0
+ .../rkwifi}/bcmdhd/include/bcmutils.h              |   0
+ .../rkwifi}/bcmdhd/include/brcm_nl80211.h          |   0
+ .../rkwifi}/bcmdhd/include/dbus.h                  |   0
+ .../rkwifi}/bcmdhd/include/dhd_daemon.h            |   0
+ .../rkwifi}/bcmdhd/include/dhdioctl.h              |   0
+ .../rkwifi}/bcmdhd/include/dnglevent.h             |   0
+ .../rkwifi}/bcmdhd/include/eapol.h                 |   0
+ .../rkwifi}/bcmdhd/include/epivers.h               |   0
+ .../rkwifi}/bcmdhd/include/ethernet.h              |   0
+ .../rkwifi}/bcmdhd/include/event_log.h             |   0
+ .../rkwifi}/bcmdhd/include/event_log_payload.h     |   0
+ .../rkwifi}/bcmdhd/include/event_log_set.h         |   0
+ .../rkwifi}/bcmdhd/include/event_log_tag.h         |   0
+ .../rkwifi}/bcmdhd/include/event_trace.h           |   0
+ .../rkwifi}/bcmdhd/include/hnd_armtrap.h           |   0
+ .../rkwifi}/bcmdhd/include/hnd_cons.h              |   0
+ .../rkwifi}/bcmdhd/include/hnd_debug.h             |   0
+ .../rkwifi}/bcmdhd/include/hnd_pktpool.h           |   0
+ .../rkwifi}/bcmdhd/include/hnd_pktq.h              |   0
+ .../rkwifi}/bcmdhd/include/hndpmu.h                |   0
+ .../rkwifi}/bcmdhd/include/hndsoc.h                |   0
+ .../rkwifi}/bcmdhd/include/linux_osl.h             |   0
+ .../rkwifi}/bcmdhd/include/linuxver.h              |   0
+ .../rkwifi}/bcmdhd/include/miniopt.h               |   0
+ .../rkwifi}/bcmdhd/include/msgtrace.h              |   0
+ .../rkwifi}/bcmdhd/include/nan.h                   |   0
+ .../rkwifi}/bcmdhd/include/osl.h                   |   0
+ .../rkwifi}/bcmdhd/include/osl_decl.h              |   0
+ .../rkwifi}/bcmdhd/include/osl_ext.h               |   0
+ .../rkwifi}/bcmdhd/include/p2p.h                   |   0
+ .../rkwifi}/bcmdhd/include/packed_section_end.h    |   0
+ .../rkwifi}/bcmdhd/include/packed_section_start.h  |   0
+ .../rkwifi}/bcmdhd/include/pcicfg.h                |   0
+ .../rkwifi}/bcmdhd/include/pcie_core.h             |   0
+ .../rkwifi}/bcmdhd/include/rte_ioctl.h             |   0
+ .../rkwifi}/bcmdhd/include/sbchipc.h               |   0
+ .../rkwifi}/bcmdhd/include/sbconfig.h              |   0
+ .../rkwifi}/bcmdhd/include/sbgci.h                 |   0
+ .../rkwifi}/bcmdhd/include/sbhnddma.h              |   0
+ .../rkwifi}/bcmdhd/include/sbpcmcia.h              |   0
+ .../rkwifi}/bcmdhd/include/sbsdio.h                |   0
+ .../rkwifi}/bcmdhd/include/sbsdpcmdev.h            |   0
+ .../rkwifi}/bcmdhd/include/sbsocram.h              |   0
+ .../rkwifi}/bcmdhd/include/sbsysmem.h              |   0
+ .../rkwifi}/bcmdhd/include/sdio.h                  |   0
+ .../rkwifi}/bcmdhd/include/sdioh.h                 |   0
+ .../rkwifi}/bcmdhd/include/sdiovar.h               |   0
+ .../rkwifi}/bcmdhd/include/sdspi.h                 |   0
+ .../rkwifi}/bcmdhd/include/siutils.h               |   0
+ .../rkwifi}/bcmdhd/include/spid.h                  |   0
+ .../rkwifi}/bcmdhd/include/trxhdr.h                |   0
+ .../rkwifi}/bcmdhd/include/typedefs.h              |   0
+ .../rkwifi}/bcmdhd/include/vlan.h                  |   0
+ .../rkwifi}/bcmdhd/include/wlfc_proto.h            |   0
+ .../rkwifi}/bcmdhd/include/wlioctl.h               |   0
+ .../rkwifi}/bcmdhd/include/wlioctl_defs.h          |   0
+ .../rkwifi}/bcmdhd/include/wlioctl_utils.h         |   0
+ .../rkwifi}/bcmdhd/include/wpa.h                   |   0
+ .../rkwifi}/bcmdhd/include/wps.h                   |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/linux_osl.c  |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/pcie_core.c  |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/rkversion.c  |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/sbutils.c    |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/siutils.c    |   0
+ .../rkwifi}/bcmdhd/siutils_priv.h                  |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/wl_android.c |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/wl_android.h |   0
+ .../rkwifi}/bcmdhd/wl_android_ext.c                |   0
+ .../rkwifi}/bcmdhd/wl_cfg80211.c                   | 103 ++++-----------------
+ .../rkwifi}/bcmdhd/wl_cfg80211.h                   |   3 +-
+ .../rkwifi}/bcmdhd/wl_cfg_btcoex.c                 |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/wl_cfgnan.c  |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/wl_cfgnan.h  |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/wl_cfgp2p.c  |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/wl_cfgp2p.h  |   0
+ .../rkwifi}/bcmdhd/wl_cfgvendor.c                  |   0
+ .../rkwifi}/bcmdhd/wl_cfgvendor.h                  |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/wl_dbg.h     |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/wl_escan.c   |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/wl_escan.h   |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/wl_iw.c      |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/wl_iw.h      |   0
+ .../rkwifi}/bcmdhd/wl_linux_mon.c                  |  39 ++------
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/wl_roam.c    |   0
+ .../{ => rockchip_wlan/rkwifi}/bcmdhd/wlc_types.h  |   0
+ .../rkwifi}/bcmdhd/wldev_common.c                  |   0
+ .../rkwifi}/bcmdhd/wldev_common.h                  |   0
+ 191 files changed, 113 insertions(+), 126 deletions(-)
+ create mode 100644 drivers/net/wireless/rockchip_wlan/rkwifi/Kconfig
+ create mode 100644 drivers/net/wireless/rockchip_wlan/rkwifi/Makefile
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/Kconfig (99%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/Makefile (92%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/aiutils.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/bcm_app_utils.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/bcmevent.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/bcmsdh.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/bcmsdh_linux.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/bcmsdh_sdmmc.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/bcmsdh_sdmmc_linux.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/bcmsdspi_linux.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/bcmspibrcm.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/bcmutils.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/bcmwifi_channels.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/bcmwifi_channels.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/bcmwifi_rates.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/bcmxtlv.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_bus.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_buzzz.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_cdc.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_cfg80211.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_cfg80211.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_common.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_config.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_config.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_custom_gpio.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_custom_memprealloc.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_custom_msm.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_dbg.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_debug.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_debug.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_debug_linux.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_flowring.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_flowring.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_gpio.c (99%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_ip.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_ip.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_linux.c (99%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_linux.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_linux_platdev.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_linux_sched.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_linux_wq.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_linux_wq.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_mschdbg.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_mschdbg.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_msgbuf.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_pcie.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_pcie.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_pcie_linux.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_pno.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_pno.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_proto.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_rtt.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_rtt.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_sdio.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_static_buf.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_wlfc.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dhd_wlfc.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dngl_stats.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/dngl_wlhdr.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/hnd_pktpool.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/hnd_pktq.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/hndpmu.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/802.11.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/802.11e.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/802.11s.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/802.1d.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/802.3.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/aidmp.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcm_cfg.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcm_mpool_pub.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcm_ring.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmcdc.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmdefs.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmdevs.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmdhcp.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmendian.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmeth.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmevent.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmip.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmipv6.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmmsgbuf.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmnvram.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmpcie.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmpcispi.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmperf.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmsdbus.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmsdh.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmsdh_sdmmc.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmsdpcm.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmsdspi.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmsdstd.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmspi.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmspibrcm.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmsrom_fmt.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmsrom_tbl.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmtcp.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmudp.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/bcmutils.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/brcm_nl80211.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/dbus.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/dhd_daemon.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/dhdioctl.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/dnglevent.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/eapol.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/epivers.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/ethernet.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/event_log.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/event_log_payload.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/event_log_set.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/event_log_tag.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/event_trace.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/hnd_armtrap.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/hnd_cons.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/hnd_debug.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/hnd_pktpool.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/hnd_pktq.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/hndpmu.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/hndsoc.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/linux_osl.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/linuxver.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/miniopt.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/msgtrace.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/nan.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/osl.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/osl_decl.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/osl_ext.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/p2p.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/packed_section_end.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/packed_section_start.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/pcicfg.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/pcie_core.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/rte_ioctl.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/sbchipc.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/sbconfig.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/sbgci.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/sbhnddma.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/sbpcmcia.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/sbsdio.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/sbsdpcmdev.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/sbsocram.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/sbsysmem.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/sdio.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/sdioh.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/sdiovar.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/sdspi.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/siutils.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/spid.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/trxhdr.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/typedefs.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/vlan.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/wlfc_proto.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/wlioctl.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/wlioctl_defs.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/wlioctl_utils.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/wpa.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/include/wps.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/linux_osl.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/pcie_core.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/rkversion.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/sbutils.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/siutils.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/siutils_priv.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_android.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_android.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_android_ext.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_cfg80211.c (99%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_cfg80211.h (99%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_cfg_btcoex.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_cfgnan.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_cfgnan.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_cfgp2p.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_cfgp2p.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_cfgvendor.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_cfgvendor.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_dbg.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_escan.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_escan.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_iw.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_iw.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_linux_mon.c (93%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wl_roam.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wlc_types.h (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wldev_common.c (100%)
+ rename drivers/net/wireless/{ => rockchip_wlan/rkwifi}/bcmdhd/wldev_common.h (100%)
+
+diff --git a/drivers/mmc/core/sdio.c b/drivers/mmc/core/sdio.c
+index bd44ba8116d1..f83c9b83fe04 100644
+--- a/drivers/mmc/core/sdio.c
++++ b/drivers/mmc/core/sdio.c
+@@ -21,6 +21,7 @@
+ 
+ #include "core.h"
+ #include "bus.h"
++#include "host.h"
+ #include "sd.h"
+ #include "sdio_bus.h"
+ #include "mmc_ops.h"
+@@ -1173,3 +1174,43 @@ int mmc_attach_sdio(struct mmc_host *host)
+ 	return err;
+ }
+ 
++int sdio_reset_comm(struct mmc_card *card)
++{
++	struct mmc_host *host = card->host;
++	u32 ocr;
++	u32 rocr;
++	int err;
++
++	printk("%s():\n", __func__);
++	mmc_claim_host(host);
++
++	mmc_retune_disable(host);
++
++	mmc_power_cycle(host, host->card->ocr);
++	mmc_go_idle(host);
++
++	mmc_set_clock(host, host->f_min);
++
++	err = mmc_send_io_op_cond(host, 0, &ocr);
++	if (err)
++		goto err;
++
++	rocr = mmc_select_voltage(host, ocr);
++	if (!rocr) {
++		err = -EINVAL;
++		goto err;
++	}
++
++	err = mmc_sdio_init_card(host, rocr, card, 0);
++	if (err)
++		goto err;
++
++	mmc_release_host(host);
++	return 0;
++err:
++	printk("%s: Error resetting SDIO communications (%d)\n",
++	       mmc_hostname(host), err);
++	mmc_release_host(host);
++	return err;
++}
++EXPORT_SYMBOL(sdio_reset_comm);
+diff --git a/drivers/net/wireless/Kconfig b/drivers/net/wireless/Kconfig
+index 116d2bee7e8e..544b33707f60 100644
+--- a/drivers/net/wireless/Kconfig
++++ b/drivers/net/wireless/Kconfig
+@@ -20,7 +20,6 @@ if WLAN
+ source "drivers/net/wireless/admtek/Kconfig"
+ source "drivers/net/wireless/ath/Kconfig"
+ source "drivers/net/wireless/atmel/Kconfig"
+-source "drivers/net/wireless/bcmdhd/Kconfig"
+ source "drivers/net/wireless/broadcom/Kconfig"
+ source "drivers/net/wireless/cisco/Kconfig"
+ source "drivers/net/wireless/intel/Kconfig"
+diff --git a/drivers/net/wireless/Makefile b/drivers/net/wireless/Makefile
+index 6f0a8c5746d3..b133c3e09abf 100644
+--- a/drivers/net/wireless/Makefile
++++ b/drivers/net/wireless/Makefile
+@@ -2,7 +2,6 @@
+ # Makefile for the Linux Wireless network device drivers.
+ #
+ 
+-obj-$(CONFIG_BCMDHD) += bcmdhd/
+ obj-$(CONFIG_WLAN_VENDOR_ADMTEK) += admtek/
+ obj-$(CONFIG_WLAN_VENDOR_ATH) += ath/
+ obj-$(CONFIG_WLAN_VENDOR_ATMEL) += atmel/
+diff --git a/drivers/net/wireless/rockchip_wlan/Kconfig b/drivers/net/wireless/rockchip_wlan/Kconfig
+index a9f405086145..de9dce47e442 100644
+--- a/drivers/net/wireless/rockchip_wlan/Kconfig
++++ b/drivers/net/wireless/rockchip_wlan/Kconfig
+@@ -22,6 +22,8 @@ config WIFI_LOAD_DRIVER_WHEN_KERNEL_BOOTUP
+ 	---help---
+ 	  Wifi driver will be load (use late_initcall) when kernel bootup
+ 
++source "drivers/net/wireless/rockchip_wlan/rkwifi/Kconfig"
++
+ menuconfig RTL_WIRELESS_SOLUTION
+     bool "Realtek Wireless Device Driver Support"
+     default y
+diff --git a/drivers/net/wireless/rockchip_wlan/rkwifi/Kconfig b/drivers/net/wireless/rockchip_wlan/rkwifi/Kconfig
+new file mode 100644
+index 000000000000..005fc08975e7
+--- /dev/null
++++ b/drivers/net/wireless/rockchip_wlan/rkwifi/Kconfig
+@@ -0,0 +1,20 @@
++# SPDX-License-Identifier: GPL-2.0
++config AP6XXX
++	tristate "ap6xxx wireless sdio cards support"
++	#depends on MMC && WLAN_80211
++    select CFG80211
++    select MAC80211
++	---help---
++	  This module adds support for wireless adapters based on
++	  Broadcom ap6xxx chipset.
++
++	  This driver uses the kernel's wireless extensions subsystem.
++
++	  If you choose to build a module, it'll be called dhd. Say M if
++	  unsure.
++
++if AP6XXX
++
++source "drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/Kconfig"
++
++endif # AP6XXX
+diff --git a/drivers/net/wireless/rockchip_wlan/rkwifi/Makefile b/drivers/net/wireless/rockchip_wlan/rkwifi/Makefile
+new file mode 100644
+index 000000000000..6ddbbe7f7326
+--- /dev/null
++++ b/drivers/net/wireless/rockchip_wlan/rkwifi/Makefile
+@@ -0,0 +1,10 @@
++# SPDX-License-Identifier: GPL-2.0
++#rkwifi packed Makefile
++# (gwl)
++
++obj-$(CONFIG_AP6XXX) += bcmdhd/
++
++.PHONY: clean
++
++clean:
++	find . -name '*.o*' -exec rm -f {} \; 
+diff --git a/drivers/net/wireless/bcmdhd/Kconfig b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/Kconfig
+similarity index 99%
+rename from drivers/net/wireless/bcmdhd/Kconfig
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/Kconfig
+index 384cd3b570be..303e009bf4a1 100644
+--- a/drivers/net/wireless/bcmdhd/Kconfig
++++ b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/Kconfig
+@@ -48,6 +48,7 @@ choice
+ config BCMDHD_OOB
+ 	depends on BCMDHD && BCMDHD_SDIO
+ 	bool "Out-of-Band Interrupt"
++	default y
+ 	---help---
+ 		Interrupt from WL_HOST_WAKE.
+ config BCMDHD_SDIO_IRQ
+diff --git a/drivers/net/wireless/bcmdhd/Makefile b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/Makefile
+similarity index 92%
+rename from drivers/net/wireless/bcmdhd/Makefile
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/Makefile
+index acee843521a0..a24a0826fd71 100644
+--- a/drivers/net/wireless/bcmdhd/Makefile
++++ b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/Makefile
+@@ -6,7 +6,7 @@
+ MODULE_NAME = bcmdhd
+ CONFIG_BCMDHD_SDIO := y
+ #CONFIG_BCMDHD_PCIE := y
+-#CONFIG_BCMDHD_OOB := y
++CONFIG_BCMDHD_OOB := y
+ CONFIG_BCMDHD_PROPTXSTATUS := y
+ CONFIG_BCMDHD_AG := y
+ #CONFIG_DHD_USE_STATIC_BUF := y
+@@ -18,10 +18,10 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER -DSDTEST       \
+ 	-DWIFI_ACT_FRAME -DARP_OFFLOAD_SUPPORT -DSUPPORT_PM2_ONLY             \
+ 	-DKEEP_ALIVE -DPKT_FILTER_SUPPORT -DPNO_SUPPORT -DDHDTCPACK_SUPPRESS  \
+ 	-DDHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT -DRXFRAME_THREAD          \
+-	-DTSQ_MULTIPLIER -DWL_EXT_IAPSTA                                \
+-	-DDHD_UNSUPPORT_IF_CNTS                    \
+-	-Idrivers/net/wireless/bcmdhd \
+-	-Idrivers/net/wireless/bcmdhd/include
++	-DTSQ_MULTIPLIER -DMFP -DWL_EXT_IAPSTA                                \
++	-DENABLE_INSMOD_NO_FW_LOAD -DDHD_UNSUPPORT_IF_CNTS                    \
++	-Idrivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd \
++	-Idrivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include
+ 
+ DHDOFILES = aiutils.o siutils.o sbutils.o bcmutils.o bcmwifi_channels.o \
+ 	dhd_linux.o dhd_linux_platdev.o dhd_linux_sched.o dhd_pno.o \
+@@ -79,7 +79,7 @@ DHDOFILES += dhd_debug_linux.o dhd_debug.o bcmxtlv.o \
+         dhd_rtt.o bcm_app_utils.o
+ endif
+ 
+-obj-$(CONFIG_BCMDHD) += bcmdhd.o
++obj-$(CONFIG_AP6XXX) += bcmdhd.o
+ bcmdhd-objs += $(DHDOFILES)
+ 
+ #ifeq ($(CONFIG_MACH_PLATFORM),y)
+diff --git a/drivers/net/wireless/bcmdhd/aiutils.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/aiutils.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/aiutils.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/aiutils.c
+diff --git a/drivers/net/wireless/bcmdhd/bcm_app_utils.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcm_app_utils.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/bcm_app_utils.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcm_app_utils.c
+diff --git a/drivers/net/wireless/bcmdhd/bcmevent.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmevent.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/bcmevent.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmevent.c
+diff --git a/drivers/net/wireless/bcmdhd/bcmsdh.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmsdh.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/bcmsdh.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmsdh.c
+diff --git a/drivers/net/wireless/bcmdhd/bcmsdh_linux.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmsdh_linux.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/bcmsdh_linux.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmsdh_linux.c
+diff --git a/drivers/net/wireless/bcmdhd/bcmsdh_sdmmc.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmsdh_sdmmc.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/bcmsdh_sdmmc.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmsdh_sdmmc.c
+diff --git a/drivers/net/wireless/bcmdhd/bcmsdh_sdmmc_linux.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmsdh_sdmmc_linux.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/bcmsdh_sdmmc_linux.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmsdh_sdmmc_linux.c
+diff --git a/drivers/net/wireless/bcmdhd/bcmsdspi_linux.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmsdspi_linux.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/bcmsdspi_linux.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmsdspi_linux.c
+diff --git a/drivers/net/wireless/bcmdhd/bcmspibrcm.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmspibrcm.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/bcmspibrcm.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmspibrcm.c
+diff --git a/drivers/net/wireless/bcmdhd/bcmutils.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmutils.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/bcmutils.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmutils.c
+diff --git a/drivers/net/wireless/bcmdhd/bcmwifi_channels.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmwifi_channels.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/bcmwifi_channels.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmwifi_channels.c
+diff --git a/drivers/net/wireless/bcmdhd/bcmwifi_channels.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmwifi_channels.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/bcmwifi_channels.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmwifi_channels.h
+diff --git a/drivers/net/wireless/bcmdhd/bcmwifi_rates.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmwifi_rates.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/bcmwifi_rates.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmwifi_rates.h
+diff --git a/drivers/net/wireless/bcmdhd/bcmxtlv.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmxtlv.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/bcmxtlv.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/bcmxtlv.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_bus.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_bus.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_bus.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_bus.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_buzzz.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_buzzz.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_buzzz.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_buzzz.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_cdc.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_cdc.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_cdc.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_cdc.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_cfg80211.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_cfg80211.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_cfg80211.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_cfg80211.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_cfg80211.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_cfg80211.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_cfg80211.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_cfg80211.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_common.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_common.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_common.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_common.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_config.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_config.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_config.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_config.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_config.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_config.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_config.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_config.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_custom_gpio.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_custom_gpio.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_custom_gpio.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_custom_gpio.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_custom_memprealloc.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_custom_memprealloc.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_custom_memprealloc.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_custom_memprealloc.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_custom_msm.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_custom_msm.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_custom_msm.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_custom_msm.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_dbg.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_dbg.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_dbg.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_dbg.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_debug.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_debug.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_debug.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_debug.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_debug.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_debug.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_debug.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_debug.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_debug_linux.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_debug_linux.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_debug_linux.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_debug_linux.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_flowring.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_flowring.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_flowring.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_flowring.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_flowring.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_flowring.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_flowring.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_flowring.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_gpio.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_gpio.c
+similarity index 99%
+rename from drivers/net/wireless/bcmdhd/dhd_gpio.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_gpio.c
+index 29cb166f911a..a7ef7c84b18b 100644
+--- a/drivers/net/wireless/bcmdhd/dhd_gpio.c
++++ b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_gpio.c
+@@ -116,6 +116,7 @@ static int dhd_wlan_set_carddetect(int present)
+ #ifdef CUSTOMER_HW_PLATFORM
+ 		err = sdhci_force_presence_change(&sdmmc_channel, 1);
+ #endif /* CUSTOMER_HW_PLATFORM */
++		rockchip_wifi_set_carddetect(1);
+ #elif defined(BCMPCIE)
+ 		printf("======== Card detection to detect PCIE card! ========\n");
+ #endif
+@@ -125,6 +126,7 @@ static int dhd_wlan_set_carddetect(int present)
+ #ifdef CUSTOMER_HW_PLATFORM
+ 		err = sdhci_force_presence_change(&sdmmc_channel, 0);
+ #endif /* CUSTOMER_HW_PLATFORM */
++	rockchip_wifi_set_carddetect(0);
+ #elif defined(BCMPCIE)
+ 		printf("======== Card detection to remove PCIE card! ========\n");
+ #endif
+diff --git a/drivers/net/wireless/bcmdhd/dhd_ip.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_ip.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_ip.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_ip.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_ip.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_ip.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_ip.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_ip.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_linux.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux.c
+similarity index 99%
+rename from drivers/net/wireless/bcmdhd/dhd_linux.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux.c
+index 4bf709db7e2f..ef17fe10d0d6 100644
+--- a/drivers/net/wireless/bcmdhd/dhd_linux.c
++++ b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux.c
+@@ -9698,6 +9698,7 @@ int dhd_bus_get_fw_mode(dhd_pub_t *dhdp)
+ 	return dhd_get_fw_mode(dhdp->info);
+ }
+ 
++extern int rkwifi_set_firmware(char *fw, char *nvram);
+ bool dhd_update_fw_nv_path(dhd_info_t *dhdinfo)
+ {
+ 	int fw_len;
+@@ -9712,6 +9713,8 @@ bool dhd_update_fw_nv_path(dhd_info_t *dhdinfo)
+ 	int uc_len;
+ 	const char *uc = NULL;
+ #endif /* DHD_UCODE_DOWNLOAD */
++	char firmware[100] = {0};
++	char nvram[100] = {0};
+ 	wifi_adapter_info_t *adapter = dhdinfo->adapter;
+ 	int fw_path_len = sizeof(dhdinfo->fw_path);
+ 	int nv_path_len = sizeof(dhdinfo->nv_path);
+@@ -9729,6 +9732,7 @@ bool dhd_update_fw_nv_path(dhd_info_t *dhdinfo)
+ 
+ 	/* set default firmware and nvram path for built-in type driver */
+ //	if (!dhd_download_fw_on_driverload) {
++		rkwifi_set_firmware(firmware, nvram);
+ #ifdef CONFIG_BCMDHD_FW_PATH
+ 		fw = CONFIG_BCMDHD_FW_PATH;
+ #else
+diff --git a/drivers/net/wireless/bcmdhd/dhd_linux.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_linux.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_linux_platdev.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux_platdev.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_linux_platdev.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux_platdev.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_linux_sched.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux_sched.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_linux_sched.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux_sched.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_linux_wq.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux_wq.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_linux_wq.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux_wq.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_linux_wq.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux_wq.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_linux_wq.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux_wq.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_mschdbg.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_mschdbg.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_mschdbg.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_mschdbg.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_mschdbg.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_mschdbg.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_mschdbg.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_mschdbg.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_msgbuf.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_msgbuf.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_msgbuf.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_msgbuf.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_pcie.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_pcie.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_pcie.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_pcie.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_pcie.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_pcie.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_pcie.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_pcie.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_pcie_linux.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_pcie_linux.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_pcie_linux.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_pcie_linux.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_pno.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_pno.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_pno.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_pno.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_pno.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_pno.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_pno.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_pno.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_proto.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_proto.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_proto.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_proto.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_rtt.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_rtt.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_rtt.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_rtt.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_rtt.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_rtt.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_rtt.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_rtt.h
+diff --git a/drivers/net/wireless/bcmdhd/dhd_sdio.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_sdio.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_sdio.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_sdio.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_static_buf.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_static_buf.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_static_buf.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_static_buf.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_wlfc.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_wlfc.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_wlfc.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_wlfc.c
+diff --git a/drivers/net/wireless/bcmdhd/dhd_wlfc.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_wlfc.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dhd_wlfc.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_wlfc.h
+diff --git a/drivers/net/wireless/bcmdhd/dngl_stats.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dngl_stats.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dngl_stats.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dngl_stats.h
+diff --git a/drivers/net/wireless/bcmdhd/dngl_wlhdr.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dngl_wlhdr.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/dngl_wlhdr.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dngl_wlhdr.h
+diff --git a/drivers/net/wireless/bcmdhd/hnd_pktpool.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/hnd_pktpool.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/hnd_pktpool.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/hnd_pktpool.c
+diff --git a/drivers/net/wireless/bcmdhd/hnd_pktq.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/hnd_pktq.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/hnd_pktq.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/hnd_pktq.c
+diff --git a/drivers/net/wireless/bcmdhd/hndpmu.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/hndpmu.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/hndpmu.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/hndpmu.c
+diff --git a/drivers/net/wireless/bcmdhd/include/802.11.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/802.11.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/802.11.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/802.11.h
+diff --git a/drivers/net/wireless/bcmdhd/include/802.11e.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/802.11e.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/802.11e.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/802.11e.h
+diff --git a/drivers/net/wireless/bcmdhd/include/802.11s.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/802.11s.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/802.11s.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/802.11s.h
+diff --git a/drivers/net/wireless/bcmdhd/include/802.1d.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/802.1d.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/802.1d.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/802.1d.h
+diff --git a/drivers/net/wireless/bcmdhd/include/802.3.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/802.3.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/802.3.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/802.3.h
+diff --git a/drivers/net/wireless/bcmdhd/include/aidmp.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/aidmp.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/aidmp.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/aidmp.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcm_cfg.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcm_cfg.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcm_cfg.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcm_cfg.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcm_mpool_pub.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcm_mpool_pub.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcm_mpool_pub.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcm_mpool_pub.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcm_ring.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcm_ring.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcm_ring.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcm_ring.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmcdc.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmcdc.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmcdc.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmcdc.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmdefs.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmdefs.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmdefs.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmdefs.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmdevs.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmdevs.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmdevs.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmdevs.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmdhcp.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmdhcp.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmdhcp.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmdhcp.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmendian.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmendian.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmendian.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmendian.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmeth.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmeth.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmeth.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmeth.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmevent.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmevent.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmevent.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmevent.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmip.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmip.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmip.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmip.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmipv6.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmipv6.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmipv6.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmipv6.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmmsgbuf.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmmsgbuf.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmmsgbuf.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmmsgbuf.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmnvram.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmnvram.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmnvram.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmnvram.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmpcie.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmpcie.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmpcie.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmpcie.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmpcispi.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmpcispi.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmpcispi.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmpcispi.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmperf.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmperf.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmperf.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmperf.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmsdbus.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsdbus.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmsdbus.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsdbus.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmsdh.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsdh.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmsdh.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsdh.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmsdh_sdmmc.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsdh_sdmmc.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmsdh_sdmmc.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsdh_sdmmc.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmsdpcm.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsdpcm.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmsdpcm.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsdpcm.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmsdspi.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsdspi.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmsdspi.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsdspi.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmsdstd.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsdstd.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmsdstd.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsdstd.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmspi.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmspi.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmspi.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmspi.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmspibrcm.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmspibrcm.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmspibrcm.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmspibrcm.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmsrom_fmt.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsrom_fmt.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmsrom_fmt.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsrom_fmt.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmsrom_tbl.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsrom_tbl.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmsrom_tbl.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmsrom_tbl.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmtcp.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmtcp.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmtcp.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmtcp.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmudp.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmudp.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmudp.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmudp.h
+diff --git a/drivers/net/wireless/bcmdhd/include/bcmutils.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmutils.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/bcmutils.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/bcmutils.h
+diff --git a/drivers/net/wireless/bcmdhd/include/brcm_nl80211.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/brcm_nl80211.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/brcm_nl80211.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/brcm_nl80211.h
+diff --git a/drivers/net/wireless/bcmdhd/include/dbus.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/dbus.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/dbus.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/dbus.h
+diff --git a/drivers/net/wireless/bcmdhd/include/dhd_daemon.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/dhd_daemon.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/dhd_daemon.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/dhd_daemon.h
+diff --git a/drivers/net/wireless/bcmdhd/include/dhdioctl.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/dhdioctl.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/dhdioctl.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/dhdioctl.h
+diff --git a/drivers/net/wireless/bcmdhd/include/dnglevent.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/dnglevent.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/dnglevent.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/dnglevent.h
+diff --git a/drivers/net/wireless/bcmdhd/include/eapol.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/eapol.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/eapol.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/eapol.h
+diff --git a/drivers/net/wireless/bcmdhd/include/epivers.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/epivers.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/epivers.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/epivers.h
+diff --git a/drivers/net/wireless/bcmdhd/include/ethernet.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/ethernet.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/ethernet.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/ethernet.h
+diff --git a/drivers/net/wireless/bcmdhd/include/event_log.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/event_log.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/event_log.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/event_log.h
+diff --git a/drivers/net/wireless/bcmdhd/include/event_log_payload.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/event_log_payload.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/event_log_payload.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/event_log_payload.h
+diff --git a/drivers/net/wireless/bcmdhd/include/event_log_set.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/event_log_set.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/event_log_set.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/event_log_set.h
+diff --git a/drivers/net/wireless/bcmdhd/include/event_log_tag.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/event_log_tag.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/event_log_tag.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/event_log_tag.h
+diff --git a/drivers/net/wireless/bcmdhd/include/event_trace.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/event_trace.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/event_trace.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/event_trace.h
+diff --git a/drivers/net/wireless/bcmdhd/include/hnd_armtrap.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/hnd_armtrap.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/hnd_armtrap.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/hnd_armtrap.h
+diff --git a/drivers/net/wireless/bcmdhd/include/hnd_cons.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/hnd_cons.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/hnd_cons.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/hnd_cons.h
+diff --git a/drivers/net/wireless/bcmdhd/include/hnd_debug.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/hnd_debug.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/hnd_debug.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/hnd_debug.h
+diff --git a/drivers/net/wireless/bcmdhd/include/hnd_pktpool.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/hnd_pktpool.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/hnd_pktpool.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/hnd_pktpool.h
+diff --git a/drivers/net/wireless/bcmdhd/include/hnd_pktq.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/hnd_pktq.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/hnd_pktq.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/hnd_pktq.h
+diff --git a/drivers/net/wireless/bcmdhd/include/hndpmu.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/hndpmu.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/hndpmu.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/hndpmu.h
+diff --git a/drivers/net/wireless/bcmdhd/include/hndsoc.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/hndsoc.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/hndsoc.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/hndsoc.h
+diff --git a/drivers/net/wireless/bcmdhd/include/linux_osl.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/linux_osl.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/linux_osl.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/linux_osl.h
+diff --git a/drivers/net/wireless/bcmdhd/include/linuxver.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/linuxver.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/linuxver.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/linuxver.h
+diff --git a/drivers/net/wireless/bcmdhd/include/miniopt.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/miniopt.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/miniopt.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/miniopt.h
+diff --git a/drivers/net/wireless/bcmdhd/include/msgtrace.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/msgtrace.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/msgtrace.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/msgtrace.h
+diff --git a/drivers/net/wireless/bcmdhd/include/nan.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/nan.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/nan.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/nan.h
+diff --git a/drivers/net/wireless/bcmdhd/include/osl.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/osl.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/osl.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/osl.h
+diff --git a/drivers/net/wireless/bcmdhd/include/osl_decl.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/osl_decl.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/osl_decl.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/osl_decl.h
+diff --git a/drivers/net/wireless/bcmdhd/include/osl_ext.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/osl_ext.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/osl_ext.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/osl_ext.h
+diff --git a/drivers/net/wireless/bcmdhd/include/p2p.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/p2p.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/p2p.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/p2p.h
+diff --git a/drivers/net/wireless/bcmdhd/include/packed_section_end.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/packed_section_end.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/packed_section_end.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/packed_section_end.h
+diff --git a/drivers/net/wireless/bcmdhd/include/packed_section_start.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/packed_section_start.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/packed_section_start.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/packed_section_start.h
+diff --git a/drivers/net/wireless/bcmdhd/include/pcicfg.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/pcicfg.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/pcicfg.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/pcicfg.h
+diff --git a/drivers/net/wireless/bcmdhd/include/pcie_core.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/pcie_core.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/pcie_core.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/pcie_core.h
+diff --git a/drivers/net/wireless/bcmdhd/include/rte_ioctl.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/rte_ioctl.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/rte_ioctl.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/rte_ioctl.h
+diff --git a/drivers/net/wireless/bcmdhd/include/sbchipc.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbchipc.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/sbchipc.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbchipc.h
+diff --git a/drivers/net/wireless/bcmdhd/include/sbconfig.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbconfig.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/sbconfig.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbconfig.h
+diff --git a/drivers/net/wireless/bcmdhd/include/sbgci.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbgci.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/sbgci.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbgci.h
+diff --git a/drivers/net/wireless/bcmdhd/include/sbhnddma.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbhnddma.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/sbhnddma.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbhnddma.h
+diff --git a/drivers/net/wireless/bcmdhd/include/sbpcmcia.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbpcmcia.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/sbpcmcia.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbpcmcia.h
+diff --git a/drivers/net/wireless/bcmdhd/include/sbsdio.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbsdio.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/sbsdio.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbsdio.h
+diff --git a/drivers/net/wireless/bcmdhd/include/sbsdpcmdev.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbsdpcmdev.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/sbsdpcmdev.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbsdpcmdev.h
+diff --git a/drivers/net/wireless/bcmdhd/include/sbsocram.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbsocram.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/sbsocram.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbsocram.h
+diff --git a/drivers/net/wireless/bcmdhd/include/sbsysmem.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbsysmem.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/sbsysmem.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sbsysmem.h
+diff --git a/drivers/net/wireless/bcmdhd/include/sdio.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sdio.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/sdio.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sdio.h
+diff --git a/drivers/net/wireless/bcmdhd/include/sdioh.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sdioh.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/sdioh.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sdioh.h
+diff --git a/drivers/net/wireless/bcmdhd/include/sdiovar.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sdiovar.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/sdiovar.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sdiovar.h
+diff --git a/drivers/net/wireless/bcmdhd/include/sdspi.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sdspi.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/sdspi.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/sdspi.h
+diff --git a/drivers/net/wireless/bcmdhd/include/siutils.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/siutils.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/siutils.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/siutils.h
+diff --git a/drivers/net/wireless/bcmdhd/include/spid.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/spid.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/spid.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/spid.h
+diff --git a/drivers/net/wireless/bcmdhd/include/trxhdr.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/trxhdr.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/trxhdr.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/trxhdr.h
+diff --git a/drivers/net/wireless/bcmdhd/include/typedefs.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/typedefs.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/typedefs.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/typedefs.h
+diff --git a/drivers/net/wireless/bcmdhd/include/vlan.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/vlan.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/vlan.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/vlan.h
+diff --git a/drivers/net/wireless/bcmdhd/include/wlfc_proto.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/wlfc_proto.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/wlfc_proto.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/wlfc_proto.h
+diff --git a/drivers/net/wireless/bcmdhd/include/wlioctl.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/wlioctl.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/wlioctl.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/wlioctl.h
+diff --git a/drivers/net/wireless/bcmdhd/include/wlioctl_defs.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/wlioctl_defs.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/wlioctl_defs.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/wlioctl_defs.h
+diff --git a/drivers/net/wireless/bcmdhd/include/wlioctl_utils.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/wlioctl_utils.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/wlioctl_utils.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/wlioctl_utils.h
+diff --git a/drivers/net/wireless/bcmdhd/include/wpa.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/wpa.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/wpa.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/wpa.h
+diff --git a/drivers/net/wireless/bcmdhd/include/wps.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/wps.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/include/wps.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/include/wps.h
+diff --git a/drivers/net/wireless/bcmdhd/linux_osl.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/linux_osl.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/linux_osl.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/linux_osl.c
+diff --git a/drivers/net/wireless/bcmdhd/pcie_core.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/pcie_core.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/pcie_core.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/pcie_core.c
+diff --git a/drivers/net/wireless/bcmdhd/rkversion.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/rkversion.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/rkversion.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/rkversion.c
+diff --git a/drivers/net/wireless/bcmdhd/sbutils.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/sbutils.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/sbutils.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/sbutils.c
+diff --git a/drivers/net/wireless/bcmdhd/siutils.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/siutils.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/siutils.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/siutils.c
+diff --git a/drivers/net/wireless/bcmdhd/siutils_priv.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/siutils_priv.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/siutils_priv.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/siutils_priv.h
+diff --git a/drivers/net/wireless/bcmdhd/wl_android.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_android.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_android.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_android.c
+diff --git a/drivers/net/wireless/bcmdhd/wl_android.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_android.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_android.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_android.h
+diff --git a/drivers/net/wireless/bcmdhd/wl_android_ext.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_android_ext.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_android_ext.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_android_ext.c
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfg80211.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfg80211.c
+similarity index 99%
+rename from drivers/net/wireless/bcmdhd/wl_cfg80211.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfg80211.c
+index 70435eeba768..c935304d9e91 100644
+--- a/drivers/net/wireless/bcmdhd/wl_cfg80211.c
++++ b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfg80211.c
+@@ -843,7 +843,7 @@ static int wl_cfg80211_set_mac_acl(struct wiphy *wiphy, struct net_device *cfgde
+ /*
+  * Some external functions, TODO: move them to dhd_linux.h
+  */
+-int dhd_add_monitor(struct bcm_cfg80211 *cfg, const char *name, struct net_device **new_ndev);
++int dhd_add_monitor(const char *name, struct net_device **new_ndev);
+ int dhd_del_monitor(struct net_device *ndev);
+ int dhd_monitor_init(void *dhd_pub);
+ int dhd_monitor_uninit(void);
+@@ -1364,10 +1364,6 @@ wl_cfg80211_default_mgmt_stypes[NUM_NL80211_IFTYPES] = {
+ 		BIT(IEEE80211_STYPE_PROBE_REQ >> 4)
+ 	},
+ #endif /* WL_CFG80211_P2P_DEV_IF */
+-	[NL80211_IFTYPE_MONITOR] = {
+-		.tx = 0xffff,
+-		.rx = 0xffff
+-	},
+ };
+ 
+ static void swap_key_from_BE(struct wl_wsec_key *key)
+@@ -1591,21 +1587,16 @@ static chanspec_t wl_cfg80211_get_shared_freq(struct wiphy *wiphy)
+ }
+ 
+ static bcm_struct_cfgdev *
+-wl_cfg80211_add_monitor_if(struct bcm_cfg80211 *cfg, const char *name)
++wl_cfg80211_add_monitor_if(const char *name)
+ {
+-#if 0// defined(WL_ENABLE_P2P_IF) || defined(WL_CFG80211_P2P_DEV_IF)
++#if defined(WL_ENABLE_P2P_IF) || defined(WL_CFG80211_P2P_DEV_IF)
+ 	WL_INFORM(("wl_cfg80211_add_monitor_if: No more support monitor interface\n"));
+ 	return ERR_PTR(-EOPNOTSUPP);
+ #else
+ 	struct net_device* ndev = NULL;
+-	int ret;
+-
+-	ret = dhd_add_monitor(cfg, name, &ndev);
+-	if (ret < 0)
+-		return ERR_PTR(ret);
+ 
++	dhd_add_monitor(name, &ndev);
+ 	WL_INFORM(("wl_cfg80211_add_monitor_if net device returned: 0x%p\n", ndev));
+-
+ 	return ndev_to_cfgdev(ndev);
+ #endif /* WL_ENABLE_P2P_IF || WL_CFG80211_P2P_DEV_IF */
+ }
+@@ -1685,7 +1676,7 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
+ 		err = -EINVAL;
+ 		goto fail;
+ 	case NL80211_IFTYPE_MONITOR:
+-		new_cfgdev = wl_cfg80211_add_monitor_if(cfg, name);
++		new_cfgdev = wl_cfg80211_add_monitor_if(name);
+ 		mutex_unlock(&cfg->if_sync);
+ 		return new_cfgdev;
+ #if defined(WL_CFG80211_P2P_DEV_IF)
+@@ -2065,11 +2056,6 @@ wl_cfg80211_del_virtual_iface(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev)
+ 	}
+ #endif /* WLAIBSS_MCHAN */
+ 
+-	if (dev->ieee80211_ptr->iftype == NL80211_IFTYPE_MONITOR) {
+-		ret = dhd_del_monitor(dev);
+-		goto done;
+-	}
+-
+ 	if ((index = wl_get_bssidx_by_wdev(cfg, cfgdev_to_wdev(cfgdev))) < 0) {
+ 		WL_ERR(("Find p2p index from wdev failed\n"));
+ 		ret = -ENODEV;
+@@ -2172,6 +2158,7 @@ wl_cfg80211_del_virtual_iface(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev)
+ #endif /* SUPPORT_SET_CAC */
+ 			}
+ 
++			ret = dhd_del_monitor(dev);
+ 			if (wl_get_mode_by_netdev(cfg, dev) == WL_MODE_AP) {
+ 				DHD_OS_WAKE_LOCK_CTRL_TIMEOUT_CANCEL((dhd_pub_t *)(cfg->pub));
+ 			}
+@@ -2202,12 +2189,9 @@ wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
+ 	struct vif_params *params)
+ {
+ 	s32 ap = 0;
+-	s32 infra = 0;
+-	s32 ibss = 1;
++	s32 infra_ibss = 1;
+ 	s32 wlif_type;
+ 	s32 mode = 0;
+-	s32 mon = 0;
+-	s32 promisc = 0;
+ 	s32 err = BCME_OK;
+ 	s32 index;
+ 	s32 conn_idx = -1;
+@@ -2219,10 +2203,6 @@ wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
+ 	WL_DBG(("Enter type %d\n", type));
+ 	switch (type) {
+ 	case NL80211_IFTYPE_MONITOR:
+-		mon = 2;
+-		promisc = 1;
+-		mode = WL_MODE_MONITOR;
+-			break;
+ 	case NL80211_IFTYPE_WDS:
+ 	case NL80211_IFTYPE_MESH_POINT:
+ 		ap = 1;
+@@ -2231,7 +2211,7 @@ wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
+ 		break;
+ 	case NL80211_IFTYPE_ADHOC:
+ 		mode = WL_MODE_IBSS;
+-		ibss = 1;
++		infra_ibss = 0;
+ 		break;
+ 	case NL80211_IFTYPE_STATION:
+ 	case NL80211_IFTYPE_P2P_CLIENT:
+@@ -2253,7 +2233,6 @@ wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
+ 			}
+ 		}
+ 		mode = WL_MODE_BSS;
+-		infra = 1;
+ 		break;
+ 	case NL80211_IFTYPE_AP:
+ 		dhd->op_mode |= DHD_FLAG_HOSTAP_MODE;
+@@ -2306,8 +2285,8 @@ wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
+ 			}
+ 
+ 			wlif_type = WL_P2P_IF_GO;
+-			printf("%s: %s  ap (%d), infra (%d) ibss (%d), iftype (%d) conn_idx (%d)\n",
+-				__FUNCTION__, ndev->name, ap, infra, ibss, type, conn_idx);
++			printf("%s: %s  ap (%d), infra_ibss (%d), iftype (%d) conn_idx (%d)\n",
++				__FUNCTION__, ndev->name, ap, infra_ibss, type, conn_idx);
+ 			wl_set_p2p_status(cfg, IF_CHANGING);
+ 			wl_clr_p2p_status(cfg, IF_CHANGED);
+ 			wl_cfgp2p_ifchange(cfg, wl_to_p2p_bss_macaddr(cfg, conn_idx),
+@@ -2353,17 +2332,13 @@ wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
+ #endif /* SUPPORT_AP_POWERSAVE */
+ 	}
+ 
+-	if (mon) {
+-		ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+-	} else {
+-		ndev->type = ARPHRD_ETHER;
+-	}
+-
+-	if (!ap) {
+-		wldev_ioctl(ndev, WLC_SET_INFRA, &infra, sizeof(s32), true);
+-		wldev_ioctl(ndev, WLC_SET_PROMISC, &promisc, sizeof(s32), true);
+-		wldev_ioctl(ndev, WLC_SET_MONITOR, &mon, sizeof(s32), true);
+-		wl_set_mode_by_netdev(cfg, ndev, mode);
++	if (!infra_ibss) {
++		err = wldev_ioctl_set(ndev, WLC_SET_INFRA, &infra_ibss, sizeof(s32));
++		if (err < 0) {
++			WL_ERR(("SET INFRA/IBSS  error %d\n", err));
++			err = -EINVAL;
++			goto error;
++		}
+ 	}
+ 
+ 	WL_DBG(("Setting iftype to %d \n", type));
+@@ -7938,17 +7913,6 @@ wl_cfg80211_set_channel(struct wiphy *wiphy, struct net_device *dev,
+ 	return err;
+ }
+ 
+-static s32
+-wl_cfg80211_set_monitor_channel(struct wiphy *wiphy, struct cfg80211_chan_def *chandef)
+-{
+-
+-	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
+-	struct net_device *dev = bcmcfg_to_prmry_ndev(cfg);
+-	enum nl80211_channel_type channel_type = cfg80211_get_chandef_type(chandef);
+-
+-	return(wl_cfg80211_set_channel(wiphy, dev, chandef->chan, channel_type));
+-}
+-
+ #ifdef WL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST
+ struct net_device *
+ wl_cfg80211_get_remain_on_channel_ndev(struct bcm_cfg80211 *cfg)
+@@ -10426,7 +10390,6 @@ static struct cfg80211_ops wl_cfg80211_ops = {
+ 	.mgmt_tx = wl_cfg80211_mgmt_tx,
+ 	.mgmt_frame_register = wl_cfg80211_mgmt_frame_register,
+ 	.change_bss = wl_cfg80211_change_bss,
+-	.set_monitor_channel = wl_cfg80211_set_monitor_channel,
+ #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0))
+ 	.set_channel = wl_cfg80211_set_channel,
+ #endif 
+@@ -10477,8 +10440,6 @@ s32 wl_mode_to_nl80211_iftype(s32 mode)
+ 		return NL80211_IFTYPE_ADHOC;
+ 	case WL_MODE_AP:
+ 		return NL80211_IFTYPE_AP;
+-	case WL_MODE_MONITOR:
+-		return NL80211_IFTYPE_MONITOR;
+ 	default:
+ 		return NL80211_IFTYPE_UNSPECIFIED;
+ 	}
+@@ -10596,9 +10557,9 @@ static s32 wl_setup_wiphy(struct wireless_dev *wdev, struct device *sdiofunc_dev
+ 	wdev->wiphy->interface_modes =
+ 		BIT(NL80211_IFTYPE_STATION)
+ 		| BIT(NL80211_IFTYPE_ADHOC)
+-//#if !defined(WL_ENABLE_P2P_IF) && !defined(WL_CFG80211_P2P_DEV_IF)
++#if !defined(WL_ENABLE_P2P_IF) && !defined(WL_CFG80211_P2P_DEV_IF)
+ 		| BIT(NL80211_IFTYPE_MONITOR)
+-//#endif /* !WL_ENABLE_P2P_IF && !WL_CFG80211_P2P_DEV_IF */
++#endif /* !WL_ENABLE_P2P_IF && !WL_CFG80211_P2P_DEV_IF */
+ #if defined(WL_IFACE_COMB_NUM_CHANNELS) || defined(WL_CFG80211_P2P_DEV_IF)
+ 		| BIT(NL80211_IFTYPE_P2P_CLIENT)
+ 		| BIT(NL80211_IFTYPE_P2P_GO)
+@@ -15783,14 +15744,8 @@ static s32 wl_config_ifmode(struct bcm_cfg80211 *cfg, struct net_device *ndev, s
+ 	s32 infra = 0;
+ 	s32 err = 0;
+ 	s32 mode = 0;
+-	s32 mon = 0;
+-	s32 promisc = 0;
+ 	switch (iftype) {
+ 	case NL80211_IFTYPE_MONITOR:
+-		mode = WL_MODE_MONITOR;
+-		mon = 2;
+-		promisc = 1;
+-		break;
+ 	case NL80211_IFTYPE_WDS:
+ 		WL_ERR(("type (%d) : currently we do not support this mode\n",
+ 			iftype));
+@@ -15815,32 +15770,12 @@ static s32 wl_config_ifmode(struct bcm_cfg80211 *cfg, struct net_device *ndev, s
+ 		return err;
+ 	}
+ 	infra = htod32(infra);
+-	mon = htod32(mon);
+-	promisc = htod32(promisc);
+-
+ 	err = wldev_ioctl_set(ndev, WLC_SET_INFRA, &infra, sizeof(infra));
+ 	if (unlikely(err)) {
+ 		WL_ERR(("WLC_SET_INFRA error (%d)\n", err));
+ 		return err;
+ 	}
+ 
+-	err = wldev_ioctl(ndev, WLC_SET_PROMISC, &promisc, sizeof(s32), true);
+-	if (unlikely(err)) {
+-		WL_ERR(("WLC_SET_PROMISC error (%d)\n", err));
+-		return err;
+-	}
+-	err = wldev_ioctl(ndev, WLC_SET_MONITOR, &mon, sizeof(mon), true);
+-	if (unlikely(err)) {
+-		WL_ERR(("WLC_SET_MONITOR error (%d)\n", err));
+-		return err;
+-	}
+-
+-	if (mon) {
+-		ndev->type = ARPHRD_IEEE80211_RADIOTAP;
+-	} else {
+-		ndev->type = ARPHRD_ETHER;
+-	}
+-
+ 	wl_set_mode_by_netdev(cfg, ndev, mode);
+ 
+ 	return 0;
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfg80211.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfg80211.h
+similarity index 99%
+rename from drivers/net/wireless/bcmdhd/wl_cfg80211.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfg80211.h
+index b90994be8dac..9d06534db7cd 100755
+--- a/drivers/net/wireless/bcmdhd/wl_cfg80211.h
++++ b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfg80211.h
+@@ -339,8 +339,7 @@ enum wl_status {
+ enum wl_mode {
+ 	WL_MODE_BSS,
+ 	WL_MODE_IBSS,
+-	WL_MODE_AP,
+-	WL_MODE_MONITOR
++	WL_MODE_AP
+ };
+ 
+ /* driver profile list */
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfg_btcoex.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfg_btcoex.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_cfg_btcoex.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfg_btcoex.c
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfgnan.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfgnan.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_cfgnan.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfgnan.c
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfgnan.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfgnan.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_cfgnan.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfgnan.h
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfgp2p.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfgp2p.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_cfgp2p.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfgp2p.c
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfgp2p.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfgp2p.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_cfgp2p.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfgp2p.h
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfgvendor.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfgvendor.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_cfgvendor.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfgvendor.c
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfgvendor.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfgvendor.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_cfgvendor.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_cfgvendor.h
+diff --git a/drivers/net/wireless/bcmdhd/wl_dbg.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_dbg.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_dbg.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_dbg.h
+diff --git a/drivers/net/wireless/bcmdhd/wl_escan.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_escan.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_escan.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_escan.c
+diff --git a/drivers/net/wireless/bcmdhd/wl_escan.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_escan.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_escan.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_escan.h
+diff --git a/drivers/net/wireless/bcmdhd/wl_iw.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_iw.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_iw.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_iw.c
+diff --git a/drivers/net/wireless/bcmdhd/wl_iw.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_iw.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_iw.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_iw.h
+diff --git a/drivers/net/wireless/bcmdhd/wl_linux_mon.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_linux_mon.c
+similarity index 93%
+rename from drivers/net/wireless/bcmdhd/wl_linux_mon.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_linux_mon.c
+index 77e81d227d56..e90fa5d1679a 100755
+--- a/drivers/net/wireless/bcmdhd/wl_linux_mon.c
++++ b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_linux_mon.c
+@@ -43,9 +43,6 @@
+ #include <dngl_stats.h>
+ #include <dhd.h>
+ 
+-#include <wl_cfg80211.h>
+-#include <net/cfg80211.h>
+-
+ typedef enum monitor_states
+ {
+ 	MONITOR_STATE_DEINIT = 0x0,
+@@ -53,7 +50,7 @@ typedef enum monitor_states
+ 	MONITOR_STATE_INTERFACE_ADDED = 0x2,
+ 	MONITOR_STATE_INTERFACE_DELETED = 0x4
+ } monitor_states_t;
+-int dhd_add_monitor(struct bcm_cfg80211 *cfg, const char *name, struct net_device **new_ndev);
++int dhd_add_monitor(const char *name, struct net_device **new_ndev);
+ extern int dhd_start_xmit(struct sk_buff *skb, struct net_device *net);
+ int dhd_del_monitor(struct net_device *ndev);
+ int dhd_monitor_init(void *dhd_pub);
+@@ -279,23 +276,16 @@ static int dhd_mon_if_change_mac(struct net_device *ndev, void *addr)
+ 	return ret;
+ }
+ 
+-static void dhd_mon_dev_free(struct net_device *ndev)
+-{
+-	kfree(ndev->ieee80211_ptr);
+-	free_netdev(ndev);
+-}
+-
+ /**
+  * Global function definitions (declared in dhd_linux_mon.h)
+  */
+ 
+-int dhd_add_monitor(struct bcm_cfg80211 *cfg, const char *name, struct net_device **new_ndev)
++int dhd_add_monitor(const char *name, struct net_device **new_ndev)
+ {
+ 	int i;
+ 	int idx = -1;
+ 	int ret = 0;
+ 	struct net_device* ndev = NULL;
+-	struct wireless_dev *wdev = NULL;
+ 	dhd_linux_monitor_t **dhd_mon;
+ 
+ 	mutex_lock(&g_monitor.lock);
+@@ -307,13 +297,6 @@ int dhd_add_monitor(struct bcm_cfg80211 *cfg, const char *name, struct net_devic
+ 		goto out;
+ 	}
+ 
+-	wdev = kzalloc(sizeof(*wdev), GFP_KERNEL);
+-	if (!wdev) {
+-		WL_ERR(("wireless_dev alloc failed! \n"));
+-		ret = -ENOMEM;
+-		goto out;
+-	}
+-
+ 	/*
+ 	 * Find a vacancy
+ 	 */
+@@ -339,13 +322,6 @@ int dhd_add_monitor(struct bcm_cfg80211 *cfg, const char *name, struct net_devic
+ 	strncpy(ndev->name, name, IFNAMSIZ);
+ 	ndev->name[IFNAMSIZ - 1] = 0;
+ 	ndev->netdev_ops = &dhd_mon_if_ops;
+-	ndev->destructor = dhd_mon_dev_free;
+-
+-	wdev->wiphy = bcmcfg_to_wiphy(cfg);
+-	wdev->iftype = NL80211_IFTYPE_MONITOR;
+-
+-	ndev->ieee80211_ptr = wdev;
+-	SET_NETDEV_DEV(ndev, wiphy_dev(wdev->wiphy));
+ 
+ 	ret = register_netdevice(ndev);
+ 	if (ret) {
+@@ -364,9 +340,6 @@ int dhd_add_monitor(struct bcm_cfg80211 *cfg, const char *name, struct net_devic
+ 	MON_PRINT("found a matched net device, name %s\n", g_monitor.mon_if[idx].real_ndev->name);
+ 
+ out:
+-	if (ret && wdev)
+-		kfree(wdev);
+-
+ 	if (ret && ndev)
+ 		free_netdev(ndev);
+ 
+@@ -384,9 +357,11 @@ int dhd_del_monitor(struct net_device *ndev)
+ 	for (i = 0; i < DHD_MAX_IFS; i++) {
+ 		if (g_monitor.mon_if[i].mon_ndev == ndev ||
+ 			g_monitor.mon_if[i].real_ndev == ndev) {
++
++			g_monitor.mon_if[i].real_ndev = NULL;
+ 			unregister_netdevice(g_monitor.mon_if[i].mon_ndev);
++			free_netdev(g_monitor.mon_if[i].mon_ndev);
+ 			g_monitor.mon_if[i].mon_ndev = NULL;
+-			g_monitor.mon_if[i].real_ndev = NULL;
+ 			g_monitor.monitor_state = MONITOR_STATE_INTERFACE_DELETED;
+ 			break;
+ 		}
+@@ -419,9 +394,9 @@ int dhd_monitor_uninit(void)
+ 			ndev = g_monitor.mon_if[i].mon_ndev;
+ 			if (ndev) {
+ 				unregister_netdevice(ndev);
+-				g_monitor.mon_if[i].mon_ndev = NULL;
++				free_netdev(ndev);
+ 				g_monitor.mon_if[i].real_ndev = NULL;
+-				g_monitor.monitor_state = MONITOR_STATE_INTERFACE_DELETED;
++				g_monitor.mon_if[i].mon_ndev = NULL;
+ 			}
+ 		}
+ 		g_monitor.monitor_state = MONITOR_STATE_DEINIT;
+diff --git a/drivers/net/wireless/bcmdhd/wl_roam.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_roam.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wl_roam.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wl_roam.c
+diff --git a/drivers/net/wireless/bcmdhd/wlc_types.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wlc_types.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wlc_types.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wlc_types.h
+diff --git a/drivers/net/wireless/bcmdhd/wldev_common.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wldev_common.c
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wldev_common.c
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wldev_common.c
+diff --git a/drivers/net/wireless/bcmdhd/wldev_common.h b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wldev_common.h
+similarity index 100%
+rename from drivers/net/wireless/bcmdhd/wldev_common.h
+rename to drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/wldev_common.h
+-- 
+2.11.0
+

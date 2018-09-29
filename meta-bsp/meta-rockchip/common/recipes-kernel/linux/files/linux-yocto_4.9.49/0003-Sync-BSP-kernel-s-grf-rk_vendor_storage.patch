@@ -1,7 +1,7 @@
 From a8b5f30c8eb631d517b3cfcf26b93058ed155238 Mon Sep 17 00:00:00 2001
 From: Jeffy Chen <jeffy.chen@rock-chips.com>
 Date: Wed, 30 May 2018 18:56:12 +0800
-Subject: [PATCH 03/14] Sync BSP kernel's grf & rk_vendor_storage
+Subject: [PATCH 03/73] Sync BSP kernel's grf & rk_vendor_storage
 
 Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
 ---
