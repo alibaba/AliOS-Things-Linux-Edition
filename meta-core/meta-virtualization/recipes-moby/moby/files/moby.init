@@ -42,6 +42,10 @@ start() {
         echo -e "\n$(date)\n" >> $logfile
         # mount cgroup
         /usr/bin/moby_prepare.sh
+        # insmod kernel modules
+        if [ $(cat /proc/modules | grep -c "xt_nat") -eq 0 ]; then
+            /sbin/modprobe xt_nat
+        fi
         "$unshare" -m -- $exec $other_args 2> $logfile & pid=$! 
         touch $lockfile
         #/sbin/ifconfig -a docker0 172.17.0.1 netmask 255.255.0.0 up
