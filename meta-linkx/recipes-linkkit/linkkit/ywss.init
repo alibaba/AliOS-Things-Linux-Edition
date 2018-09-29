@@ -1,0 +1,25 @@
+#!/bin/sh
+
+test -x /usr/bin/ywssapp || exit 0
+
+case "$1" in
+    start)
+        echo "Starting ywssapp..."
+        start-stop-daemon --start --exec /usr/bin/ywssapp > /var/log/ywss.log 2>&1 &
+        ;;
+    stop)
+        echo "Stopping ywssapp..."
+        start-stop-daemon --stop --exec /usr/bin/ywssapp
+        ;;
+    restart)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+    *)
+        echo "Usage: /etc/init.d/ywss {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0
