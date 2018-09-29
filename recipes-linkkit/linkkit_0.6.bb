@@ -1,29 +1,35 @@
-# FILESEXTRAPATHS_prepend := "${THISDIR}/patches:"
-# PATCH_FILE_X86_64 = " file://0001-Port-x86-64.patch;patch=1"
-# PATCH_FILE_RPI = " file://0002-Port-raspberrypi.patch;patch=1"
-
-# patching according to MACHINE
-# python() {
-#     bb.note("xiaxiaowen")
-#     getmachine = d.getVar("MACHINE", True)
-#     bb.note("%s" % getmachine)
-#     if getmachine == "qemux86-64":
-#         bb.note("patching %s" % d.getVar("PATCH_FILE_X86_64", True))
-#         d.setVar("SRC_URI_append", d.getVar("PATCH_FILE_X86_64", True))
-#     elif getmachine == "raspberrypi3-64":
-#         bb.note("patching %s" % d.getVar("PATCH_FILE_RPI", True))
-#         d.setVar("SRC_URI_append", d.getVar("PATCH_FILE_RPI", True))
-#     else:
-#         bb.note("do not need to patch")
-# }
-
-SRC_URI = "file://${THISDIR}/Linkkit-0.6.tar.gz \
-           file://${THISDIR}/linkkit.init"
-
-# source code dir
-S = "${WORKDIR}/Linkkit-0.6"
-
+DESCRIPTION = "AliOS Things Linux Edition comboapp"
+SUMMARY = "AliOS Things Linux Edition comboapp"
+LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://${S}/LICENSE;md5=e3fc50a88d0a364313df4b21ef20c29e"
 
+#CFLAGS_prepend = " -g "
 
-require linkkit.inc
+#DEPENDS += "bluez5"
+#DEPENDS := "${@bb.utils.contains('DISTRO_FEATURES','bluez5','bluez5','bluez4',d)}"
+
+SRC_URI = "file://linkkit-0.6.tar.gz \
+           file://combo.init \
+           file://linkkit.kv"
+
+# only support sysvinit for now.
+inherit update-rc.d
+
+INITSCRIPT_NAME = "combo"
+INITSCRIPT_PARAMS = "defaults 87"
+
+TARGET_CC_ARCH += "${LDFLAGS}"
+
+do_compile() {
+    make ARCH=${TARGET_ARCH} -f Makefile.comboapp wifi_module=rtk ble_module=rtk
+}
+
+do_install() {
+    # create linkkit dir
+    install -d ${D}/${bindir}/
+    install -d ${D}/${datadir}/linkkit/
+    install -d ${D}/${INIT_D_DIR}
+    install -m 0644 ${WORKDIR}/linkkit.kv ${D}/${datadir}/linkkit/linkkit.kv
+    install -m 0755 ${WORKDIR}/combo.init ${D}/${INIT_D_DIR}/combo
+    install -m 0755 ${B}/comboapp ${D}/${bindir}/comboapp
+}

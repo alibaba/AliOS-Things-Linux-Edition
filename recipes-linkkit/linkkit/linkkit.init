@@ -1,0 +1,36 @@
+#!/bin/sh
+
+### BEGIN INIT INFO
+# Provides:          linkkit
+# Required-Start:    $network
+# Required-Stop:     $network
+# Default-Start:     S 2 3 4 5
+# Default-Stop:      0 1 6
+# Description:       Living Link is platform service which provides customers with a
+#                    smart devices developerment management platform, especially for smart life area.
+#                    link to https://living.aliyun.com/
+### END INIT INFO
+
+test -x /usr/bin/linkkitapp || exit 0
+
+case "$1" in
+    start)
+        echo "Starting linkkitapp..."
+        start-stop-daemon --start --exec /usr/bin/linkkitapp > /var/log/linkkit.log 2>&1 &
+        ;;
+    stop)
+        echo "Stopping linkkitapp..."
+        start-stop-daemon --stop --exec /usr/bin/linkkitapp
+        ;;
+    restart)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+    *)
+        echo "Usage: /etc/init.d/linkkit {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0

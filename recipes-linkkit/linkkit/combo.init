@@ -1,0 +1,39 @@
+
+test -x /usr/bin/comboapp || (echo "Error: missing comboapp"; exit 0)
+test -x /usr/bin/rtk_hciattach || (echo "Error: missing rtk_hciattach"; exit 0)
+test -x /usr/bin/hciconfig || (echo "Error: missing hciconfig"; exit 0)
+
+function start_bluetooth()
+{
+    echo "Starting bluetooth..."
+    rm -f /etc/init.d/bluetooth
+    echo 0 > /sys/class/rfkill/rfkill0/state
+    sleep 1
+    echo 1 > /sys/class/rfkill/rfkill0/state
+    sleep 1
+    rtk_hciattach -n -s 115200 /dev/ttyS4 rtk_h5 &
+    sleep 3
+}
+
+case "$1" in
+    start)
+        start_bluetooth
+        echo "Starting comboapp..."
+        start-stop-daemon --start --exec /usr/bin/comboapp &
+        ;;
+    stop)
+        echo "Stopping comboapp..."
+        start-stop-daemon --stop --exec /usr/bin/comboapp
+        ;;
+    restart)
+        $0 stop
+        sleep 1
+        $0 start
+        ;;
+    *)
+        echo "Usage: /etc/init.d/linkkit {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0
