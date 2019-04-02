@@ -1,63 +1,78 @@
 meta-rockchip
 =============
-rockchip BSP layer
-
+The rockchip BSP layer, it is adapted for AliOS Things Linux Edition.
 
 Dependencies
 ============
 This layer depends on:
     <repo_dir>/meta-yp/meta
 
+The <repo_dir> is the repository path of your AliOS Things Linux Edition.
+
+Boards
+============
+This BSP layer support the below boards.
+
+- rockchip-rk3308-evb
+  Description: rockchip rk3308 evb arm64 board.
+  Baud rate  : 1500000
+
+- rockchip-rk3308-evb-aarch32
+  Description: rockchip rk3308 evb arm32 board.
+  Baud rate  : 1500000
+
+- rockchip-rk3308-voice-module-aarch32
+  Description: rockchip rk3308 evb arm32 voice module board.
+  Baud rate  : 1500000
+
+- rockchip-rk3308-smart-voice-a1-aarch32
+  Description: rockchip rk3308 smart voice a1 board.
+  Baud rate  : 1500000
 
 How to build
 ============
-1. create your build project, e.g. build-rockchip
+1. Change into the top directory of your repository of AliOS Things Linux Edition.
+
+2. Create your build project, e.g. build-rockchip
 
     $ source oe-init-build-env build-rockchip
 
-2. Add this layer
+3. Add this layer
 
     Add this layer along with its dependencies into build-rockchip/conf/bblayers.conf. e.g.
     BBLAYERS ?= " \
-        ...
+        <repo_dir>/meta-yp/meta \
+        <repo_dir>/meta-yp/meta-openembedded/meta-oe \
+        <repo_dir>/meta-yp/meta-openembedded/meta-perl \
+        <repo_dir>/meta-yp/meta-openembedded/meta-python \
+        <repo_dir>/meta-yp/meta-openembedded/meta-networking \
+        <repo_dir>/meta-core/meta-base \
         <repo_dir>/meta-bsp/meta-rockchip \
         "
-    Or using bitbake-layers to add this layer and its dependencies
-    $ bitbake-layers add-layer <repo_dir>/meta-bsp/meta-rockchip
+4. Use the alios distro. In build-rockchip/conf/local.conf, set the DISTRO value,
+   e.g. DISTRO ?= "alios"
 
-3. To build for a particular board, set the MACHINE in build-rockchip/conf/local.conf,
-   e.g. MACHINE = "rockchip-rk3308-evb", this layer defines the below machines you can set.
+5. To build for a particular board, set the MACHINE in build-rockchip/conf/local.conf,
+   e.g. MACHINE = "rockchip-rk3308-evb". Set your board name from "Boards" section that is supported
+   by this BSP layer.
 
-    - rockchip-rk3308-evb
-      rockchip rk3308 evb arm64 board.
-
-    - rockchip-rk3308-evb-aarch32
-      rockchip rk3308 evb arm32 board.
-
-    - rockchip-rk3308-voice-module-aarch32
-      rockchip rk3308 evb arm32 voice module board.
-
-    - rockchip-rk3308-smart-voice-a1-aarch32
-      rockchip rk3308 smart voice a1 board.
-
-4. build the image
+6. Build the image, e.g. core-image-minimal.
 
     $ bitbake core-image-minimal
 
-5. Get all the images in directory build-rockchip/tmp/deploy/images/rockchip-rk3308-evb
+7. Get all the images in directory build-rockchip/tmp/deploy/images/rockchip-rk3308-evb.
 
     - loader.bin
-      switch the maskrom mode into loader mode
+      switch the maskrom mode into loader mode.
 
     - wic image,e.g. core-image-minimal-rockchip-rk3308-evb.wic
-      A gpt disk image that includes idblock.img, resource.img(dtb), kernel.img,
-      u-boot-rk.img, trust.img and rootfs. It is created by definition in
-      meta-bsp/meta-rockchip/wic/generic-gptdisk.wks.
-
+      A All-in-one image that includes rockchip miniloader, u-boot, kernel, dtb and rootfs.
 
 How to deploy
 =============
-Deploy image into rockchip target on linux host
+Deploy image into rockchip target on linux host. The rk3308-evb board is tested for the below steps,
+other board maybe little different.
+
 1. Get the rockchip deploy tool, assuming your linux host is x86_64, it is in
    build-rockchip/tmp/work/x86_64-linux/rk-binary-native/git-r0/git/tools/upgrade_tool
    upgrade_tool is 32bit program, run the following steps if your 64bit linux host doesn't
@@ -67,18 +82,28 @@ Deploy image into rockchip target on linux host
    - sudo apt-get update
    - sudo apt-get install libc6:i386 libncurses5:i386 libstdc++6:i386
 
-2. Press long the maskrom button and reset button on rk3308-evb board,
-    go into the maskrom mode.
+2. Go into loader mode. And there are several methods can be used to go into loader mode. Take one
+   method according to your situation.
 
-3. Switch the maskrom mode into loader mode
+    2.1 If you ever flashed image into your board, execute the below command in your board to go
+        into loader mode.
 
-    $ sudo ./upgrade_tool db loader.bin
+        $ reboot loader
 
-4. In loader mode, deploy the fully included .wic image into flash.
+    2.2 Press long the recovery button and press reset button on your board, go into loader mode.
+
+    2.3 Press long the maskrom button and press reset button on your board, go into the maskrom
+        mode. And then switch the maskrom mode into loader mode by executing the below command.
+        This method will upgrade the rockchip miniloader, it can be used to fix some issues when you
+        found your board stop booting before u-boot.
+
+        $ sudo ./upgrade_tool db loader.bin
+
+3. In loader mode, deploy the fully included .wic image into flash.
 
     $ sudo ./upgrade_tool wl 0 core-image-minimal-rockchip-rk3308-evb.wic
 
-5. Press reset button to boot
+4. Press reset button or execute "sudo ./upgrade_tool rd" command to reboot.
 
 
 How to debug
@@ -87,24 +112,35 @@ UART
 Connect the UART DEBUG port with your pc
 
 1. In linux host
-
+    $ sudo minicom -D <serial port device> -b <baud rate>
+    e.g. for rk3308-evb,
     $ sudo minicom -D /dev/ttyUSB0 -b 1500000
 
 2. In windows host
-    a) Install the usb-uart driver
+    a) Install the serial port driver.
 
-    b) Connect the serial port, e.g. COM1, set the baud rate to 1500000 in putty or secureCRT.
+    b) Connect the serial port, e.g. COM1, set the correct baud rate in putty or secureCRT.
 
 ADB
-Connect the USB OTG port with your pc
+1. Add ADB component in your board.
+   In build-rockchip/conf/local.conf, add the below line.
+        IMAGE_INSTALL_append = " android-tools"
+   If you want to enable adb root permission, add the below line.
+        ADB_ROOT = "1"
+   If you want to enable network adb, add the below line.
+        ADB_NETWORK = "1"
+   Then follow the "How to build/deploy" section.
 
-1. run remote shell interactively
-    $ adb shell
-    sh-4.4$
+2. Connect the USB OTG port with your pc
 
-2. push files into devices from host
-    $ adb push [-p] <local> <remote>
+    a) run remote shell interactively
+        $ adb shell
+        sh-4.4$
 
-3. get files into host from devices
-    $ adb pull [-p] [-a] <remote> [<local>]
+    b) push files into devices from host
+        $ adb push [-p] <local> <remote>
 
+    c) get files into host from devices
+        $ adb pull [-p] [-a] <remote> [<local>]
+
+    Try "adb help" command to get more information about that how to use adb.

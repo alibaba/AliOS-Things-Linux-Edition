@@ -1,0 +1,53 @@
+From 2f1e7adf65bbfd500cf82113c76289caa5b23892 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 31 Jul 2018 16:31:55 +0800
+Subject: [PATCH 3/6] configs: rockchip: Add CONFIG_ENV_SIZE
+
+Change-Id: I67dcd4d4f8597b224c3fd2d29079bdb426928ad2
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ env/Kconfig                       | 18 ------------------
+ include/configs/rockchip-common.h |  2 ++
+ 2 files changed, 2 insertions(+), 18 deletions(-)
+
+diff --git a/env/Kconfig b/env/Kconfig
+index 9de5cae083..25555ec2b8 100644
+--- a/env/Kconfig
++++ b/env/Kconfig
+@@ -435,22 +435,4 @@ config ENV_UBI_VOLUME
+ 
+ endif
+ 
+-if ARCH_ROCKCHIP
+-
+-config ENV_OFFSET
+-	hex
+-	depends on !ENV_IS_IN_UBI
+-	depends on !ENV_IS_NOWHERE
+-	default 0x3f8000
+-	help
+-	  Offset from the start of the device (or partition)
+-
+-config ENV_SIZE
+-	hex
+-	default 0x8000
+-	help
+-	  Size of the environment storage area
+-
+-endif
+-
+ endmenu
+diff --git a/include/configs/rockchip-common.h b/include/configs/rockchip-common.h
+index 38ff08a57f..a034c32d49 100644
+--- a/include/configs/rockchip-common.h
++++ b/include/configs/rockchip-common.h
+@@ -107,4 +107,6 @@
+ 
+ #define CONFIG_DISPLAY_BOARDINFO_LATE
+ 
++#define CONFIG_ENV_SIZE		(SZ_128K)
++
+ #endif /* _ROCKCHIP_COMMON_H_ */
+-- 
+2.11.0
+

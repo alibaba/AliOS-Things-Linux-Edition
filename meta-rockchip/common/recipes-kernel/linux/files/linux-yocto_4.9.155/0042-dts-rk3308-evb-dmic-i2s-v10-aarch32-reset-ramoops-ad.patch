@@ -1,0 +1,34 @@
+From b43bc47dc2b17448c5ce90c46c586f7f2b51d033 Mon Sep 17 00:00:00 2001
+From: Huibin Hong <huibin.hong@rock-chips.com>
+Date: Thu, 19 Jul 2018 10:15:12 +0800
+Subject: [PATCH 42/73] dts: rk3308-evb-dmic-i2s-v10-aarch32: reset ramoops
+ addr and size
+
+Change-Id: I8d88bc36c0911d089847ebbb5778759bbf75f171
+Signed-off-by: Huibin Hong <huibin.hong@rock-chips.com>
+---
+ arch/arm/boot/dts/rk3308-evb-dmic-i2s-v10-aarch32.dts | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
+
+diff --git a/arch/arm/boot/dts/rk3308-evb-dmic-i2s-v10-aarch32.dts b/arch/arm/boot/dts/rk3308-evb-dmic-i2s-v10-aarch32.dts
+index e5377f3cf3c3..f902e932d3e9 100644
+--- a/arch/arm/boot/dts/rk3308-evb-dmic-i2s-v10-aarch32.dts
++++ b/arch/arm/boot/dts/rk3308-evb-dmic-i2s-v10-aarch32.dts
+@@ -10,11 +10,8 @@
+ 	compatible = "rockchip,rk3308-evb-dmic-i2s-v10-aarch32", "rockchip,rk3308";
+ };
+ 
+-&ramoops_mem {
+-	reg = <0x0 0x30000 0x0 0x20000>;
+-};
+-
+ &ramoops {
+-	record-size = <0x0 0x00000>;
+-	console-size = <0x0 0x20000>;
++	reg = <0x0 0x30000 0x0 0x20000>;
++	console-size = <0x20000>;
++	record-size = <0x00000>;
+ };
+-- 
+2.11.0
+

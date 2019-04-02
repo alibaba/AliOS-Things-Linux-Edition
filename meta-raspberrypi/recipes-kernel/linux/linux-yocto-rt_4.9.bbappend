@@ -1,6 +1,7 @@
-FILESEXTRAPATHS_prepend := "${THISDIR}/linux-yocto:"
 
 LINUX_VERSION_raspberrypi3-64 = "4.9.49"
+
+FILESEXTRAPATHS_prepend := "${THISDIR}/linux-yocto_${LINUX_VERSION}:"
 
 COMPATIBLE_MACHINE = "raspberrypi3-64"
 

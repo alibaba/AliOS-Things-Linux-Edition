@@ -1,0 +1,31 @@
+From 8e5c07e476057ed887f7df482b27e715b367a9d1 Mon Sep 17 00:00:00 2001
+From: Huibin Hong <huibin.hong@rock-chips.com>
+Date: Wed, 18 Jul 2018 11:24:31 +0800
+Subject: [PATCH 37/73] rk3308-aarch32: enable fiq debugger
+
+Change-Id: I237d421f7cd48e5616c1644f496d5872539258bb
+Signed-off-by: Huibin Hong <huibin.hong@rock-chips.com>
+---
+ arch/arm/configs/rk3308_linux_aarch32_defconfig | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/arch/arm/configs/rk3308_linux_aarch32_defconfig b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+index e79837373f03..33a9a35d5da3 100644
+--- a/arch/arm/configs/rk3308_linux_aarch32_defconfig
++++ b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+@@ -168,6 +168,12 @@ CONFIG_RTC_CLASS=y
+ CONFIG_DMADEVICES=y
+ CONFIG_PL330_DMA=y
+ CONFIG_STAGING=y
++CONFIG_FIQ_DEBUGGER=y
++CONFIG_FIQ_DEBUGGER_NO_SLEEP=y
++CONFIG_FIQ_DEBUGGER_CONSOLE=y
++CONFIG_FIQ_DEBUGGER_CONSOLE_DEFAULT_ENABLE=y
++CONFIG_RK_CONSOLE_THREAD=y
++CONFIG_FIQ_DEBUGGER_TRUST_ZONE=y
+ # CONFIG_ARM_ARCH_TIMER_EVTSTREAM is not set
+ CONFIG_ROCKCHIP_IOMMU=y
+ # CONFIG_CPU_RK312X is not set
+-- 
+2.11.0
+

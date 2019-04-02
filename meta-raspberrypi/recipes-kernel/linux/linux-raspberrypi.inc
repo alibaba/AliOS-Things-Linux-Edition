@@ -14,8 +14,8 @@ inherit kernel siteinfo
 KCONFIG_MODE = "--alldefconfig"
 KBUILD_DEFCONFIG_raspberrypi0-wifi ?= "bcmrpi_defconfig"
 KBUILD_DEFCONFIG_raspberrypi ?= "bcmrpi_defconfig"
-KBUILD_DEFCONFIG_raspberrypi2 ?= "bcm2709_defconfig"
-KBUILD_DEFCONFIG_raspberrypi3 ?= "bcm2709_defconfig"
+KBUILD_DEFCONFIG_raspberrypi2 ?= "bcm2835_defconfig"
+KBUILD_DEFCONFIG_raspberrypi3 ?= "bcm2835_defconfig"
 KBUILD_DEFCONFIG_raspberrypi3-64 ?= "defconfig"
 
 # CMDLINE for raspberrypi
@@ -159,7 +159,7 @@ do_configure_prepend() {
     yes '' | oe_runmake oldconfig
 }
 
-do_compile_append_raspberrypi3-64() {
+do_compile_append() {
     cc_extra=$(get_cc_option)
     oe_runmake dtbs CC="${KERNEL_CC} $cc_extra " LD="${KERNEL_LD}" ${KERNEL_EXTRA_ARGS}
 }

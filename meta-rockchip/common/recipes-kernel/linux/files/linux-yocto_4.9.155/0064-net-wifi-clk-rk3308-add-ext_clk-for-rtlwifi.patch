@@ -1,0 +1,54 @@
+From f2a07b813882bda7005968a512474f55980faa41 Mon Sep 17 00:00:00 2001
+From: xiaoyao <xiaoyao@rock-chips.com>
+Date: Tue, 17 Jul 2018 11:04:09 +0800
+Subject: [PATCH 64/73] net: wifi: clk: rk3308: add ext_clk for rtlwifi
+
+Change-Id: Iadc3c1976fe09060308cca9bde11f4fab5fd47e2
+Signed-off-by: xiaoyao <xiaoyao@rock-chips.com>
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ net/rfkill/rfkill-wlan.c | 21 +++++++++++++++++++++
+ 1 file changed, 21 insertions(+)
+
+diff --git a/net/rfkill/rfkill-wlan.c b/net/rfkill/rfkill-wlan.c
+index 07c1c7c45350..f54e3b6eff1c 100644
+--- a/net/rfkill/rfkill-wlan.c
++++ b/net/rfkill/rfkill-wlan.c
+@@ -595,6 +595,7 @@ static int wlan_platdata_parse_dt(struct device *dev,
+     u32 value;
+     int gpio,ret;
+     enum of_gpio_flags flags;
++	u32 ext_clk_value = 0;
+ 
+     if (!node)
+         return -ENODEV;
+@@ -675,6 +676,26 @@ static int wlan_platdata_parse_dt(struct device *dev,
+         } else data->wifi_int_b.io = -1;
+ 	}
+ 
++	data->ext_clk = devm_clk_get(dev, "clk_wifi");
++	if (IS_ERR(data->ext_clk)) {
++		LOG("%s: The ext_wifi_clk not found !\n", __func__);
++	} else {
++		of_property_read_u32(node, "ext_clk_freq", &ext_clk_value);
++		if (ext_clk_value > 0) {
++			ret = clk_set_rate(data->ext_clk, ext_clk_value);
++			if (ret)
++				LOG("%s: set ext clk error!\n", __func__);
++			ret = clk_prepare_enable(data->ext_clk);
++			if (ret)
++				LOG("%s: enable ext clk error!\n", __func__);
++			/* WIFI clock (REF_CLKOUT) output enable.
++			 * 1'b0: drive disable
++			 * 1'b1: output enable
++			 */
++			regmap_write(data->grf, 0x0314, 0x00020002);
++		}
++	}
++
+     return 0;
+ }
+ #endif //CONFIG_OF
+-- 
+2.11.0
+

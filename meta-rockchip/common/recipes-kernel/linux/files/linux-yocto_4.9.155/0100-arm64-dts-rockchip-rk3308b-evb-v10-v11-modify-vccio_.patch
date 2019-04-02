@@ -1,0 +1,47 @@
+From c194c150ff7951f25fdbf751dbaa6f19a96dbc85 Mon Sep 17 00:00:00 2001
+From: Hans Yang <yhx@rock-chips.com>
+Date: Fri, 29 Mar 2019 15:18:04 +0800
+Subject: [PATCH] arm64: dts: rockchip: rk3308b-evb-v10[v11] modify vccio_flash
+ to 3.3v
+
+Signed-off-by: Hans Yang <yhx@rock-chips.com>
+---
+ arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi | 5 +++--
+ arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi | 5 +++--
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi b/arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi
+index e8beed8..8103e23 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3308-evb-v10.dtsi
+@@ -196,8 +196,9 @@
+ 		regulator-name = "vccio_flash";
+ 		regulator-always-on;
+ 		regulator-boot-on;
+-		regulator-min-microvolt = <1800000>;
+-		regulator-max-microvolt = <1800000>;
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		vin-supply = <&vcc_io>;
+ 	};
+ 
+ 	vcc_phy: vcc-phy-regulator {
+diff --git a/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi b/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi
+index 4fc1b01..5078698 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi
+@@ -200,8 +200,9 @@
+ 		regulator-name = "vccio_flash";
+ 		regulator-always-on;
+ 		regulator-boot-on;
+-		regulator-min-microvolt = <1800000>;
+-		regulator-max-microvolt = <1800000>;
++		regulator-min-microvolt = <3300000>;
++		regulator-max-microvolt = <3300000>;
++		vin-supply = <&vcc_io>;
+ 	};
+ 
+ 	vcc_phy: vcc-phy-regulator {
+-- 
+2.7.4
+

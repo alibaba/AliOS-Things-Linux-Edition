@@ -1,4 +1,4 @@
-COMPATIBLE_MACHINE = "raspberrypi3-64"
+COMPATIBLE_MACHINE = "raspberrypi|raspberrypi3-64"
 
 do_install() {
     install -d ${D}${sysconfdir}

@@ -1,0 +1,4677 @@
+From 20c35d3fd9f96086c16c2fe00fbb1f467b4a8094 Mon Sep 17 00:00:00 2001
+From: jichi <jichi.lr@alibaba-inc.com>
+Date: Wed, 1 Aug 2018 17:03:52 +0800
+Subject: [PATCH 1/5] Add AC108 Codec Driver Add TLV320DAC3100 Codec Driver Add
+ SN3106B Leds Driver
+
+Change-Id: I08ed5b9c5331ffaff18917e50a652ff252d1a04e
+---
+ .../boot/dts/rk3308-ali-module-v10-aarch32.dtsi    |   53 +-
+ .../arm/boot/dts/rk3308-smart-voice-a1-aarch32.dts |   16 +
+ .../configs/rk3308_linux_aarch32_debug_defconfig   |    4 +-
+ arch/arm/configs/rk3308_linux_aarch32_defconfig    |    4 +-
+ drivers/leds/Kconfig                               |    5 +
+ drivers/leds/Makefile                              |    1 +
+ drivers/leds/leds-sn3106b.c                        |  429 +++++
+ sound/soc/codecs/Kconfig                           |    8 +
+ sound/soc/codecs/Makefile                          |    4 +
+ sound/soc/codecs/ac108.c                           | 1703 ++++++++++++++++++++
+ sound/soc/codecs/ac108.h                           |  810 ++++++++++
+ sound/soc/codecs/tlv320dac3100.c                   |  813 ++++++++++
+ sound/soc/rockchip/Kconfig                         |   18 +
+ sound/soc/rockchip/Makefile                        |    4 +
+ sound/soc/rockchip/rockchip_ac108.c                |  255 +++
+ sound/soc/rockchip/rockchip_tlv320dac3100.c        |  291 ++++
+ 16 files changed, 4415 insertions(+), 3 deletions(-)
+ create mode 100755 drivers/leds/leds-sn3106b.c
+ create mode 100755 sound/soc/codecs/ac108.c
+ create mode 100755 sound/soc/codecs/ac108.h
+ create mode 100644 sound/soc/codecs/tlv320dac3100.c
+ create mode 100755 sound/soc/rockchip/rockchip_ac108.c
+ create mode 100644 sound/soc/rockchip/rockchip_tlv320dac3100.c
+
+diff --git a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+index 00946aa0376b..aec4e0382e11 100644
+--- a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
++++ b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+@@ -203,7 +203,7 @@
+ };
+ 
+ &acodec {
+-	status = "disabled";
++	status = "okay";
+ 
+ 	rockchip,no-hp-det;
+ 	rockchip,loopback-grp = <1>;
+@@ -238,6 +238,26 @@
+ 	vccio5-supply = <&vcc_io>;
+ };
+ 
++&i2s_8ch_0 {
++	status = "okay";
++	rockchip,clk-trcm=<1>;
++};
++
++&i2s_8ch_1 {
++	status = "okay";
++	pinctrl-names = "default";
++	pinctrl-0 = <&i2s_8ch_1_m0_sclktx
++		     &i2s_8ch_1_m0_sclkrx
++		     &i2s_8ch_1_m0_lrcktx
++		     &i2s_8ch_1_m0_lrckrx
++		     &i2s_8ch_1_m0_sdi0
++		     &i2s_8ch_1_m0_sdo3_sdi1
++		     &i2s_8ch_1_m0_sdo2_sdi2
++		     &i2s_8ch_1_m0_sdo1_sdi3
++		     &i2s_8ch_1_m0_sdo0
++		     &i2s_8ch_1_m0_mclk>;
++};
++
+ &i2s_8ch_2 {
+ 	status = "okay";
+ };
+@@ -373,3 +393,34 @@
+ &usb_host0_ohci{
+ 	status = "okay";
+ };
++
++&i2c0 {
++	status="okay";
++
++	ac108: ac108@3b {
++		status = "okay";
++		compatible = "MicArray_0";
++		reg = <0x3b>;
++		rockchip,grf = <&grf>;
++		clocks = <&cru SCLK_I2S0_8CH_RX_OUT>;
++		clock-names = "mclk_rx";
++	};
++
++	tlv320dac3100: tlv320dac3100@18 {
++		status = "okay";
++		compatible = "ti,tlv320dac3100";
++		reset-gpios = <&gpio1 RK_PC6 GPIO_ACTIVE_LOW>;
++		reg = <0x18>;
++	};
++};
++
++&i2c1 {
++	status = "okay";
++
++	sn3106drv:sn3236drv@54 {
++		status = "okay";
++		compatible = "rockchip,sn3106b";
++		reg = <0x54>;
++		gpios = <&gpio0 RK_PB0 GPIO_ACTIVE_HIGH>;
++	};
++};
+diff --git a/arch/arm/boot/dts/rk3308-smart-voice-a1-aarch32.dts b/arch/arm/boot/dts/rk3308-smart-voice-a1-aarch32.dts
+index c27290193204..8d38f2a8a05f 100644
+--- a/arch/arm/boot/dts/rk3308-smart-voice-a1-aarch32.dts
++++ b/arch/arm/boot/dts/rk3308-smart-voice-a1-aarch32.dts
+@@ -10,6 +10,22 @@
+ / {
+ 	model = "Rockchip RK3308 Smart Voice A1 (AArch32)";
+ 	compatible = "rockchip,rk3308-smart-voice-a1-aarch32", "rockchip,rk3308";
++
++	rockchip_ac108 {
++		status = "okay";
++		compatible = "rockchip,rockchip-ac108";
++		rockchip,card-name = "rockchip,ac108-audio-codec";
++		rockchip,audio-codec = <&ac108>;
++		rockchip,i2s-controller = <&i2s_8ch_0>;
++	};
++
++	rockchip_tlv320dac3100 {
++		status = "okay";
++		compatible = "rockchip,rockchip-tlv320dac3100";
++		rockchip,card-name = "rockchip,tlv320dac3100-audio-codec";
++		rockchip,audio-codec = <&tlv320dac3100>;
++		rockchip,i2s-controller = <&i2s_8ch_1>;
++	};
+ };
+ 
+ &acodec {
+diff --git a/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig b/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
+index dd87aa4e0aa3..e731c9619f9f 100644
+--- a/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
++++ b/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
+@@ -140,13 +140,14 @@ CONFIG_SND_HRTIMER=y
+ # CONFIG_SND_SPI is not set
+ CONFIG_SND_SOC=y
+ CONFIG_SND_SOC_ROCKCHIP=y
+-CONFIG_SND_SOC_ROCKCHIP_I2S=y
+ CONFIG_SND_SOC_ROCKCHIP_I2S_TDM=y
+ CONFIG_SND_SOC_ROCKCHIP_MULTI_DAIS=y
+ CONFIG_SND_SOC_ROCKCHIP_PDM=y
+ CONFIG_SND_SOC_ROCKCHIP_SPDIF=y
+ CONFIG_SND_SOC_ROCKCHIP_VAD=y
+ CONFIG_SND_SOC_ROCKCHIP_MULTICODECS=y
++CONFIG_SND_SOC_ROCKCHIP_TLV320DAC3100=y
++CONFIG_SND_SOC_ROCKCHIP_AC108=y
+ CONFIG_SND_SOC_DUMMY_CODEC=y
+ CONFIG_SND_SOC_RK3308=y
+ CONFIG_SND_SIMPLE_CARD=y
+@@ -166,6 +167,7 @@ CONFIG_NEW_LEDS=y
+ CONFIG_LEDS_CLASS=y
+ CONFIG_LEDS_GPIO=y
+ CONFIG_LEDS_IS31FL32XX=y
++CONFIG_LEDS_SN3106B=y
+ CONFIG_LEDS_TRIGGERS=y
+ CONFIG_LEDS_TRIGGER_TIMER=y
+ CONFIG_LEDS_TRIGGER_ONESHOT=y
+diff --git a/arch/arm/configs/rk3308_linux_aarch32_defconfig b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+index 5917e76b552b..e8b0b1d05218 100644
+--- a/arch/arm/configs/rk3308_linux_aarch32_defconfig
++++ b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+@@ -140,13 +140,14 @@ CONFIG_SND_HRTIMER=y
+ # CONFIG_SND_SPI is not set
+ CONFIG_SND_SOC=y
+ CONFIG_SND_SOC_ROCKCHIP=y
+-CONFIG_SND_SOC_ROCKCHIP_I2S=y
+ CONFIG_SND_SOC_ROCKCHIP_I2S_TDM=y
+ CONFIG_SND_SOC_ROCKCHIP_MULTI_DAIS=y
+ CONFIG_SND_SOC_ROCKCHIP_PDM=y
+ CONFIG_SND_SOC_ROCKCHIP_SPDIF=y
+ CONFIG_SND_SOC_ROCKCHIP_VAD=y
+ CONFIG_SND_SOC_ROCKCHIP_MULTICODECS=y
++CONFIG_SND_SOC_ROCKCHIP_TLV320DAC3100=y
++CONFIG_SND_SOC_ROCKCHIP_AC108=y
+ CONFIG_SND_SOC_DUMMY_CODEC=y
+ CONFIG_SND_SOC_RK3308=y
+ CONFIG_SND_SIMPLE_CARD=y
+@@ -166,6 +167,7 @@ CONFIG_NEW_LEDS=y
+ CONFIG_LEDS_CLASS=y
+ CONFIG_LEDS_GPIO=y
+ CONFIG_LEDS_IS31FL32XX=y
++CONFIG_LEDS_SN3106B=y
+ CONFIG_LEDS_TRIGGERS=y
+ CONFIG_LEDS_TRIGGER_TIMER=y
+ CONFIG_LEDS_TRIGGER_ONESHOT=y
+diff --git a/drivers/leds/Kconfig b/drivers/leds/Kconfig
+index 7a628c6516f6..ddbdfb6d2958 100644
+--- a/drivers/leds/Kconfig
++++ b/drivers/leds/Kconfig
+@@ -604,6 +604,11 @@ config LEDS_IS31FL32XX
+ 	  LED controllers. They are I2C devices with multiple constant-current
+ 	  channels, each with independent 256-level PWM control.
+ 
++config LEDS_SN3106B
++    tristate "LED support for SN3106B I2C LED"
++    help
++      LED support for SN3106B I2C LED
++
+ comment "LED driver for blink(1) USB RGB LED is under Special HID drivers (HID_THINGM)"
+ 
+ config LEDS_BLINKM
+diff --git a/drivers/leds/Makefile b/drivers/leds/Makefile
+index 3965070190f5..21058a41f0c7 100644
+--- a/drivers/leds/Makefile
++++ b/drivers/leds/Makefile
+@@ -69,6 +69,7 @@ obj-$(CONFIG_LEDS_POWERNV)		+= leds-powernv.o
+ obj-$(CONFIG_LEDS_SEAD3)		+= leds-sead3.o
+ obj-$(CONFIG_LEDS_IS31FL319X)		+= leds-is31fl319x.o
+ obj-$(CONFIG_LEDS_IS31FL32XX)		+= leds-is31fl32xx.o
++obj-$(CONFIG_LEDS_SN3106B)      += leds-sn3106b.o
+ obj-$(CONFIG_LEDS_PM8058)		+= leds-pm8058.o
+ obj-$(CONFIG_LEDS_MLXCPLD)		+= leds-mlxcpld.o
+ 
+diff --git a/drivers/leds/leds-sn3106b.c b/drivers/leds/leds-sn3106b.c
+new file mode 100755
+index 000000000000..3cc701d97389
+--- /dev/null
++++ b/drivers/leds/leds-sn3106b.c
+@@ -0,0 +1,429 @@
++#include<linux/slab.h>
++#include<linux/i2c.h>
++#include<linux/device.h>
++#include<linux/init.h>
++#include<linux/types.h>
++#include<linux/kernel.h>
++#include<linux/module.h>
++#include<linux/delay.h>
++#include<asm/uaccess.h>
++
++#include <linux/hrtimer.h>
++#include <linux/gpio.h>
++#include <linux/of_gpio.h>
++
++
++#define INVALID_GPIO -1
++
++#define OPEN 	0x01			//work mode open
++#define CLOSE      0x00			//work mode close
++
++#define SN3106B_REG_WORK		0x00 //work mode switch
++
++#define SN3106B_REG_PWM_OUT1 	0x07 //pwm control reg
++#define SN3106B_REG_PWM_OUT2 	0x08 //pwm control reg
++#define SN3106B_REG_PWM_OUT3 	0x09
++#define SN3106B_REG_PWM_OUT4 	0x0A
++#define SN3106B_REG_PWM_OUT5 	0x0B
++#define SN3106B_REG_PWM_OUT6 	0x0C
++
++#define SN3106B_REG_CTRL_OUT 	0x14 //led control reg
++
++#define SN3106B_REG_DATA_UPDATE	0x16 //pwm and led control update reg
++
++#define SN3106B_REG_RST 	0x17 	//reset reg
++ 
++
++#define uchar unsigned char
++#define uint unsigned int
++ 
++struct sn_3106b {
++	struct device *dev;
++	struct i2c_client *client;
++	int leds_sdb_gpio;
++	bool leds_sdb_level;
++};
++
++struct sn_3106b *SN3106B; 
++
++static int SN3106B_atoi(const char *s)
++{
++	int k = 0;
++
++	k = 0;
++	while (*s != '\0' && *s >= '0' && *s <= '9') {
++		k = 10 * k + (*s - '0');
++		s++;
++	}
++	return k;
++}
++
++static int i2c_SN3106B_write(struct i2c_client *client, uint8_t reg, uint8_t data){
++	unsigned char buffer[2];
++	struct i2c_msg xfer_msg[1];
++	buffer[0] = reg;
++	buffer[1] = data;
++
++    xfer_msg[0].addr = client->addr;
++	xfer_msg[0].flags = client->flags & I2C_M_TEN;
++	xfer_msg[0].buf = buffer;
++	xfer_msg[0].len = sizeof(buffer);
++//	xfer_msg[0].scl_rate = 200 * 1000;
++	/*
++	if ( 2 != i2c_master_send(client, buffer, 2) ) {
++        dev_err(&client->dev, "1111i2c_write fail! \n");
++        return -1;
++    }*/
++
++    return i2c_transfer(client->adapter, xfer_msg, 1) == 1 ? 0 : -EFAULT;
++
++    //return 0;
++	}
++	/*
++static u32 i2c_SN3106B_read(struct i2c_client *client, uint8_t reg, uint8_t *buf, u32 num)
++{
++	struct i2c_msg xfer_msg[2];
++
++	xfer_msg[0].addr = client->addr;
++	xfer_msg[0].len = 1;
++	xfer_msg[0].flags = client->flags & I2C_M_TEN;
++	xfer_msg[0].buf = &reg;
++
++	xfer_msg[1].addr = client->addr;
++	xfer_msg[1].len = num;
++	xfer_msg[1].flags |= I2C_M_RD;
++	xfer_msg[1].buf = buf;
++
++	if (reg < 0x80) {
++		i2c_transfer(client->adapter, xfer_msg, ARRAY_SIZE(xfer_msg));
++		msleep(5);
++	}
++
++	return i2c_transfer(client->adapter, xfer_msg, ARRAY_SIZE(xfer_msg)) == ARRAY_SIZE(xfer_msg) ? 0 : -EFAULT;
++}*/
++
++void i2c_SN3106B_writes(struct i2c_client *client,unsigned char reg_address,unsigned char reg_data,unsigned char unit)
++{
++	for(;unit!=0;unit--)
++	{
++ 		i2c_SN3106B_write(client,reg_address,reg_data);
++		reg_address=reg_address+1;														
++	}																								
++}
++
++ void SN3106B_Soft_SW(struct i2c_client *client,unsigned char workmode)
++{ 
++	i2c_SN3106B_write(client,SN3106B_REG_WORK,workmode);
++ }
++
++ void SN3106B_Hard_SW(unsigned char workmode)
++{
++	if(workmode==0x00)
++	gpio_direction_output(SN3106B->leds_sdb_gpio,!SN3106B->leds_sdb_level);	
++ 	else
++	gpio_direction_output(SN3106B->leds_sdb_gpio,SN3106B->leds_sdb_level);
++ }
++
++ void SN3106B_DataUpdate(struct i2c_client *client)
++{
++	i2c_SN3106B_write(client,SN3106B_REG_DATA_UPDATE,0xff);
++}
++
++void SN3106B_Init(struct i2c_client *client,unsigned char pwmdata)
++{
++	SN3106B_Hard_SW(OPEN);
++	SN3106B_Soft_SW(client,OPEN);
++	//while(1)
++	{	
++	i2c_SN3106B_writes(client,SN3106B_REG_PWM_OUT1,pwmdata,6);
++ 	i2c_SN3106B_write(client,SN3106B_REG_CTRL_OUT,0x07);//blue
++
++	SN3106B_DataUpdate(client);
++	//printk("----------%s----\n",__func__);
++	//mdelay(500);
++	}
++}
++
++static ssize_t led_switch(struct device *dev,
++			       struct device_attribute *attr,
++			       const char *buf, size_t count){
++			       
++	int num,i;
++	struct i2c_client *client;
++	
++	client = to_i2c_client(dev);
++
++	//num = SN3106B_atoi(&buf[1]);
++	//printk("----------%s----0x%x\n",__func__,num);
++	if(buf[0]=='w')
++	{
++		num = SN3106B_atoi(&buf[1]);
++		//printk("----------%s----0x%x\n",__func__,num);
++		i2c_SN3106B_write(client,SN3106B_REG_CTRL_OUT,num);
++	}
++	else if(buf[0]=='p')
++	{	
++		num = SN3106B_atoi(&buf[2]);
++		//printk("----------%s----%d----0x%x\n",__func__,buf[1],num);
++		if(buf[1]=='1')
++			i2c_SN3106B_write(client,SN3106B_REG_PWM_OUT1,num);
++		else if(buf[1]=='2')
++			i2c_SN3106B_write(client,SN3106B_REG_PWM_OUT2,num);
++		else if(buf[1]=='3')
++			i2c_SN3106B_write(client,SN3106B_REG_PWM_OUT3,num);	
++		else if(buf[1]=='4')
++			i2c_SN3106B_write(client,SN3106B_REG_PWM_OUT4,num);
++		else if(buf[1]=='5')
++			i2c_SN3106B_write(client,SN3106B_REG_PWM_OUT5,num);
++		else if(buf[1]=='6')
++			i2c_SN3106B_write(client,SN3106B_REG_PWM_OUT6,num);
++		else if(buf[1]=='7')
++		{
++			for( i = 0 ; i <= 6 ; i++)
++			{
++				i2c_SN3106B_write(client,SN3106B_REG_PWM_OUT1+i,num);
++			}
++
++		}
++		else if(buf[1]=='8')
++		{
++			for( i = 0 ; i <= 2 ; i++)
++			{
++				i2c_SN3106B_write(client,SN3106B_REG_PWM_OUT1+i,num);
++			}
++
++		}
++
++	}
++	SN3106B_DataUpdate(client);	
++	return count;
++}
++
++#include <linux/soc/rockchip/rk_vendor_storage.h>
++/*
++extern char GetSNSectorInfo(char * pbuf);
++static ssize_t snread(struct device *dev,
++					     	 struct device_attribute *attr, char *buf) 
++{		
++	char *Vendorbuf = kmalloc(512, GFP_KERNEL);
++	char *SNbuf = kmalloc(32, GFP_KERNEL);
++	int i;
++    	if(Vendorbuf&&SNbuf) {
++	        GetSNSectorInfo(Vendorbuf);
++	        for (i = 2; i <= 31; i++)
++		 {
++		 	SNbuf[i-2]=Vendorbuf[i];
++	        }
++	        kfree(Vendorbuf);
++    	}
++	sprintf(buf, "sn: %s\n", SNbuf);
++       kfree(SNbuf);
++	return printk("sn: %s\n",buf);
++}
++
++*/
++static DEVICE_ATTR(led_switch, 0220, NULL, led_switch);
++/*
++static DEVICE_ATTR(snread, 0444, snread, NULL);
++*/
++
++static int SN3106B_early_suspend(struct i2c_client *client,pm_message_t mesg)
++{
++	SN3106B_Hard_SW(CLOSE);
++	SN3106B_Soft_SW(client,CLOSE);
++ 	//i2c_SN3106B_write(client,SN3106B_REG_CTRL_OUT,0x00);
++	SN3106B_DataUpdate(client);	
++	return 0;
++}
++
++static int SN3106B_late_resume(struct i2c_client *client)
++{
++	SN3106B_Hard_SW(OPEN);
++	SN3106B_Soft_SW(client,OPEN);
++	//i2c_SN3106B_writes(client,SN3106B_REG_PWM_OUT1,0x88,3);
++ 	//i2c_SN3106B_write(client,SN3106B_REG_CTRL_OUT,0x00);
++	SN3106B_DataUpdate(client);	
++	return 0;
++}
++
++static int SN3106B_i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
++{
++
++	enum of_gpio_flags flags;
++    int ret = -1;
++
++	SN3106B = kzalloc(sizeof(struct sn_3106b), GFP_KERNEL);
++  if (SN3106B == NULL) {
++  	pr_err("1111no memory for device\n");
++    	return -ENOMEM;
++  }
++   //printk("----------%s----\n",__func__);
++	SN3106B->client = client;
++    i2c_set_clientdata(client, SN3106B);
++
++	SN3106B->leds_sdb_gpio = of_get_named_gpio_flags(client->dev.of_node, "gpios", 0, &flags);
++	if (SN3106B->leds_sdb_gpio < 0) {
++		printk("%s() Can not read property gpios\n", __FUNCTION__);
++		SN3106B->leds_sdb_gpio = INVALID_GPIO;
++	}
++	else
++	{
++	    SN3106B->leds_sdb_level = (flags & OF_GPIO_ACTIVE_LOW)? 0:1;
++	    ret = gpio_request(SN3106B->leds_sdb_gpio, NULL);
++	    if (ret != 0) {
++		    printk("%s request SPK_CON error", __func__);
++		    return ret;
++	    }
++	    gpio_direction_output(SN3106B->leds_sdb_gpio,SN3106B->leds_sdb_level);
++	}
++
++
++	device_create_file(&client->dev, &dev_attr_led_switch);
++//	device_create_file(&client->dev, &dev_attr_snread);
++
++	SN3106B_Init(SN3106B->client,0x80);	
++	return 0;
++}
++
++static int SN3106B_i2c_remove(struct i2c_client *client)
++{
++	return 0;
++}
++
++static struct of_device_id SN3106B_dt_ids[] = {
++	{.compatible = "rockchip,sn3106b" },
++	{ }
++};
++
++static const struct i2c_device_id SN3106B_id[] = {
++	{ "SN3106B_i2c", 0 },
++	{ }
++};
++
++static struct i2c_driver SN3106B_i2c_driver  = {
++	.driver = {
++		.name  = "SN3106B_i2c",
++		.owner = THIS_MODULE,
++		.of_match_table = of_match_ptr(SN3106B_dt_ids),
++	},
++	.probe		= &SN3106B_i2c_probe,
++	.remove		= &SN3106B_i2c_remove,
++	//.suspend    = SN3106B_early_suspend,
++	//.resume     = SN3106B_late_resume,	
++	.id_table	= SN3106B_id,
++};
++
++static int __init rockchip_SN3106B_init(void)
++{
++return i2c_add_driver(&SN3106B_i2c_driver);
++}
++
++static void __exit rockchip_SN3106B_exit(void)
++{
++i2c_del_driver(&SN3106B_i2c_driver);
++}
++/***********************??ɫ?ο?*R****G****B***************************************************
++const unsigned char color01[3]={0x00,0x00,0x00};		//黑色					0 	0		0		
++const unsigned char color02[3]={0x29,0x24,0x21};		//象牙黑				41	36	33	
++const unsigned char color03[3]={0xC0,0xC0,0xC0};		//灰色					192	192	192	
++const unsigned char color04[3]={0x80,0x8A,0x87};		//冷灰					128	138	135	
++const unsigned char color05[3]={0x70,0x80,0x69};		//石板灰				112	128	105	
++const unsigned char color06[3]={0x80,0x80,0x69};		//暖灰色				128	128	105	
++const unsigned char color07[3]={0xFF,0xFF,0xFF};   //白色					255	255	255	
++const unsigned char color08[3]={0xFA,0xEB,0xD7};   //古董白				250	235	215	
++const unsigned char color09[3]={0xF0,0xFF,0xFF};   //天蓝色				240	255	255	
++const unsigned char color10[3]={0xF5,0xF5,0xF5};   //白烟					245	245	245	
++const unsigned char color11[3]={0xFF,0xFF,0xCD};   //白杏仁				255	235	205	
++const unsigned char color12[3]={0xFF,0xF8,0xDC};   //cornsilk			255	248	220	
++const unsigned char color13[3]={0xFC,0xE6,0xC9};   //蛋壳色				252	230	201	
++const unsigned char color14[3]={0xFF,0xFA,0xF0};   //花白					255	250	240	
++const unsigned char color15[3]={0xDC,0xDC,0xDC};   //gainsboro			220	220	220	
++const unsigned char color16[3]={0xF8,0xF8,0xFF};   //ghostWhite		248	248	255	
++const unsigned char color17[3]={0xF0,0xFF,0xF0};   //蜜露橙				240	255	240	
++const unsigned char color18[3]={0xFA,0xFF,0xF0};   //象牙白				250	255	240	
++const unsigned char color19[3]={0xFA,0xF0,0xE6};   //亚麻色				250	240	230	
++const unsigned char color20[3]={0xFF,0xDE,0xAD};   //navajoWhite		255	222	173	
++const unsigned char color21[3]={0xFD,0xF5,0xE6};		//old lace			253	245	230	
++const unsigned char color22[3]={0xFF,0xF5,0xEE};		//海贝壳色			255	245	238	
++const unsigned char color23[3]={0xFF,0xFA,0xFA};		//雪白					255	250	250	
++const unsigned char color24[3]={0xFF,0x00,0x00};		//红色					255	0	0			
++const unsigned char color25[3]={0x9C,0x66,0x1F};		//砖红					156	102	31	
++const unsigned char color26[3]={0xE3,0x17,0x0D};		//镉红					227	23	13	
++const unsigned char color27[3]={0xFF,0x7F,0x50};		//珊瑚色				255	127	80	
++const unsigned char color28[3]={0xB2,0x22,0x22};		//耐火砖红			178	34	34	
++const unsigned char color29[3]={0xB0,0x17,0x1F};		//印度红				176	23	31	
++const unsigned char color30[3]={0xB0,0x30,0x60};		//栗色					176	48	96	
++const unsigned char color31[3]={0xFF,0xC0,0xCB};		//粉红					255	192	203	
++const unsigned char color32[3]={0x87,0x26,0x57};		//草莓色				135	38	87	
++const unsigned char color33[3]={0xFA,0x80,0x72};		//橙红色				250	128	114	
++const unsigned char color34[3]={0xFF,0x63,0x47};		//蕃茄红				255	99	71	
++const unsigned char color35[3]={0xFF,0x45,0x00};		//桔红					255	69	0		
++const unsigned char color36[3]={0xFF,0x00,0xFF};		//深红色				255	0	255		
++const unsigned char color37[3]={0xFF,0xFF,0x00};   //黄色				  255	255	0		
++const unsigned char color38[3]={0xE3,0xCF,0x57};   //香蕉色			  227	207	87	
++const unsigned char color39[3]={0xFF,0x99,0x12};   //镉黄				  255	153	18	
++const unsigned char color40[3]={0xEB,0x8E,0x55};   //dougello		  235	142	85	
++const unsigned char color41[3]={0xFF,0xE3,0x84};   //forum gold	  255	227	132	
++const unsigned char color42[3]={0xFF,0xD7,0x00};   //金黄色			  255	215	0		
++const unsigned char color43[3]={0xDA,0xA5,0x69};   //黄花色			  218	165	105	
++const unsigned char color44[3]={0xE3,0xA8,0x69};   //瓜色				  227	168	105	
++const unsigned char color45[3]={0xFF,0x61,0x00};   //橙色				  255	97	0		
++const unsigned char color46[3]={0xFF,0x61,0x03};   //镉橙				  255	97	3		
++const unsigned char color47[3]={0xED,0x91,0x21};   //胡萝卜色		  237	145	33	
++const unsigned char color48[3]={0xFF,0x80,0x00};   //桔黄				  255	128	0		
++const unsigned char color49[3]={0xF5,0xDE,0xB3};   //淡黄色			  245	222	179	
++const unsigned char color50[3]={0x80,0x2A,0x2A};   //棕色				  128	42	42	
++const unsigned char color51[3]={0xA3,0x94,0x80};   //米色				  163	148	128	
++const unsigned char color52[3]={0x8A,0x36,0x0F};   //锻浓黄土色	  138	54	15	
++const unsigned char color53[3]={0x87,0x33,0x24};   //锻棕土色		  135	51	36	
++const unsigned char color54[3]={0xD2,0x69,0x1E};   //巧克力色		  210	105	30	
++const unsigned char color55[3]={0xFF,0x7D,0x40};   //肉色				  255	125	64	
++const unsigned char color56[3]={0xF0,0xE6,0x8C};   //黄褐色			  240	230	140	
++const unsigned char color57[3]={0xBC,0x8F,0x8F};		//玫瑰红			  188	143	143	
++const unsigned char color58[3]={0xC7,0x61,0x14};		//肖贡土色		  199	97	20	
++const unsigned char color59[3]={0x73,0x4A,0x12};		//标土棕			  115	74	18	
++const unsigned char color60[3]={0x5E,0x26,0x12};		//乌贼墨棕		  94	38	18	
++const unsigned char color61[3]={0xA0,0x52,0x2D};		//赫色				  160	82	45	
++const unsigned char color62[3]={0x8B,0x45,0x13};		//马棕色			  139	69	19	
++const unsigned char color63[3]={0xF4,0xA4,0x60};		//沙棕色			  244	164	96	
++const unsigned char color64[3]={0xD2,0xB4,0x8C};		//棕褐色			  210	180	140	
++const unsigned char color65[3]={0x00,0x00,0xFF};		//蓝色				  0	0	255			
++const unsigned char color66[3]={0x3D,0x59,0xAB};		//钴色				  61	89	171	
++const unsigned char color67[3]={0x1E,0x90,0xFF};		//dodger blue	  30	144	255	
++const unsigned char color68[3]={0x0B,0x17,0x46};		//jackie blue	  11	23	70	
++const unsigned char color69[3]={0x03,0xA8,0x9E};		//锰蓝				  3	168	158		
++const unsigned char color70[3]={0x19,0x19,0x70};		//深蓝色			  25	25	112	
++const unsigned char color71[3]={0x33,0xA1,0xC9};		//孔雀蓝			  51	161	201	
++const unsigned char color72[3]={0x00,0xC7,0x8C};	  //土耳其玉色	  0	199	140		
++const unsigned char color73[3]={0xB0,0xE0,0xE6}; 	//浅灰蓝色			176	224	230	
++const unsigned char color74[3]={0x41,0x69,0xE1};   //品蓝					65	105	225	
++const unsigned char color75[3]={0x6A,0x5A,0xCD};   //石板蓝				106	90	205	
++const unsigned char color76[3]={0x87,0xCE,0xEB};   //天蓝					135	206	235	
++const unsigned char color77[3]={0x00,0xFF,0xFF};   // 青色					0	255	255		
++const unsigned char color78[3]={0x38,0x5E,0x0F};   // 绿土					56	94	15	
++const unsigned char color79[3]={0x08,0x2E,0x54};   // 靛青					8	46	84		
++const unsigned char color80[3]={0x7F,0xFF,0xD4};   // 碧绿色				127	255	212	
++const unsigned char color81[3]={0x40,0xE0,0xD0};   // 青绿色				64	224	208	
++const unsigned char color82[3]={0x00,0xFF,0x00};   // 绿色					0	255	0			
++const unsigned char color83[3]={0x7F,0xFF,0x00};   // 黄绿色				127	255	0		
++const unsigned char color84[3]={0x3D,0x91,0x40};   // 钴绿色				61	145	64	
++const unsigned char color85[3]={0x00,0xC9,0x57};   // 翠绿色				0	201	87		
++const unsigned char color86[3]={0x22,0x8B,0x22};   // 森林绿				34	139	34	
++const unsigned char color87[3]={0x7C,0xFC,0x00};   // 草地绿				124	252	0		
++const unsigned char color88[3]={0x32,0xCD,0x32};   // 酸橙绿				50	205	50	
++const unsigned char color89[3]={0xBD,0xFC,0xC9};   // 薄荷色				189	252	201	
++const unsigned char color90[3]={0x6B,0x8E,0x23};   // 草绿色				107	142	35	
++const unsigned char color91[3]={0x30,0x80,0x14};   // 暗绿色				48	128	20	
++const unsigned char color92[3]={0x2E,0x8B,0x57};   // 海绿色				46	139	87	
++const unsigned char color93[3]={0x00,0xFF,0x7F};   // 嫩绿色			 0	255	127		
++const unsigned char color94[3]={0xA0,0x20,0xF0};   // 紫色				 160	32	240	
++const unsigned char color95[3]={0x8A,0x2B,0xE2};   // 紫罗蓝色		 138	43	226	
++const unsigned char color96[3]={0xA0,0x66,0xD3};   // jasoa				 160	102	21
++const unsigned char color97[3]={0x99,0x33,0xFA};   // 湖紫色			 153	51	250	
++const unsigned char color98[3]={0xDA,0x70,0xD6};   // 淡紫色			 218	112	214	
++const unsigned char color99[3]={0xDD,0xA0,0xDD};   // 梅红色			 221	160	221	
++//????Ϊ??ɫ?ο?
++******************************************************************************/
++late_initcall_sync(rockchip_SN3106B_init);
++module_exit(rockchip_SN3106B_exit);
++
+diff --git a/sound/soc/codecs/Kconfig b/sound/soc/codecs/Kconfig
+index 07c4777b5f9e..001e57ff3c5d 100644
+--- a/sound/soc/codecs/Kconfig
++++ b/sound/soc/codecs/Kconfig
+@@ -146,6 +146,7 @@ config SND_SOC_ALL_CODECS
+ 	select SND_SOC_TLV320AIC3X if I2C
+ 	select SND_SOC_TPA6130A2 if I2C
+ 	select SND_SOC_TLV320DAC33 if I2C
++	select SND_SOC_TLV320DAC3100 if I2C
+ 	select SND_SOC_TS3A227E if I2C
+ 	select SND_SOC_TWL4030 if TWL4030_CORE
+ 	select SND_SOC_TWL6040 if TWL6040_CORE
+@@ -527,6 +528,9 @@ config SND_SOC_ES8328_SPI
+ 	tristate
+ 	select SND_SOC_ES8328
+ 
++config SND_SOC_AC108
++	tristate "Allwinner Tech AC108 CODEC"
++
+ config SND_SOC_GTM601
+ 	tristate 'GTM601 UMTS modem audio codec'
+ 
+@@ -866,6 +870,10 @@ config SND_SOC_TLV320AIC3X
+ config SND_SOC_TLV320DAC33
+ 	tristate
+ 
++config SND_SOC_TLV320DAC3100
++	tristate "TI TLV320DAC3100 CODECs"
++    depends on I2C
++
+ config SND_SOC_TS3A227E
+ 	tristate "TI Headset/Mic detect and keypress chip"
+ 	depends on I2C
+diff --git a/sound/soc/codecs/Makefile b/sound/soc/codecs/Makefile
+index da21b8c7ac62..bfe7a8ea8fae 100644
+--- a/sound/soc/codecs/Makefile
++++ b/sound/soc/codecs/Makefile
+@@ -65,6 +65,7 @@ snd-soc-dmic-objs := dmic.o
+ snd-soc-es8328-objs := es8328.o
+ snd-soc-es8328-i2c-objs := es8328-i2c.o
+ snd-soc-es8328-spi-objs := es8328-spi.o
++snd-soc-ac108-objs := ac108.o
+ snd-soc-gtm601-objs := gtm601.o
+ snd-soc-hdac-hdmi-objs := hdac_hdmi.o
+ snd-soc-ics43432-objs := ics43432.o
+@@ -155,6 +156,7 @@ snd-soc-tlv320aic32x4-i2c-objs := tlv320aic32x4-i2c.o
+ snd-soc-tlv320aic32x4-spi-objs := tlv320aic32x4-spi.o
+ snd-soc-tlv320aic3x-objs := tlv320aic3x.o
+ snd-soc-tlv320dac33-objs := tlv320dac33.o
++snd-soc-tlv320dac3100-objs := tlv320dac3100.o
+ snd-soc-ts3a227e-objs := ts3a227e.o
+ snd-soc-twl4030-objs := twl4030.o
+ snd-soc-twl6040-objs := twl6040.o
+@@ -292,6 +294,7 @@ obj-$(CONFIG_SND_SOC_DMIC)	+= snd-soc-dmic.o
+ obj-$(CONFIG_SND_SOC_ES8328)	+= snd-soc-es8328.o
+ obj-$(CONFIG_SND_SOC_ES8328_I2C)+= snd-soc-es8328-i2c.o
+ obj-$(CONFIG_SND_SOC_ES8328_SPI)+= snd-soc-es8328-spi.o
++obj-$(CONFIG_SND_SOC_AC108)	+= snd-soc-ac108.o
+ obj-$(CONFIG_SND_SOC_GTM601)    += snd-soc-gtm601.o
+ obj-$(CONFIG_SND_SOC_HDAC_HDMI) += snd-soc-hdac-hdmi.o
+ obj-$(CONFIG_SND_SOC_ICS43432)	+= snd-soc-ics43432.o
+@@ -378,6 +381,7 @@ obj-$(CONFIG_SND_SOC_TLV320AIC32X4_I2C)	+= snd-soc-tlv320aic32x4-i2c.o
+ obj-$(CONFIG_SND_SOC_TLV320AIC32X4_SPI)	+= snd-soc-tlv320aic32x4-spi.o
+ obj-$(CONFIG_SND_SOC_TLV320AIC3X)	+= snd-soc-tlv320aic3x.o
+ obj-$(CONFIG_SND_SOC_TLV320DAC33)	+= snd-soc-tlv320dac33.o
++obj-$(CONFIG_SND_SOC_TLV320DAC3100)	+= snd-soc-tlv320dac3100.o
+ obj-$(CONFIG_SND_SOC_TS3A227E)	+= snd-soc-ts3a227e.o
+ obj-$(CONFIG_SND_SOC_TWL4030)	+= snd-soc-twl4030.o
+ obj-$(CONFIG_SND_SOC_TWL6040)	+= snd-soc-twl6040.o
+diff --git a/sound/soc/codecs/ac108.c b/sound/soc/codecs/ac108.c
+new file mode 100755
+index 000000000000..f83e3b73e469
+--- /dev/null
++++ b/sound/soc/codecs/ac108.c
+@@ -0,0 +1,1703 @@
++/*
++ * ac108.c  --  ac108 ALSA Soc Audio driver
++ *
++ * Version: 3.0
++ *
++ * Author: panjunwen
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ *
++ */
++
++#include <linux/module.h>
++#include <linux/moduleparam.h>
++#include <linux/kernel.h>
++#include <linux/init.h>
++#include <linux/firmware.h>
++#include <linux/delay.h>
++#include <linux/pm.h>
++#include <linux/i2c.h>
++#include <linux/regmap.h>
++#include <linux/debugfs.h>
++#include <linux/slab.h>
++#include <sound/core.h>
++#include <sound/pcm.h>
++#include <sound/pcm_params.h>
++#include <sound/soc.h>
++#include <sound/initval.h>
++#include <linux/of.h>
++#include <sound/tlv.h>
++#include <linux/regulator/consumer.h>
++#include <linux/io.h>
++#include <linux/clk.h>
++#include <linux/mfd/syscon.h>
++
++#include "ac108.h"
++
++
++#define AC108_DEBUG_EN			1
++
++#if AC108_DEBUG_EN
++#define AC108_DEBUG(...)		printk(__VA_ARGS__)
++#else
++#define AC108_DEBUG(...)
++#endif
++
++
++//test config
++#define AC108_DAPM_TEST_EN		0
++#define AC108_CODEC_RW_TEST_EN	0
++#define AC108_ADC_PATTERN_SEL	ADC_PTN_NORMAL		//0:ADC normal,  1:0x5A5A5A,  2:0x123456,  3:0x000000,  4~7:I2S_RX_DATA,  other:reserved
++
++
++//AC108 config
++#define AC108_CHANNELS_MAX	    4			//range[1, 16]
++#define AC108_SLOT_WIDTH		32		//16bit or 32bit slot width, other value will be reserved
++#define AC108_ENCODING_EN		0		//TX Encoding mode enable
++#define AC108_ENCODING_CH_NUMS 	8		//TX Encoding channel numbers, must be dual, range[1, 16]
++#define AC108_PGA_GAIN			ADC_PGA_GAIN_28dB	//0dB~30dB and -6dB, except 1~2dB
++#define AC108_LRCK_PERIOD		(AC108_SLOT_WIDTH*(AC108_ENCODING_EN ? 2 : 2))	//range[1, 1024], default PCM mode, I2S/LJ/RJ mode shall divide by 2
++
++#define AC108_SDO2_EN			1	//AC108 SDO2/TX2 Enable (SDO1 has be enabled default)
++#define AC108_DMIC_EN			0		//0:ADC	 1:DMIC
++#define AC108_IDLE_RESET_EN		0		//reset AC108 when in idle time
++#define AC108_POWERON_RESET_EN	1		//AC108 poweron soft reset enable
++#define AC108_MATCH_DTS_EN		0		//AC108 match method select: 0: i2c_detect, 1:devices tree
++
++#define AC108_REGULATOR_NAME	"voltage_enable"
++#define AC108_RATES 			(SNDRV_PCM_RATE_8000_96000 | SNDRV_PCM_RATE_KNOT)
++#define AC108_FORMATS			(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
++#define GRF_SOC_CON2 0x308
++
++
++struct i2c_client *i2c_clt[(AC108_CHANNELS_MAX+3)/4];
++int	regulator_en;
++
++struct voltage_supply {
++	struct regulator *vcc3v3;
++};
++
++struct ac108_priv {
++	struct i2c_client *i2c;
++	struct snd_soc_codec *codec;
++	struct voltage_supply vol_supply;
++	struct clk *mclk_rx;
++    struct regmap *grf;
++};
++
++static const struct regmap_config ac108_regmap_config = {
++	.reg_bits = 8,	//Number of bits in a register address
++	.val_bits = 8,	//Number of bits in a register value
++};
++
++
++struct real_val_to_reg_val {
++	unsigned int real_val;
++	unsigned int reg_val;
++};
++
++struct pll_div {
++	u32 freq_in;
++	u32 freq_out;
++	u32 m1;
++	u32 m2;
++	u32 n;
++	u32 k1;
++	u32 k2;
++};
++
++
++
++static const struct real_val_to_reg_val ac108_sample_rate[] = {
++	{8000,  0},
++	{11025, 1},
++	{12000, 2},
++	{16000, 3},
++	{22050, 4},
++	{24000, 5},
++	{32000, 6},
++	{44100, 7},
++	{48000, 8},
++	{96000, 9},
++};
++
++static const struct real_val_to_reg_val ac108_sample_resolution[] = {
++	{8,  1},
++	{12, 2},
++	{16, 3},
++	{20, 4},
++	{24, 5},
++	{28, 6},
++	{32, 7},
++};
++
++static const struct real_val_to_reg_val ac108_bclk_div[] = {
++	{0,  0},
++	{1,  1},
++	{2,  2},
++	{4,  3},
++	{6,  4},
++	{8,  5},
++	{12, 6},
++	{16, 7},
++	{24, 8},
++	{32, 9},
++	{48, 10},
++	{64, 11},
++	{96, 12},
++	{128,13},
++	{176,14},
++	{192,15},
++};
++
++//FOUT =(FIN * N) / [(M1+1) * (M2+1)*(K1+1)*(K2+1)] ;	M1[0,31],  M2[0,1],  N[0,1023],  K1[0,31],  K2[0,1]
++static const struct pll_div ac108_pll_div[] = {
++	{400000,   24576000, 0,  0, 983,  7,  1},	//<out: 24.575M>
++	{512000,   24576000, 0,  0, 960,  9,  1},	//24576000/48
++	{768000,   24576000, 0,  0, 640,  9,  1},	//24576000/32
++	{800000,   24576000, 0,  0, 768,  24, 0},
++	{1024000,  24576000, 0,  0, 480,  9,  1},	//24576000/24
++	{1600000,  24576000, 0,  0, 384,  24, 0},
++	{2048000,  24576000, 0,  0, 240,  9,  1},	//24576000/12
++	{3072000,  24576000, 0,  0, 160,  9,  1},	//24576000/8
++	{4096000,  24576000, 0,  0, 120,  9,  1},	//24576000/6
++	{6000000,  24576000, 4,  0, 512,  24, 0},
++	{12000000, 24576000, 9,  0, 512,  24, 0},
++	{13000000, 24576000, 12, 0, 639,  12, 1},	//<out: 24.577M>
++	{15360000, 24576000, 9,  0, 320,  9,  1},
++	{16000000, 24576000, 9,  0, 384,  24, 0},
++	{19200000, 24576000, 11, 0, 384,  24, 0},
++	{19680000, 24576000, 15, 1, 999,  24, 0},	//<out: 24.575M>
++	{24000000, 24576000, 9,  0, 256,  24, 0},
++	
++	{400000,   22579200, 0,  0, 1016, 8,  1},	//<out: 22.5778M>
++	{512000,   22579200, 0,  0, 882,  9,  1},
++	{768000,   22579200, 0,  0, 588,  9,  1},
++	{800000,   22579200, 0,  0, 508,  8,  1},	//<out: 22.5778M>
++	{1024000,  22579200, 0,  0, 441,  9,  1},
++	{1600000,  22579200, 0,  0, 254,  8,  1},	//<out: 22.5778M>
++	{2048000,  22579200, 1,  0, 441,  9,  1},
++	{3072000,  22579200, 2,  0, 441,  9,  1},
++	{4096000,  22579200, 3,  0, 441,  9,  1},
++	{6000000,  22579200, 5,  0, 429,  18, 0},	//<out: 22.5789M>
++	{12000000, 22579200, 11, 0, 429,  18, 0},	//<out: 22.5789M>
++	{13000000, 22579200, 12, 0, 429,  18, 0},	//<out: 22.5789M>
++	{15360000, 22579200, 14, 0, 441,  9,  1},
++	{16000000, 22579200, 24, 0, 882,  24, 0},
++	{19200000, 22579200, 4,  0, 147,  24, 0},
++	{19680000, 22579200, 13, 1, 771,  23, 0},	//<out: 22.5793M>
++	{24000000, 22579200, 24, 0, 588,  24, 0},
++
++	{12288000, 24576000, 9,  0, 400,  9,  1},	//24576000/2
++	{11289600, 22579200, 9,  0, 400,  9,  1},	//22579200/2
++
++	{24576000/1,   24576000, 9,  0, 200, 9, 1},	//24576000
++	{24576000/4,   24576000, 4,  0, 400, 9, 1},	//6144000
++	{24576000/16,  24576000, 0,  0, 320, 9, 1},	//1536000
++	{24576000/64,  24576000, 0,  0, 640, 4, 1},	//384000
++	{24576000/96,  24576000, 0,  0, 960, 4, 1},	//256000
++	{24576000/128, 24576000, 0,  0, 512, 1, 1},	//192000
++	{24576000/176, 24576000, 0,  0, 880, 4, 0},	//140000
++	{24576000/192, 24576000, 0,  0, 960, 4, 0},	//128000
++
++	{22579200/1,   22579200, 9,  0, 200, 9, 1},	//22579200
++	{22579200/4,   22579200, 4,  0, 400, 9, 1},	//5644800
++	{22579200/16,  22579200, 0,  0, 320, 9, 1},	//1411200
++	{22579200/64,  22579200, 0,  0, 640, 4, 1},	//352800
++	{22579200/96,  22579200, 0,  0, 960, 4, 1},	//235200
++	{22579200/128, 22579200, 0,  0, 512, 1, 1},	//176400
++	{22579200/176, 22579200, 0,  0, 880, 4, 0},	//128290
++	{22579200/192, 22579200, 0,  0, 960, 4, 0},	//117600
++
++	{22579200/6,   22579200, 2,  0, 360, 9, 1},	//3763200
++	{22579200/8,   22579200, 0,  0, 160, 9, 1}, //2822400
++	{22579200/12,  22579200, 0,  0, 240, 9, 1},	//1881600
++	{22579200/24,  22579200, 0,  0, 480, 9, 1}, //940800
++	{22579200/32,  22579200, 0,  0, 640, 9, 1}, //705600
++	{22579200/48,  22579200, 0,  0, 960, 9, 1}, //470400
++};
++
++
++static const DECLARE_TLV_DB_SCALE(adc1_pga_gain_tlv,0,100,0);
++static const DECLARE_TLV_DB_SCALE(adc2_pga_gain_tlv,0,100,0);
++static const DECLARE_TLV_DB_SCALE(adc3_pga_gain_tlv,0,100,0);
++static const DECLARE_TLV_DB_SCALE(adc4_pga_gain_tlv,0,100,0);
++
++static const DECLARE_TLV_DB_SCALE(ch1_digital_vol_tlv,-11925,75,0);
++static const DECLARE_TLV_DB_SCALE(ch2_digital_vol_tlv,-11925,75,0);
++static const DECLARE_TLV_DB_SCALE(ch3_digital_vol_tlv,-11925,75,0);
++static const DECLARE_TLV_DB_SCALE(ch4_digital_vol_tlv,-11925,75,0);
++
++static const DECLARE_TLV_DB_SCALE(channel1_ch1_dig_mix_vol_tlv,-600,600,0);
++static const DECLARE_TLV_DB_SCALE(channel1_ch2_dig_mix_vol_tlv,-600,600,0);
++static const DECLARE_TLV_DB_SCALE(channel1_ch3_dig_mix_vol_tlv,-600,600,0);
++static const DECLARE_TLV_DB_SCALE(channel1_ch4_dig_mix_vol_tlv,-600,600,0);
++
++static const DECLARE_TLV_DB_SCALE(channel2_ch1_dig_mix_vol_tlv,-600,600,0);
++static const DECLARE_TLV_DB_SCALE(channel2_ch2_dig_mix_vol_tlv,-600,600,0);
++static const DECLARE_TLV_DB_SCALE(channel2_ch3_dig_mix_vol_tlv,-600,600,0);
++static const DECLARE_TLV_DB_SCALE(channel2_ch4_dig_mix_vol_tlv,-600,600,0);
++
++static const DECLARE_TLV_DB_SCALE(channel3_ch1_dig_mix_vol_tlv,-600,600,0);
++static const DECLARE_TLV_DB_SCALE(channel3_ch2_dig_mix_vol_tlv,-600,600,0);
++static const DECLARE_TLV_DB_SCALE(channel3_ch3_dig_mix_vol_tlv,-600,600,0);
++static const DECLARE_TLV_DB_SCALE(channel3_ch4_dig_mix_vol_tlv,-600,600,0);
++
++static const DECLARE_TLV_DB_SCALE(channel4_ch1_dig_mix_vol_tlv,-600,600,0);
++static const DECLARE_TLV_DB_SCALE(channel4_ch2_dig_mix_vol_tlv,-600,600,0);
++static const DECLARE_TLV_DB_SCALE(channel4_ch3_dig_mix_vol_tlv,-600,600,0);
++static const DECLARE_TLV_DB_SCALE(channel4_ch4_dig_mix_vol_tlv,-600,600,0);
++
++//static const DECLARE_TLV_DB_SCALE(adc_pga_gain_tlv,0,100,0);
++//static const DECLARE_TLV_DB_SCALE(digital_vol_tlv,-11925,75,0);
++//static const DECLARE_TLV_DB_SCALE(digital_mix_vol_tlv,-600,600,0);
++
++
++/*************************************** General(volume) controls *******************************************/
++//ac108 common controls
++static const struct snd_kcontrol_new ac108_controls[] = {
++	SOC_SINGLE_TLV("ADC1 PGA gain", ANA_PGA1_CTRL, ADC1_ANALOG_PGA, 0x1f, 0, adc1_pga_gain_tlv),
++	SOC_SINGLE_TLV("ADC2 PGA gain", ANA_PGA2_CTRL, ADC2_ANALOG_PGA, 0x1f, 0, adc2_pga_gain_tlv),
++	SOC_SINGLE_TLV("ADC3 PGA gain", ANA_PGA3_CTRL, ADC3_ANALOG_PGA, 0x1f, 0, adc3_pga_gain_tlv),
++	SOC_SINGLE_TLV("ADC4 PGA gain", ANA_PGA4_CTRL, ADC4_ANALOG_PGA, 0x1f, 0, adc4_pga_gain_tlv),
++
++	SOC_SINGLE_TLV("CH1 digital volume", ADC1_DVOL_CTRL, 0, 0xff, 0, ch1_digital_vol_tlv),
++	SOC_SINGLE_TLV("CH2 digital volume", ADC2_DVOL_CTRL, 0, 0xff, 0, ch2_digital_vol_tlv),
++	SOC_SINGLE_TLV("CH3 digital volume", ADC3_DVOL_CTRL, 0, 0xff, 0, ch3_digital_vol_tlv),
++	SOC_SINGLE_TLV("CH4 digital volume", ADC4_DVOL_CTRL, 0, 0xff, 0, ch4_digital_vol_tlv),
++
++	SOC_SINGLE_TLV("CH1 ch1 mixer gain", ADC1_DMIX_SRC, ADC1_ADC1_DMXL_GC, 1, 0, channel1_ch1_dig_mix_vol_tlv),
++	SOC_SINGLE_TLV("CH1 ch2 mixer gain", ADC1_DMIX_SRC, ADC1_ADC2_DMXL_GC, 1, 0, channel1_ch2_dig_mix_vol_tlv),
++	SOC_SINGLE_TLV("CH1 ch3 mixer gain", ADC1_DMIX_SRC, ADC1_ADC3_DMXL_GC, 1, 0, channel1_ch3_dig_mix_vol_tlv),
++	SOC_SINGLE_TLV("CH1 ch4 mixer gain", ADC1_DMIX_SRC, ADC1_ADC4_DMXL_GC, 1, 0, channel1_ch4_dig_mix_vol_tlv),
++
++	SOC_SINGLE_TLV("CH2 ch1 mixer gain", ADC2_DMIX_SRC, ADC2_ADC1_DMXL_GC, 1, 0, channel2_ch1_dig_mix_vol_tlv),
++	SOC_SINGLE_TLV("CH2 ch2 mixer gain", ADC2_DMIX_SRC, ADC2_ADC2_DMXL_GC, 1, 0, channel2_ch2_dig_mix_vol_tlv),
++	SOC_SINGLE_TLV("CH2 ch3 mixer gain", ADC2_DMIX_SRC, ADC2_ADC3_DMXL_GC, 1, 0, channel2_ch3_dig_mix_vol_tlv),
++	SOC_SINGLE_TLV("CH2 ch4 mixer gain", ADC2_DMIX_SRC, ADC2_ADC4_DMXL_GC, 1, 0, channel2_ch4_dig_mix_vol_tlv),
++
++	SOC_SINGLE_TLV("CH3 ch1 mixer gain", ADC3_DMIX_SRC, ADC3_ADC1_DMXL_GC, 1, 0, channel3_ch1_dig_mix_vol_tlv),
++	SOC_SINGLE_TLV("CH3 ch2 mixer gain", ADC3_DMIX_SRC, ADC3_ADC2_DMXL_GC, 1, 0, channel3_ch2_dig_mix_vol_tlv),
++	SOC_SINGLE_TLV("CH3 ch3 mixer gain", ADC3_DMIX_SRC, ADC3_ADC3_DMXL_GC, 1, 0, channel3_ch3_dig_mix_vol_tlv),
++	SOC_SINGLE_TLV("CH3 ch4 mixer gain", ADC3_DMIX_SRC, ADC3_ADC4_DMXL_GC, 1, 0, channel3_ch4_dig_mix_vol_tlv),
++
++	SOC_SINGLE_TLV("CH4 ch1 mixer gain", ADC4_DMIX_SRC, ADC4_ADC1_DMXL_GC, 1, 0, channel4_ch1_dig_mix_vol_tlv),
++	SOC_SINGLE_TLV("CH4 ch2 mixer gain", ADC4_DMIX_SRC, ADC4_ADC2_DMXL_GC, 1, 0, channel4_ch2_dig_mix_vol_tlv),
++	SOC_SINGLE_TLV("CH4 ch3 mixer gain", ADC4_DMIX_SRC, ADC4_ADC3_DMXL_GC, 1, 0, channel4_ch3_dig_mix_vol_tlv),
++	SOC_SINGLE_TLV("CH4 ch4 mixer gain", ADC4_DMIX_SRC, ADC4_ADC4_DMXL_GC, 1, 0, channel4_ch4_dig_mix_vol_tlv),
++
++	//SOC_SINGLE_TLV("CH1 mixer gain", ADC1_DMIX_SRC, ADC1_ADC1_DMXL_GC, 0x0f, 0, digital_mix_vol_tlv),
++	//SOC_SINGLE_TLV("CH2 mixer gain", ADC2_DMIX_SRC, ADC2_ADC1_DMXL_GC, 0x0f, 0, digital_mix_vol_tlv),
++	//SOC_SINGLE_TLV("CH3 mixer gain", ADC3_DMIX_SRC, ADC3_ADC1_DMXL_GC, 0x0f, 0, digital_mix_vol_tlv),
++	//SOC_SINGLE_TLV("CH4 mixer gain", ADC4_DMIX_SRC, ADC4_ADC1_DMXL_GC, 0x0f, 0, digital_mix_vol_tlv),
++};
++
++
++/*************************************** DAPM controls *******************************************/
++//ADC12 DMIC1 Source Select Mux
++static const char *adc12_dmic1_src_mux_text[] = {
++	"ADC12 switch", "DMIC1 switch"
++};
++static const struct soc_enum adc12_dmic1_src_mux_enum =
++	SOC_ENUM_SINGLE(DMIC_EN, DMIC1_EN, 2, adc12_dmic1_src_mux_text);
++static const struct snd_kcontrol_new adc12_dmic1_src_mux =
++	SOC_DAPM_ENUM("ADC12 DMIC1 MUX", adc12_dmic1_src_mux_enum);
++
++//ADC34 DMIC2 Source Select Mux
++static const char *adc34_dmic2_src_mux_text[] = {
++	"ADC34 switch", "DMIC2 switch"
++};
++static const struct soc_enum adc34_dmic2_src_mux_enum =
++	SOC_ENUM_SINGLE(DMIC_EN, DMIC2_EN, 2, adc34_dmic2_src_mux_text);
++static const struct snd_kcontrol_new adc34_dmic2_src_mux =
++	SOC_DAPM_ENUM("ADC34 DMIC2 MUX", adc34_dmic2_src_mux_enum);
++
++//ADC1 Digital Source Select Mux
++static const char *adc1_digital_src_mux_text[] = {
++	"ADC1 switch", "ADC2 switch", "ADC3 switch", "ADC4 switch"
++};
++static const struct soc_enum adc1_digital_src_mux_enum =
++	SOC_ENUM_SINGLE(ADC_DSR, DIG_ADC1_SRS, 4, adc1_digital_src_mux_text);
++static const struct snd_kcontrol_new adc1_digital_src_mux =
++	SOC_DAPM_ENUM("ADC1 DIG MUX", adc1_digital_src_mux_enum);
++
++//ADC2 Digital Source Select Mux
++static const char *adc2_digital_src_mux_text[] = {
++	"ADC1 switch", "ADC2 switch", "ADC3 switch", "ADC4 switch"
++};
++static const struct soc_enum adc2_digital_src_mux_enum =
++	SOC_ENUM_SINGLE(ADC_DSR, DIG_ADC2_SRS, 4, adc2_digital_src_mux_text);
++static const struct snd_kcontrol_new adc2_digital_src_mux =
++	SOC_DAPM_ENUM("ADC2 DIG MUX", adc2_digital_src_mux_enum);
++
++//ADC3 Digital Source Select Mux
++static const char *adc3_digital_src_mux_text[] = {
++	"ADC1 switch", "ADC2 switch", "ADC3 switch", "ADC4 switch"
++};
++static const struct soc_enum adc3_digital_src_mux_enum =
++	SOC_ENUM_SINGLE(ADC_DSR, DIG_ADC3_SRS, 4, adc3_digital_src_mux_text);
++static const struct snd_kcontrol_new adc3_digital_src_mux =
++	SOC_DAPM_ENUM("ADC3 DIG MUX", adc3_digital_src_mux_enum);
++
++//ADC4 Digital Source Select Mux
++static const char *adc4_digital_src_mux_text[] = {
++	"ADC1 switch", "ADC2 switch", "ADC3 switch", "ADC4 switch"
++};
++static const struct soc_enum adc4_digital_src_mux_enum =
++	SOC_ENUM_SINGLE(ADC_DSR, DIG_ADC4_SRS, 4, adc4_digital_src_mux_text);
++static const struct snd_kcontrol_new adc4_digital_src_mux =
++	SOC_DAPM_ENUM("ADC4 DIG MUX", adc4_digital_src_mux_enum);
++
++//ADC1 Digital Source Control Mixer
++static const struct snd_kcontrol_new adc1_digital_src_mixer[] = {
++	SOC_DAPM_SINGLE("ADC1 DAT switch", ADC1_DMIX_SRC, ADC1_ADC1_DMXL_SRC, 1, 0),
++	SOC_DAPM_SINGLE("ADC2 DAT switch", ADC1_DMIX_SRC, ADC1_ADC2_DMXL_SRC, 1, 0),
++	SOC_DAPM_SINGLE("ADC3 DAT switch", ADC1_DMIX_SRC, ADC1_ADC3_DMXL_SRC, 1, 0),
++	SOC_DAPM_SINGLE("ADC4 DAT switch", ADC1_DMIX_SRC, ADC1_ADC4_DMXL_SRC, 1, 0),
++};
++
++//ADC2 Digital Source Control Mixer
++static const struct snd_kcontrol_new adc2_digital_src_mixer[] = {
++	SOC_DAPM_SINGLE("ADC1 DAT switch", ADC2_DMIX_SRC, ADC2_ADC1_DMXL_SRC, 1, 0),
++	SOC_DAPM_SINGLE("ADC2 DAT switch", ADC2_DMIX_SRC, ADC2_ADC2_DMXL_SRC, 1, 0),
++	SOC_DAPM_SINGLE("ADC3 DAT switch", ADC2_DMIX_SRC, ADC2_ADC3_DMXL_SRC, 1, 0),
++	SOC_DAPM_SINGLE("ADC4 DAT switch", ADC2_DMIX_SRC, ADC2_ADC4_DMXL_SRC, 1, 0),
++};
++
++//ADC3 Digital Source Control Mixer
++static const struct snd_kcontrol_new adc3_digital_src_mixer[] = {
++	SOC_DAPM_SINGLE("ADC1 DAT switch", ADC3_DMIX_SRC, ADC3_ADC1_DMXL_SRC, 1, 0),
++	SOC_DAPM_SINGLE("ADC2 DAT switch", ADC3_DMIX_SRC, ADC3_ADC2_DMXL_SRC, 1, 0),
++	SOC_DAPM_SINGLE("ADC3 DAT switch", ADC3_DMIX_SRC, ADC3_ADC3_DMXL_SRC, 1, 0),
++	SOC_DAPM_SINGLE("ADC4 DAT switch", ADC3_DMIX_SRC, ADC3_ADC4_DMXL_SRC, 1, 0),
++};
++
++//ADC4 Digital Source Control Mixer
++static const struct snd_kcontrol_new adc4_digital_src_mixer[] = {
++	SOC_DAPM_SINGLE("ADC1 DAT switch", ADC4_DMIX_SRC, ADC4_ADC1_DMXL_SRC, 1, 0),
++	SOC_DAPM_SINGLE("ADC2 DAT switch", ADC4_DMIX_SRC, ADC4_ADC2_DMXL_SRC, 1, 0),
++	SOC_DAPM_SINGLE("ADC3 DAT switch", ADC4_DMIX_SRC, ADC4_ADC3_DMXL_SRC, 1, 0),
++	SOC_DAPM_SINGLE("ADC4 DAT switch", ADC4_DMIX_SRC, ADC4_ADC4_DMXL_SRC, 1, 0),
++};
++
++//I2S TX1 Ch1 Mapping Mux
++static const char *i2s_tx1_ch1_map_mux_text[] = {
++	"ADC1 Sample switch", "ADC2 Sample switch", "ADC3 Sample switch", "ADC4 Sample switch"
++};
++static const struct soc_enum i2s_tx1_ch1_map_mux_enum =
++	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL1, TX1_CH1_MAP, 4, i2s_tx1_ch1_map_mux_text);
++static const struct snd_kcontrol_new i2s_tx1_ch1_map_mux =
++	SOC_DAPM_ENUM("I2S TX1 CH1 MUX", i2s_tx1_ch1_map_mux_enum);
++
++//I2S TX1 Ch2 Mapping Mux
++static const char *i2s_tx1_ch2_map_mux_text[] = {
++	"ADC1 Sample switch", "ADC2 Sample switch", "ADC3 Sample switch", "ADC4 Sample switch"
++};
++static const struct soc_enum i2s_tx1_ch2_map_mux_enum =
++	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL1, TX1_CH2_MAP, 4, i2s_tx1_ch2_map_mux_text);
++static const struct snd_kcontrol_new i2s_tx1_ch2_map_mux =
++	SOC_DAPM_ENUM("I2S TX1 CH2 MUX", i2s_tx1_ch2_map_mux_enum);
++
++//I2S TX1 Ch3 Mapping Mux
++static const char *i2s_tx1_ch3_map_mux_text[] = {
++	"ADC1 Sample switch", "ADC2 Sample switch", "ADC3 Sample switch", "ADC4 Sample switch"
++};
++static const struct soc_enum i2s_tx1_ch3_map_mux_enum =
++	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL1, TX1_CH3_MAP, 4, i2s_tx1_ch3_map_mux_text);
++static const struct snd_kcontrol_new i2s_tx1_ch3_map_mux =
++	SOC_DAPM_ENUM("I2S TX1 CH3 MUX", i2s_tx1_ch3_map_mux_enum);
++
++//I2S TX1 Ch4 Mapping Mux
++static const char *i2s_tx1_ch4_map_mux_text[] = {
++	"ADC1 Sample switch", "ADC2 Sample switch", "ADC3 Sample switch", "ADC4 Sample switch"
++};
++static const struct soc_enum i2s_tx1_ch4_map_mux_enum =
++	SOC_ENUM_SINGLE(I2S_TX1_CHMP_CTRL1, TX1_CH4_MAP, 4, i2s_tx1_ch4_map_mux_text);
++static const struct snd_kcontrol_new i2s_tx1_ch4_map_mux =
++	SOC_DAPM_ENUM("I2S TX1 CH4 MUX", i2s_tx1_ch4_map_mux_enum);
++
++
++/*************************************** DAPM widgets *******************************************/
++//ac108 dapm widgets
++static const struct snd_soc_dapm_widget ac108_dapm_widgets[] = {
++	//input widgets
++	SND_SOC_DAPM_INPUT("MIC1P"),
++	SND_SOC_DAPM_INPUT("MIC1N"),
++	
++	SND_SOC_DAPM_INPUT("MIC2P"),
++	SND_SOC_DAPM_INPUT("MIC2N"),
++	
++	SND_SOC_DAPM_INPUT("MIC3P"),
++	SND_SOC_DAPM_INPUT("MIC3N"),
++	
++	SND_SOC_DAPM_INPUT("MIC4P"),
++	SND_SOC_DAPM_INPUT("MIC4N"),
++
++	SND_SOC_DAPM_INPUT("DMIC1"),
++	SND_SOC_DAPM_INPUT("DMIC2"),
++
++
++	//MIC PGA
++	SND_SOC_DAPM_PGA("MIC1 PGA", ANA_ADC1_CTRL1, ADC1_PGA_ENABLE, 0, NULL, 0),
++	SND_SOC_DAPM_PGA("MIC2 PGA", ANA_ADC2_CTRL1, ADC2_PGA_ENABLE, 0, NULL, 0),
++	SND_SOC_DAPM_PGA("MIC3 PGA", ANA_ADC3_CTRL1, ADC3_PGA_ENABLE, 0, NULL, 0),
++	SND_SOC_DAPM_PGA("MIC4 PGA", ANA_ADC4_CTRL1, ADC4_PGA_ENABLE, 0, NULL, 0),
++
++	//DMIC PGA
++	SND_SOC_DAPM_PGA("DMIC1L PGA", SND_SOC_NOPM, 0, 0, NULL, 0),
++	SND_SOC_DAPM_PGA("DMIC1R PGA", SND_SOC_NOPM, 0, 0, NULL, 0),
++	
++	SND_SOC_DAPM_PGA("DMIC2L PGA", SND_SOC_NOPM, 0, 0, NULL, 0),
++	SND_SOC_DAPM_PGA("DMIC2R PGA", SND_SOC_NOPM, 0, 0, NULL, 0),
++
++
++	//ADC1 DIG MUX
++	SND_SOC_DAPM_MUX("ADC1 DIG MUX", ADC_DIG_EN, ENAD1, 0, &adc1_digital_src_mux),
++
++	//ADC2 DIG MUX
++	SND_SOC_DAPM_MUX("ADC2 DIG MUX", ADC_DIG_EN, ENAD2, 0, &adc2_digital_src_mux),
++
++	//ADC3 DIG MUX
++	SND_SOC_DAPM_MUX("ADC3 DIG MUX", ADC_DIG_EN, ENAD3, 0, &adc3_digital_src_mux),
++
++	//ADC4 DIG MUX
++	SND_SOC_DAPM_MUX("ADC4 DIG MUX", ADC_DIG_EN, ENAD4, 0, &adc4_digital_src_mux),
++
++
++	//ADC12 DMIC1 MUX
++	SND_SOC_DAPM_MUX("ADC12 DMIC1 MUX", SND_SOC_NOPM, 0, 0, &adc12_dmic1_src_mux),
++
++	//ADC34 DMIC2 MUX
++	SND_SOC_DAPM_MUX("ADC34 DMIC2 MUX", SND_SOC_NOPM, 0, 0, &adc34_dmic2_src_mux),
++
++
++	//ADC1 VIR PGA
++	SND_SOC_DAPM_PGA("ADC1 VIR PGA", ANA_ADC1_CTRL1, ADC1_DSM_ENABLE, 0, NULL, 0),
++
++	//ADC2 VIR PGA
++	SND_SOC_DAPM_PGA("ADC2 VIR PGA", ANA_ADC2_CTRL1, ADC2_DSM_ENABLE, 0, NULL, 0),
++
++	//ADC3 VIR PGA
++	SND_SOC_DAPM_PGA("ADC3 VIR PGA", ANA_ADC3_CTRL1, ADC3_DSM_ENABLE, 0, NULL, 0),
++
++	//ADC4 VIR PGA
++	SND_SOC_DAPM_PGA("ADC4 VIR PGA", ANA_ADC4_CTRL1, ADC4_DSM_ENABLE, 0, NULL, 0),
++
++
++	//ADC1 DIG MIXER
++	SND_SOC_DAPM_MIXER("ADC1 DIG MIXER", SND_SOC_NOPM, 0, 0, adc1_digital_src_mixer, ARRAY_SIZE(adc1_digital_src_mixer)),
++
++	//ADC2 DIG MIXER
++	SND_SOC_DAPM_MIXER("ADC2 DIG MIXER", SND_SOC_NOPM, 0, 0, adc2_digital_src_mixer, ARRAY_SIZE(adc2_digital_src_mixer)),
++
++	//ADC3 DIG MIXER
++	SND_SOC_DAPM_MIXER("ADC3 DIG MIXER", SND_SOC_NOPM, 0, 0, adc3_digital_src_mixer, ARRAY_SIZE(adc3_digital_src_mixer)),
++
++	//ADC4 DIG MIXER
++	SND_SOC_DAPM_MIXER("ADC4 DIG MIXER", SND_SOC_NOPM, 0, 0, adc4_digital_src_mixer, ARRAY_SIZE(adc4_digital_src_mixer)),
++
++
++	//I2S TX1 CH1 MUX
++	SND_SOC_DAPM_MUX("I2S TX1 CH1 MUX", SND_SOC_NOPM, 0, 0, &i2s_tx1_ch1_map_mux),
++
++	//I2S TX1 CH2 MUX
++	SND_SOC_DAPM_MUX("I2S TX1 CH2 MUX", SND_SOC_NOPM, 0, 0, &i2s_tx1_ch2_map_mux),
++
++	//I2S TX1 CH3 MUX
++	SND_SOC_DAPM_MUX("I2S TX1 CH3 MUX", SND_SOC_NOPM, 0, 0, &i2s_tx1_ch3_map_mux),
++
++	//I2S TX1 CH4 MUX
++	SND_SOC_DAPM_MUX("I2S TX1 CH4 MUX", SND_SOC_NOPM, 0, 0, &i2s_tx1_ch4_map_mux),
++
++
++	//AIF OUT -> (stream widget, stname must be same with codec dai_driver stream_name, which will be used to build dai widget)
++	SND_SOC_DAPM_AIF_OUT("AIF ADC OUT", "Capture", 0, SND_SOC_NOPM, 0, 0),
++};
++
++
++/*************************************** DAPM routes *******************************************/
++//ac108 dapm routes
++static const struct snd_soc_dapm_route ac108_dapm_routes[] = {
++	//MIC
++	{"MIC1 PGA", NULL, "MIC1P"},
++	{"MIC1 PGA", NULL, "MIC1N"},
++
++	{"MIC2 PGA", NULL, "MIC2P"},
++	{"MIC2 PGA", NULL, "MIC2N"},
++
++	{"MIC3 PGA", NULL, "MIC3P"},
++	{"MIC3 PGA", NULL, "MIC3N"},
++
++	{"MIC4 PGA", NULL, "MIC4P"},
++	{"MIC4 PGA", NULL, "MIC4N"},
++
++	//DMIC
++	{"DMIC1L PGA", NULL, "DMIC1"},
++	{"DMIC1R PGA", NULL, "DMIC1"},
++
++	{"DMIC2L PGA", NULL, "DMIC2"},
++	{"DMIC2R PGA", NULL, "DMIC2"},
++
++
++	//ADC1 DIG MUX
++	{"ADC1 DIG MUX", "ADC1 switch", "MIC1 PGA"},
++	{"ADC1 DIG MUX", "ADC2 switch", "MIC2 PGA"},
++	{"ADC1 DIG MUX", "ADC3 switch", "MIC3 PGA"},
++	{"ADC1 DIG MUX", "ADC4 switch", "MIC4 PGA"},
++
++	//ADC2 DIG MUX
++	{"ADC2 DIG MUX", "ADC1 switch", "MIC1 PGA"},
++	{"ADC2 DIG MUX", "ADC2 switch", "MIC2 PGA"},
++	{"ADC2 DIG MUX", "ADC3 switch", "MIC3 PGA"},
++	{"ADC2 DIG MUX", "ADC4 switch", "MIC4 PGA"},
++
++	//ADC3 DIG MUX
++	{"ADC3 DIG MUX", "ADC1 switch", "MIC1 PGA"},
++	{"ADC3 DIG MUX", "ADC2 switch", "MIC2 PGA"},
++	{"ADC3 DIG MUX", "ADC3 switch", "MIC3 PGA"},
++	{"ADC3 DIG MUX", "ADC4 switch", "MIC4 PGA"},
++
++	//ADC4 DIG MUX
++	{"ADC4 DIG MUX", "ADC1 switch", "MIC1 PGA"},
++	{"ADC4 DIG MUX", "ADC2 switch", "MIC2 PGA"},
++	{"ADC4 DIG MUX", "ADC3 switch", "MIC3 PGA"},
++	{"ADC4 DIG MUX", "ADC4 switch", "MIC4 PGA"},
++
++
++	//ADC12 DMIC1 MUX
++	{"ADC12 DMIC1 MUX", "ADC12 switch", "ADC1 DIG MUX"},
++	{"ADC12 DMIC1 MUX", "ADC12 switch", "ADC2 DIG MUX"},
++	{"ADC12 DMIC1 MUX", "DMIC1 switch", "DMIC1L PGA"},
++	{"ADC12 DMIC1 MUX", "DMIC1 switch", "DMIC1R PGA"},
++
++	//ADC34 DMIC2 MUX
++	{"ADC34 DMIC2 MUX", "ADC34 switch", "ADC3 DIG MUX"},
++	{"ADC34 DMIC2 MUX", "ADC34 switch", "ADC4 DIG MUX"},
++	{"ADC34 DMIC2 MUX", "DMIC2 switch", "DMIC2L PGA"},
++	{"ADC34 DMIC2 MUX", "DMIC2 switch", "DMIC2R PGA"},
++
++
++	//ADC1 VIR PGA
++	{"ADC1 VIR PGA", NULL, "ADC12 DMIC1 MUX"},
++
++	//ADC2 VIR PGA
++	{"ADC2 VIR PGA", NULL, "ADC12 DMIC1 MUX"},
++
++	//ADC3 VIR PGA
++	{"ADC3 VIR PGA", NULL, "ADC34 DMIC2 MUX"},
++
++	//ADC4 VIR PGA
++	{"ADC4 VIR PGA", NULL, "ADC34 DMIC2 MUX"},
++
++
++	//ADC1 DIG MIXER
++	{"ADC1 DIG MIXER", "ADC1 DAT switch", "ADC1 VIR PGA"},
++	{"ADC1 DIG MIXER", "ADC2 DAT switch", "ADC2 VIR PGA"},
++	{"ADC1 DIG MIXER", "ADC3 DAT switch", "ADC3 VIR PGA"},
++	{"ADC1 DIG MIXER", "ADC4 DAT switch", "ADC4 VIR PGA"},
++
++	//ADC2 DIG MIXER
++	{"ADC2 DIG MIXER", "ADC1 DAT switch", "ADC1 VIR PGA"},
++	{"ADC2 DIG MIXER", "ADC2 DAT switch", "ADC2 VIR PGA"},
++	{"ADC2 DIG MIXER", "ADC3 DAT switch", "ADC3 VIR PGA"},
++	{"ADC2 DIG MIXER", "ADC4 DAT switch", "ADC4 VIR PGA"},
++
++	//ADC3 DIG MIXER
++	{"ADC3 DIG MIXER", "ADC1 DAT switch", "ADC1 VIR PGA"},
++	{"ADC3 DIG MIXER", "ADC2 DAT switch", "ADC2 VIR PGA"},
++	{"ADC3 DIG MIXER", "ADC3 DAT switch", "ADC3 VIR PGA"},
++	{"ADC3 DIG MIXER", "ADC4 DAT switch", "ADC4 VIR PGA"},
++
++	//ADC4 DIG MIXER
++	{"ADC4 DIG MIXER", "ADC1 DAT switch", "ADC1 VIR PGA"},
++	{"ADC4 DIG MIXER", "ADC2 DAT switch", "ADC2 VIR PGA"},
++	{"ADC4 DIG MIXER", "ADC3 DAT switch", "ADC3 VIR PGA"},
++	{"ADC4 DIG MIXER", "ADC4 DAT switch", "ADC4 VIR PGA"},
++
++
++	//I2S TX1 CH1 MUX
++	{"I2S TX1 CH1 MUX", "ADC1 Sample switch", "ADC1 DIG MIXER"},
++	{"I2S TX1 CH1 MUX", "ADC2 Sample switch", "ADC2 DIG MIXER"},
++	{"I2S TX1 CH1 MUX", "ADC3 Sample switch", "ADC3 DIG MIXER"},
++	{"I2S TX1 CH1 MUX", "ADC4 Sample switch", "ADC4 DIG MIXER"},
++
++	//I2S TX1 CH2 MUX
++	{"I2S TX1 CH2 MUX", "ADC1 Sample switch", "ADC1 DIG MIXER"},
++	{"I2S TX1 CH2 MUX", "ADC2 Sample switch", "ADC2 DIG MIXER"},
++	{"I2S TX1 CH2 MUX", "ADC3 Sample switch", "ADC3 DIG MIXER"},
++	{"I2S TX1 CH2 MUX", "ADC4 Sample switch", "ADC4 DIG MIXER"},
++
++	//I2S TX1 CH3 MUX
++	{"I2S TX1 CH3 MUX", "ADC1 Sample switch", "ADC1 DIG MIXER"},
++	{"I2S TX1 CH3 MUX", "ADC2 Sample switch", "ADC2 DIG MIXER"},
++	{"I2S TX1 CH3 MUX", "ADC3 Sample switch", "ADC3 DIG MIXER"},
++	{"I2S TX1 CH3 MUX", "ADC4 Sample switch", "ADC4 DIG MIXER"},
++
++	//I2S TX1 CH4 MUX
++	{"I2S TX1 CH4 MUX", "ADC1 Sample switch", "ADC1 DIG MIXER"},
++	{"I2S TX1 CH4 MUX", "ADC2 Sample switch", "ADC2 DIG MIXER"},
++	{"I2S TX1 CH4 MUX", "ADC3 Sample switch", "ADC3 DIG MIXER"},
++	{"I2S TX1 CH4 MUX", "ADC4 Sample switch", "ADC4 DIG MIXER"},
++
++
++	//AIF OUT
++	{"AIF ADC OUT", NULL, "I2S TX1 CH1 MUX"},
++	{"AIF ADC OUT", NULL, "I2S TX1 CH2 MUX"},
++	{"AIF ADC OUT", NULL, "I2S TX1 CH3 MUX"},
++	{"AIF ADC OUT", NULL, "I2S TX1 CH4 MUX"},
++};
++
++
++static int ac108_read(u8 reg, u8 *rt_value, struct i2c_client *client)
++{
++	int ret;
++	u8 read_cmd[3] = {0};
++	u8 cmd_len = 0;
++	
++	read_cmd[0] = reg;
++	cmd_len = 1;
++	
++	if (client->adapter == NULL)
++		pr_err("ac108_read client->adapter==NULL\n");
++	
++	ret = i2c_master_send(client, read_cmd, cmd_len);
++	if (ret != cmd_len) {
++		pr_err("ac108_read error1\n");
++		return -1;
++	}
++	
++	ret = i2c_master_recv(client, rt_value, 1);
++	if (ret != 1) {
++		pr_err("ac108_read error2, ret = %d.\n", ret);
++		return -1;
++	}
++	
++	return 0;
++}
++
++static int ac108_write(u8 reg, unsigned char value, struct i2c_client *client)
++{
++	int ret = 0;
++	u8 write_cmd[2] = {0};
++	
++	write_cmd[0] = reg;
++	write_cmd[1] = value;
++	
++	ret = i2c_master_send(client, write_cmd, 2);
++	if (ret != 2) {
++		pr_err("ac108_write error->[REG-0x%02x,val-0x%02x]\n",reg,value);
++		return -1;
++	}
++	
++	return 0;
++}
++
++static int ac108_update_bits(u8 reg, u8 mask, u8 value, struct i2c_client *client)
++{
++	u8 val_old,val_new;
++
++	ac108_read(reg, &val_old, client);
++	val_new = (val_old & ~mask) | (value & mask);
++	if(val_new != val_old){
++		ac108_write(reg, val_new, client);
++	}
++
++	return 0;
++}
++
++static int ac108_multi_chips_read(u8 reg, unsigned char *rt_value)
++{
++	u8 i;
++
++	for(i=0; i<(AC108_CHANNELS_MAX+3)/4; i++){
++		ac108_read(reg, rt_value++, i2c_clt[i]);
++	}
++
++	return 0;
++}
++
++
++static int ac108_multi_chips_write(u8 reg, unsigned char value)
++{
++	u8 i;
++
++	for(i=0; i<(AC108_CHANNELS_MAX+3)/4; i++){
++		ac108_write(reg, value, i2c_clt[i]);
++	}
++	
++	return 0;
++}
++
++static int ac108_multi_chips_update_bits(u8 reg, u8 mask, u8 value)
++{
++	u8 i;
++	
++	for(i=0; i<(AC108_CHANNELS_MAX+3)/4; i++){
++		ac108_update_bits(reg, mask, value, i2c_clt[i]);
++	}
++
++	return 0;
++}
++
++
++
++static void ac108_hw_init(struct i2c_client *i2c)
++{
++	/*** Chip reset ***/
++	//ac108_write(CHIP_AUDIO_RST, 0x12, i2c);	/*0x00=0x12: reset all registers to their default state*/
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++#if !AC108_DMIC_EN
++	/*** Analog voltage enable ***/
++	ac108_write(PWR_CTRL6, 0x01, i2c);		/*0x06=0x01: Enable Analog LDO*/
++	ac108_write(PWR_CTRL7, 0x9b, i2c);		/*0x07=0x9b: VREF faststart Enable, Enable VREF @ 3.4V (5V) or 3.1V (3.3V) (needed for Analog LDO and MICBIAS)*/
++	ac108_write(PWR_CTRL9, 0x81, i2c);		/*0x09=0x81: VREFP faststart Enable, Enable VREFP (needed by all audio input channels)*/
++	ac108_write(ANA_ADC3_CTRL7, 0x0b, i2c);	/*DSM low power mode enable, Control bias current for DSM integrator opamps*/
++#endif
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	/*** SYSCLK Config ***/
++	ac108_update_bits(SYSCLK_CTRL, 0x1<<SYSCLK_EN, 0x1<<SYSCLK_EN, i2c);	/*SYSCLK Enable*/
++	ac108_write(MOD_CLK_EN, 0x93, i2c);		/*0x21=0x93: Module clock enable<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
++	ac108_write(MOD_RST_CTRL, 0x93, i2c);	/*0x22=0x93: Module reset de-asserted<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	/*** I2S Common Config ***/
++	ac108_update_bits(I2S_CTRL, 0x1<<SDO1_EN | 0x1<<SDO2_EN, 0x1<<SDO1_EN | !!AC108_SDO2_EN<<SDO2_EN, i2c);	/*SDO1 enable, SDO2 Enable*/
++	ac108_update_bits(I2S_BCLK_CTRL, 0x1<<EDGE_TRANSFER, 0x0<<EDGE_TRANSFER, i2c);	/*SDO drive data and SDI sample data at the different BCLK edge*/
++	ac108_update_bits(I2S_LRCK_CTRL1, 0x3<<LRCK_PERIODH, ((AC108_LRCK_PERIOD-1) >> 8)<<LRCK_PERIODH, i2c);
++	ac108_write(I2S_LRCK_CTRL2, (u8)(AC108_LRCK_PERIOD-1), i2c);	/*config LRCK period: 16bit * 8ch = 128, 32bit * 8ch = 256, 32bit *16ch =512*/
++	/*Encoding mode enable, Turn to hi-z state (TDM) when not transferring slot*/
++	ac108_update_bits(I2S_FMT_CTRL1, 0x1<<ENCD_SEL | 0x1<<TX_SLOT_HIZ | 0x1<<TX_STATE, !!AC108_ENCODING_EN<<ENCD_SEL | 0x0<<TX_SLOT_HIZ | 0x1<<TX_STATE, i2c);
++	ac108_update_bits(I2S_FMT_CTRL2, 0x7<<SLOT_WIDTH_SEL, (AC108_SLOT_WIDTH/4-1)<<SLOT_WIDTH_SEL, i2c);		/*8/12/16/20/24/28/32bit Slot Width*/
++	/*0x36=0x70: TX MSB first, TX2 Mute, Transfer 0 after each sample in each slot(sample resolution < slot width), LRCK = 1 BCLK width (short frame), Linear PCM Data Mode*/
++	ac108_write(I2S_FMT_CTRL3, AC108_SDO2_EN ? 0x60 : 0x70, i2c);
++	
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	ac108_write(I2S_TX1_CHMP_CTRL1, 0xe4, i2c);		/*0x3C=0xe4: TX1 CHn Map to CHn adc sample, n=[1,4]*/
++	ac108_write(I2S_TX1_CHMP_CTRL2, 0xe4, i2c);		/*0x3D=0xe4: TX1 CHn Map to CH(n-4) adc sample, n=[5,8]*/
++	ac108_write(I2S_TX1_CHMP_CTRL3, 0xe4, i2c);		/*0x3E=0xe4: TX1 CHn Map to CH(n-8) adc sample, n=[9,12]*/
++	ac108_write(I2S_TX1_CHMP_CTRL4, 0xe4, i2c);		/*0x3F=0xe4: TX1 CHn Map to CH(n-12) adc sample, n=[13,16]*/
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++#if AC108_SDO2_EN
++	ac108_write(I2S_TX2_CHMP_CTRL1, 0x4e, i2c); 	/*0x44=0x4e: TX2 CH1/2 Map to CH3/4 adc sample, TX2 CH3/4 Map to CH1/2 adc sample*/
++	ac108_write(I2S_TX2_CHMP_CTRL2, 0xe4, i2c); 	/*0x45=0xe4: TX2 CHn Map to CH(n-4) adc sample, n=[5,8]*/
++	ac108_write(I2S_TX2_CHMP_CTRL3, 0xe4, i2c); 	/*0x46=0xe4: TX2 CHn Map to CH(n-8) adc sample, n=[9,12]*/
++	ac108_write(I2S_TX2_CHMP_CTRL4, 0xe4, i2c); 	/*0x47=0xe4: TX2 CHn Map to CH(n-12) adc sample, n=[13,16]*/
++#endif
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	/*** ADC DIG part Config***/
++	ac108_write(ADC_SPRC, 0x03, i2c);					/*0x60=0x03: ADC Sample Rate 16KHz*/
++	ac108_write(ADC_DIG_EN, 0x1f, i2c);				/*0x61=0x1f: Digital part globe enable, ADCs digital part enable*/
++	ac108_write(ANA_ADC4_CTRL7, 0x0f, i2c);			/*0xBB=0x0f: Gating ADCs CLK de-asserted (ADCs CLK Enable)*/
++	
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++#if AC108_ADC_PATTERN_SEL
++	ac108_write(HPF_EN, 0x00, i2c);									/*0x66=0x00: Digital ADCs channel HPF disable*/
++	ac108_write(ADC_DIG_DEBUG, AC108_ADC_PATTERN_SEL & 0x7, i2c);	/*0X7F=0x00: ADC pattern select: 0:ADC normal, 1:0x5A5A5A, 2:0x123456, 3:0x00, 4~7:I2S RX data*/
++#endif
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++#if !AC108_DMIC_EN
++	/*** ADCs analog PGA gain Config***/
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	ac108_write(ANA_PGA1_CTRL, AC108_PGA_GAIN<<1, i2c);				/*0x90=0x3d: ADC1 PGA gain 30.5dB*/
++	ac108_write(ANA_PGA2_CTRL, AC108_PGA_GAIN<<1, i2c);				/*0x91=0x3d: ADC2 PGA gain 30.5dB*/
++	ac108_write(ANA_PGA3_CTRL, AC108_PGA_GAIN<<1, i2c);				/*0x92=0x3d: ADC3 PGA gain 30.5dB*/
++	ac108_write(ANA_PGA4_CTRL, AC108_PGA_GAIN<<1, i2c);				/*0x93=0x3d: ADC4 PGA gain 30.5dB*/
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	/*** enable AAF/ADC/PGA  and UnMute Config ***/
++	ac108_write(ANA_ADC1_CTRL1, 0x07, i2c);			/*0xA0=0x07: ADC1 AAF & ADC enable, ADC1 PGA enable, ADC1 MICBIAS enable and UnMute*/
++	ac108_write(ANA_ADC2_CTRL1, 0x07, i2c);			/*0xA7=0x07: ADC2 AAF & ADC enable, ADC2 PGA enable, ADC2 MICBIAS enable and UnMute*/
++	ac108_write(ANA_ADC3_CTRL1, 0x07, i2c);			/*0xAE=0x07: ADC3 AAF & ADC enable, ADC3 PGA enable, ADC3 MICBIAS enable and UnMute*/
++	ac108_write(ANA_ADC4_CTRL1, 0x07, i2c);			/*0xB5=0x07: ADC4 AAF & ADC enable, ADC4 PGA enable, ADC4 MICBIAS enable and UnMute*/
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	msleep(50);										/*delay 50ms to let VREF/VRP faststart powerup stable, then disable faststart*/
++	ac108_update_bits(PWR_CTRL7, 0x1<<VREF_FASTSTART_ENABLE, 0x0<<VREF_FASTSTART_ENABLE, i2c);		/*VREF faststart disable*/
++	ac108_update_bits(PWR_CTRL9, 0x1<<VREFP_FASTSTART_ENABLE, 0x0<<VREFP_FASTSTART_ENABLE, i2c);	/*VREFP faststart disable*/
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++#else
++	/*** DMIC module Enable ***/
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	ac108_write(DMIC_EN, 0x03, i2c);				/*DMIC1/2 Enable, while ADC DIG source select DMIC1/2*/
++	ac108_write(GPIO_CFG1, 0xee, i2c);				/*GPIO1 as DMIC1_DAT, GPIO2 as DMIC_CLK*/
++	ac108_write(GPIO_CFG2, 0x7e, i2c);				/*GPIO3 as DMIC2_DAT*/
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++#endif
++}
++
++
++static int ac108_set_sysclk(struct snd_soc_dai *dai, int clk_id, unsigned int freq, int dir)
++{
++	AC108_DEBUG("\n--->%s\n",__FUNCTION__);
++	
++	switch(clk_id){
++		case SYSCLK_SRC_MCLK:
++			AC108_DEBUG("AC108 SYSCLK source select MCLK\n\n");
++			ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x1<<SYSCLK_SRC, 0x0<<SYSCLK_SRC);	//System Clock Source Select MCLK
++			break;
++		case SYSCLK_SRC_PLL:
++			AC108_DEBUG("AC108 SYSCLK source select PLL\n\n");
++			ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x1<<SYSCLK_SRC, 0x1<<SYSCLK_SRC);	//System Clock Source Select PLL
++			break;
++		default:
++			pr_err("AC108 SYSCLK source config error:%d\n\n",clk_id);
++			return -EINVAL;
++	}
++
++	//SYSCLK Enable
++	ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x1<<SYSCLK_EN, 0x1<<SYSCLK_EN);
++	return 0;
++}
++
++static int ac108_set_pll(struct snd_soc_dai *dai, int pll_id, int source, unsigned int freq_in, unsigned int freq_out)
++{
++	AC108_DEBUG("\n--->%s\n",__FUNCTION__);
++	u32 i,m1,m2,n,k1,k2;
++
++	if (!freq_out)	return 0;
++
++	if (freq_in < 128000 || freq_in > 24576000) {
++		pr_err("AC108 PLLCLK source input freq only support [128K,24M],while now %u\n\n",freq_in);
++		return -EINVAL;
++	} else if ((freq_in == 24576000 || freq_in == 22579200) && pll_id == SYSCLK_SRC_MCLK) {
++		//System Clock Source Select MCLK, SYSCLK Enable
++		AC108_DEBUG("AC108 don't need to use PLL\n\n");
++		ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x1<<SYSCLK_SRC | 0x1<<SYSCLK_EN, 0x0<<SYSCLK_SRC | 0x1<<SYSCLK_EN);
++		return 0;	//Don't need to use PLL
++	}
++
++	//PLL Clock Source Select
++	switch(pll_id){
++		case PLLCLK_SRC_MCLK:
++			AC108_DEBUG("AC108 PLLCLK input source select MCLK\n");
++			ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x3<<PLLCLK_SRC, 0x0<<PLLCLK_SRC);
++			break;
++		case PLLCLK_SRC_BCLK:
++			AC108_DEBUG("AC108 PLLCLK input source select BCLK\n");
++			ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x3<<PLLCLK_SRC, 0x1<<PLLCLK_SRC);
++			break;
++		case PLLCLK_SRC_GPIO2:
++			AC108_DEBUG("AC108 PLLCLK input source select GPIO2\n");
++			ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x3<<PLLCLK_SRC, 0x2<<PLLCLK_SRC);
++			break;
++		case PLLCLK_SRC_GPIO3:
++			AC108_DEBUG("AC108 PLLCLK input source select GPIO3\n");
++			ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x3<<PLLCLK_SRC, 0x3<<PLLCLK_SRC);
++			break;
++		default:
++			pr_err("AC108 PLLCLK source config error:%d\n\n",pll_id);
++			return -EINVAL;
++	}
++
++	//FOUT =(FIN * N) / [(M1+1) * (M2+1)*(K1+1)*(K2+1)] ;
++	for(i=0; i<ARRAY_SIZE(ac108_pll_div); i++){
++		if(ac108_pll_div[i].freq_in == freq_in && ac108_pll_div[i].freq_out == freq_out){
++			m1 = ac108_pll_div[i].m1;
++			m2 = ac108_pll_div[i].m2;
++			n = ac108_pll_div[i].n;
++			k1 = ac108_pll_div[i].k1;
++			k2 = ac108_pll_div[i].k2;
++			AC108_DEBUG("AC108 PLL freq_in match:%u, freq_out:%u\n\n",freq_in,freq_out);
++			break;
++		}
++	}
++
++	if(i == ARRAY_SIZE(ac108_pll_div)){
++		pr_err("AC108 don't match PLLCLK freq_in and freq_out table\n\n");
++		return -EINVAL;
++	}
++
++	//Config PLL DIV param M1/M2/N/K1/K2
++	ac108_multi_chips_update_bits(PLL_CTRL2, 0x1f<<PLL_PREDIV1 | 0x1<<PLL_PREDIV2, m1<<PLL_PREDIV1 | m2<<PLL_PREDIV2);
++	ac108_multi_chips_update_bits(PLL_CTRL3, 0x3<<PLL_LOOPDIV_MSB, (n>>8)<<PLL_LOOPDIV_MSB);
++	ac108_multi_chips_update_bits(PLL_CTRL4, 0xff<<PLL_LOOPDIV_LSB, (u8)n<<PLL_LOOPDIV_LSB);
++	ac108_multi_chips_update_bits(PLL_CTRL5, 0x1f<<PLL_POSTDIV1 | 0x1<<PLL_POSTDIV2, k1<<PLL_POSTDIV1 | k2<<PLL_POSTDIV2);
++
++	//Config PLL module current
++	//ac108_multi_chips_update_bits(PLL_CTRL1, 0x7<<PLL_IBIAS, 0x4<<PLL_IBIAS);
++	//ac108_multi_chips_update_bits(PLL_CTRL6, 0x1f<<PLL_CP, 0xf<<PLL_CP);
++
++	//PLL module enable
++	ac108_multi_chips_update_bits(PLL_LOCK_CTRL, 0x1<<PLL_LOCK_EN, 0x1<<PLL_LOCK_EN);						//PLL CLK lock enable
++	//ac108_multi_chips_update_bits(PLL_CTRL1, 0x1<<PLL_EN | 0x1<<PLL_COM_EN, 0x1<<PLL_EN | 0x1<<PLL_COM_EN);	//PLL Common voltage Enable, PLL Enable
++
++	//PLLCLK Enable, SYSCLK Enable
++	ac108_multi_chips_update_bits(SYSCLK_CTRL, 0x1<<PLLCLK_EN | 0x1<<SYSCLK_EN, 0x1<<PLLCLK_EN | 0x1<<SYSCLK_EN);	//0x1<<SYSCLK_SRC
++	
++	return 0;
++}
++
++static int ac108_set_clkdiv(struct snd_soc_dai *dai, int div_id, int div)
++{
++	AC108_DEBUG("\n--->%s\n",__FUNCTION__);
++	u32 i,bclk_div,bclk_div_reg_val;
++
++	if(!div_id){	//use div_id to judge Master/Slave mode,  0: Slave mode, 1: Master mode
++		AC108_DEBUG("AC108 work as Slave mode, don't need to config BCLK_DIV\n\n");
++		return 0;
++	}
++
++	bclk_div = div/(AC108_LRCK_PERIOD);		//default PCM mode
++	//bclk_div = div/(2*AC108_LRCK_PERIOD);	//I2S/LJ/RJ mode
++
++	for(i=0; i<ARRAY_SIZE(ac108_bclk_div); i++){
++		if(ac108_bclk_div[i].real_val == bclk_div){
++			bclk_div_reg_val = ac108_bclk_div[i].reg_val;
++			AC108_DEBUG("AC108 set BCLK_DIV_[%u]\n\n",bclk_div);
++			break;
++		}
++	}
++	
++	if(i == ARRAY_SIZE(ac108_bclk_div)){
++		pr_err("AC108 don't support BCLK_DIV_[%u]\n\n",bclk_div);
++		return -EINVAL;
++	}
++
++	//AC108 set BCLK DIV
++	ac108_multi_chips_update_bits(I2S_BCLK_CTRL, 0xf<<BCLKDIV, bclk_div_reg_val<<BCLKDIV);
++	return 0;
++}
++
++static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
++{
++	AC108_DEBUG("\n--->%s\n",__FUNCTION__);
++	u8 i, tx_offset, i2s_mode, lrck_polarity, brck_polarity;
++	struct ac108_priv *ac108 = dev_get_drvdata(dai->dev);
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	//AC108 config Master/Slave mode
++	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
++		case SND_SOC_DAIFMT_CBM_CFM:	//AC108 Master
++			AC108_DEBUG("AC108 set to work as Master\n");
++			ac108_update_bits(I2S_CTRL, 0x3<<LRCK_IOEN, 0x3<<LRCK_IOEN, ac108->i2c);	//BCLK & LRCK output
++			break;
++		case SND_SOC_DAIFMT_CBS_CFS:	//AC108 Slave
++			AC108_DEBUG("AC108 set to work as Slave\n");
++			ac108_update_bits(I2S_CTRL, 0x3<<LRCK_IOEN, 0x0<<LRCK_IOEN, ac108->i2c);	//BCLK & LRCK input
++			break;
++		default:
++			pr_err("AC108 Master/Slave mode config error:%u\n\n",(fmt & SND_SOC_DAIFMT_MASTER_MASK)>>12);
++			return -EINVAL;
++	}
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	for(i=0; i<(AC108_CHANNELS_MAX+3)/4; i++){	//multi_chips: only one chip set as Master, and the others also need to set as Slave
++		if(i2c_clt[i] == ac108->i2c) continue;
++	    AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++		ac108_update_bits(I2S_CTRL, 0x3<<LRCK_IOEN, 0x0<<LRCK_IOEN, i2c_clt[i]);
++	}
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	//AC108 config I2S/LJ/RJ/PCM format
++	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
++		case SND_SOC_DAIFMT_I2S:
++			AC108_DEBUG("AC108 config I2S format\n");
++			i2s_mode = LEFT_JUSTIFIED_FORMAT;
++			tx_offset = 1;
++			break;
++		case SND_SOC_DAIFMT_RIGHT_J:
++			AC108_DEBUG("AC108 config RIGHT-JUSTIFIED format\n");
++			i2s_mode = RIGHT_JUSTIFIED_FORMAT;
++			tx_offset = 0;
++			break;
++		case SND_SOC_DAIFMT_LEFT_J:
++			AC108_DEBUG("AC108 config LEFT-JUSTIFIED format\n");
++			i2s_mode = LEFT_JUSTIFIED_FORMAT;
++			tx_offset = 0;
++			break;
++		case SND_SOC_DAIFMT_DSP_A:
++			AC108_DEBUG("AC108 config PCM-A format\n");
++			i2s_mode = PCM_FORMAT;
++			tx_offset = 1;
++			break;
++		case SND_SOC_DAIFMT_DSP_B:
++			AC108_DEBUG("AC108 config PCM-B format\n");
++			i2s_mode = PCM_FORMAT;
++			tx_offset = 0;
++			break;
++		default:
++			pr_err("AC108 I2S format config error:%u\n\n",fmt & SND_SOC_DAIFMT_FORMAT_MASK);
++			return -EINVAL;
++	}
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	ac108_multi_chips_update_bits(I2S_FMT_CTRL1, 0x3<<MODE_SEL | 0x1<<TX2_OFFSET | 0x1<<TX1_OFFSET,\
++		i2s_mode<<MODE_SEL | tx_offset<<TX2_OFFSET | tx_offset<<TX1_OFFSET);
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	//AC108 config BCLK&LRCK polarity
++	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
++		case SND_SOC_DAIFMT_NB_NF:
++			AC108_DEBUG("AC108 config BCLK&LRCK polarity: BCLK_normal,LRCK_normal\n");
++			brck_polarity = BCLK_NORMAL_DRIVE_N_SAMPLE_P;
++			lrck_polarity = LRCK_LEFT_LOW_RIGHT_HIGH;
++			break;
++		case SND_SOC_DAIFMT_NB_IF:
++			AC108_DEBUG("AC108 config BCLK&LRCK polarity: BCLK_normal,LRCK_invert\n");
++			brck_polarity = BCLK_NORMAL_DRIVE_N_SAMPLE_P;
++			lrck_polarity = LRCK_LEFT_HIGH_RIGHT_LOW;
++			break;
++		case SND_SOC_DAIFMT_IB_NF:
++			AC108_DEBUG("AC108 config BCLK&LRCK polarity: BCLK_invert,LRCK_normal\n");
++			brck_polarity = BCLK_INVERT_DRIVE_P_SAMPLE_N;
++			lrck_polarity = LRCK_LEFT_LOW_RIGHT_HIGH;
++			break;
++		case SND_SOC_DAIFMT_IB_IF:
++			AC108_DEBUG("AC108 config BCLK&LRCK polarity: BCLK_invert,LRCK_invert\n");
++			brck_polarity = BCLK_INVERT_DRIVE_P_SAMPLE_N;
++			lrck_polarity = LRCK_LEFT_HIGH_RIGHT_LOW;
++			break;
++		default:
++			pr_err("AC108 config BCLK/LRCLK polarity error:%u\n\n",(fmt & SND_SOC_DAIFMT_INV_MASK)>>8);
++			return -EINVAL;
++	}
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	ac108_multi_chips_update_bits(I2S_BCLK_CTRL,  0x1<<BCLK_POLARITY, brck_polarity<<BCLK_POLARITY);
++	ac108_multi_chips_update_bits(I2S_LRCK_CTRL1, 0x1<<LRCK_POLARITY, lrck_polarity<<LRCK_POLARITY);
++	
++	return 0;
++}
++
++static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
++{
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	u16 i, channels, channels_en, sample_resolution;
++    u8 reg_val;
++
++	//AC108 hw init
++	for(i=0; i<(AC108_CHANNELS_MAX+3)/4; i++){	//(params_channels(params)+3)/4
++		ac108_hw_init(i2c_clt[i]);
++	}
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++
++	//AC108 set sample rate
++	for(i=0; i<ARRAY_SIZE(ac108_sample_rate); i++){
++		if(ac108_sample_rate[i].real_val == params_rate(params) / (AC108_ENCODING_EN ? AC108_ENCODING_CH_NUMS/2 : 1)){
++	        AC108_DEBUG("\n--->%s %d sample_rate.reg_val = %x\n",__func__, __LINE__, ac108_sample_rate[i].reg_val);
++			ac108_multi_chips_update_bits(ADC_SPRC, 0xf<<ADC_FS_I2S1, ac108_sample_rate[i].reg_val<<ADC_FS_I2S1);
++			break;
++		}
++	}
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++
++	//AC108 set channels
++#if !AC108_SDO2_EN
++	channels = params_channels(params) * (AC108_ENCODING_EN ? AC108_ENCODING_CH_NUMS/2 : 1);
++	for(i=0; i<(channels+3)/4; i++){
++		channels_en = (channels >= 4*(i+1)) ? 0x000f<<(4*i) : ((1<<(channels%4))-1)<<(4*i);
++		ac108_write(I2S_TX1_CTRL1, channels-1, i2c_clt[i]);
++		ac108_write(I2S_TX1_CTRL2, (u8)channels_en, i2c_clt[i]);
++		ac108_write(I2S_TX1_CTRL3, channels_en>>8, i2c_clt[i]);
++	}
++	for(; i<(AC108_CHANNELS_MAX+3)/4; i++){
++		ac108_write(I2S_TX1_CTRL1, 0, i2c_clt[i]);
++		ac108_write(I2S_TX1_CTRL2, 0, i2c_clt[i]);
++		ac108_write(I2S_TX1_CTRL3, 0, i2c_clt[i]);
++	}
++	
++#else
++	
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	channels = params_channels(params);
++	for(i=0; i<(channels+3)/4; i++){
++		channels_en = 0x03;//(2 >= 4*(i+1)) ? 0x000f<<(4*i) : ((1<<(2%4))-1)<<(4*i);
++		ac108_write(I2S_TX1_CTRL1, 2-1, i2c_clt[i]);
++		ac108_write(I2S_TX1_CTRL2, (u8)channels_en, i2c_clt[i]);
++		ac108_write(I2S_TX1_CTRL3, channels_en>>8, i2c_clt[i]);
++	}
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	for(; i<(AC108_CHANNELS_MAX+3)/4; i++){
++		ac108_write(I2S_TX1_CTRL1, 0, i2c_clt[i]);
++		ac108_write(I2S_TX1_CTRL2, 0, i2c_clt[i]);
++		ac108_write(I2S_TX1_CTRL3, 0, i2c_clt[i]);
++	}
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	for(i=0; i<(channels+3)/4; i++){
++		channels_en = 0x03;//(2 >= 4*(i+1)) ? 0x000f<<(4*i) : ((1<<(2%4))-1)<<(4*i);
++		ac108_write(I2S_TX2_CTRL1, 2-1, i2c_clt[i]);
++		ac108_write(I2S_TX2_CTRL2, (u8)channels_en, i2c_clt[i]);
++		ac108_write(I2S_TX2_CTRL3, channels_en>>8, i2c_clt[i]);
++	}
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	for(; i<(AC108_CHANNELS_MAX+3)/4; i++){
++		ac108_write(I2S_TX2_CTRL1, 0, i2c_clt[i]);
++		ac108_write(I2S_TX2_CTRL2, 0, i2c_clt[i]);
++		ac108_write(I2S_TX2_CTRL3, 0, i2c_clt[i]);
++	}
++#endif
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	//AC108 set sample resorution
++	switch (params_format(params)) {
++	case SNDRV_PCM_FORMAT_S8:
++		sample_resolution = 8;
++		break;
++	case SNDRV_PCM_FORMAT_S16_LE:
++		sample_resolution = 16;
++		break;
++	case SNDRV_PCM_FORMAT_S20_3LE:
++		sample_resolution = 20;
++		break;
++	case SNDRV_PCM_FORMAT_S24_LE:
++		sample_resolution = 24;
++		break;
++	case SNDRV_PCM_FORMAT_S32_LE:
++		sample_resolution = 32;
++		break;
++	default:
++		dev_err(dai->dev, "AC108 don't supported the sample resolution: %u\n", params_format(params));
++		return -EINVAL;
++	}
++	
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++  #if 0//AC108_ENCODING_EN
++	if(sample_resolution <= 24 && sample_resolution != 16)	sample_resolution += 4;		//TX Encoding mode, SR add 4bits to mark channel number
++  #endif
++	for(i=0; i<ARRAY_SIZE(ac108_sample_resolution); i++){
++		if(ac108_sample_resolution[i].real_val == sample_resolution){
++			ac108_multi_chips_update_bits(I2S_FMT_CTRL2, 0x7<<SAMPLE_RESOLUTION, ac108_sample_resolution[i].reg_val<<SAMPLE_RESOLUTION);
++			break;
++		}
++	}
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	ac108_read(SYSCLK_CTRL, &reg_val, i2c_clt[0]);
++	if(reg_val&0x80){			//PLLCLK Enable
++		//PLL Common voltage Enable, PLL Enable
++	    AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++		ac108_multi_chips_update_bits(PLL_CTRL1, 0x1<<PLL_EN | 0x1<<PLL_COM_EN, 0x1<<PLL_EN | 0x1<<PLL_COM_EN);
++		if(!(reg_val&0x08)){	//SYSCLK select MCLK
++	        AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++			//GPIO4 output Clock 24MHz from DPLL
++			ac108_multi_chips_update_bits(GPIO_CFG2, 0xf<<GPIO4_SELECT, 0x9<<GPIO4_SELECT);
++		}
++	}
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	//AC108 TX enable, Globle enable
++	ac108_multi_chips_update_bits(I2S_CTRL, 0x1<<TXEN | 0x1<<GEN, 0x1<<TXEN | 0x1<<GEN);
++
++	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	return 0;
++}
++
++static int ac108_hw_free(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
++{
++	AC108_DEBUG("\n--->%s\n",__FUNCTION__);
++
++	//AC108 I2S Globle disable
++	ac108_multi_chips_update_bits(I2S_CTRL, 0x1<<GEN, 0x0<<GEN);
++
++#if !AC108_IDLE_RESET_EN
++	//repair PLL version no sync problem && Encoding no DAT
++	ac108_multi_chips_update_bits(PLL_CTRL1, 0x1<<PLL_EN | 0x1<<PLL_COM_EN, 0x0<<PLL_EN | 0x0<<PLL_COM_EN);
++	ac108_multi_chips_update_bits(MOD_CLK_EN, 0x1<<I2S | 0x1<<ADC_DIGITAL, 0x0<<I2S | 0x0<<ADC_DIGITAL);
++	ac108_multi_chips_update_bits(MOD_RST_CTRL, 0x1<<I2S | 0x1<<ADC_DIGITAL, 0x0<<I2S | 0x0<<ADC_DIGITAL);
++
++#else
++
++	AC108_DEBUG("AC108 reset all register to their default value\n\n");
++	ac108_multi_chips_write(CHIP_AUDIO_RST, 0x12);
++#endif
++
++	return 0;
++}
++
++
++/*** define  ac108  dai_ops  struct ***/
++static const struct snd_soc_dai_ops ac108_dai_ops = {
++	/*DAI clocking configuration*/
++	.set_sysclk = ac108_set_sysclk,
++	.set_pll = ac108_set_pll,
++	.set_clkdiv = ac108_set_clkdiv,
++
++	/*ALSA PCM audio operations*/
++	.hw_params = ac108_hw_params,
++	.hw_free = ac108_hw_free,
++
++	/*DAI format configuration*/
++	.set_fmt = ac108_set_fmt,
++};
++
++/*** define  ac108  dai_driver struct ***/
++static const struct snd_soc_dai_driver ac108_dai0 = {
++	.name = "ac108-pcm0",
++	.capture = {
++		.stream_name = "Capture",
++		.channels_min = 1,
++		.channels_max = AC108_CHANNELS_MAX,
++		.rates = AC108_RATES,
++		.formats = AC108_FORMATS,
++	},
++	.ops = &ac108_dai_ops,
++};
++
++static const struct snd_soc_dai_driver ac108_dai1 = {
++	.name = "ac108-pcm1",
++	.capture = {
++		.stream_name = "Capture",
++		.channels_min = 1,
++		.channels_max = AC108_CHANNELS_MAX,
++		.rates = AC108_RATES,
++		.formats = AC108_FORMATS,
++	},
++	.ops = &ac108_dai_ops,
++};
++
++static const struct snd_soc_dai_driver ac108_dai2 = {
++	.name = "ac108-pcm2",
++	.capture = {
++		.stream_name = "Capture",
++		.channels_min = 1,
++		.channels_max = AC108_CHANNELS_MAX,
++		.rates = AC108_RATES,
++		.formats = AC108_FORMATS,
++	},
++	.ops = &ac108_dai_ops,
++};
++
++static const struct snd_soc_dai_driver ac108_dai3 = {
++	.name = "ac108-pcm3",
++	.capture = {
++		.stream_name = "Capture",
++		.channels_min = 1,
++		.channels_max = AC108_CHANNELS_MAX,
++		.rates = AC108_RATES,
++		.formats = AC108_FORMATS,
++	},
++	.ops = &ac108_dai_ops,
++};
++
++static const struct snd_soc_dai_driver *ac108_dai[] = {
++#if AC108_CHANNELS_MAX > 0
++	&ac108_dai0,
++#endif
++
++#if AC108_CHANNELS_MAX > 4
++	&ac108_dai1,
++#endif
++	
++#if AC108_CHANNELS_MAX > 8
++	&ac108_dai2,
++#endif
++
++#if AC108_CHANNELS_MAX > 12
++	&ac108_dai3,
++#endif
++};
++
++static int ac108_probe(struct snd_soc_codec *codec)
++{
++	struct ac108_priv *ac108 = dev_get_drvdata(codec->dev);
++	int ret = 0;
++	
++#if !AC108_CODEC_RW_TEST_EN
++	//ret = snd_soc_codec_set_cache_io(codec, ac108_regmap_config.reg_bits, ac108_regmap_config.val_bits, CONFIG_REGMAP_I2C);//8,8
++#else
++	codec->control_data = devm_regmap_init_i2c(ac108->i2c, &ac108_regmap_config);
++	ret = PTR_RET(codec->control_data);
++#endif
++	if (ret < 0) {
++		dev_err(codec->dev, "Failed to set cache I/O: %d\n", ret);
++		return ret;
++	}
++
++	ac108->codec = codec;
++
++	return 0;
++}
++
++static int ac108_remove(struct snd_soc_codec *codec)
++{
++	return 0;
++}
++
++
++#ifdef CONFIG_PM
++static int ac108_suspend(struct snd_soc_codec *codec)
++{
++	struct ac108_priv *ac108 = dev_get_drvdata(codec->dev);
++
++#if AC108_MATCH_DTS_EN
++	if (regulator_en && !IS_ERR(ac108->vol_supply.vcc3v3)) {
++		regulator_disable(ac108->vol_supply.vcc3v3);
++		regulator_en = 0;
++	}
++#endif
++
++	return 0;
++}
++
++static int ac108_resume(struct snd_soc_codec *codec)
++{
++	struct ac108_priv *ac108 = dev_get_drvdata(codec->dev);
++	int ret;
++	u8 i;
++
++#if AC108_MATCH_DTS_EN
++	if (!regulator_en && !IS_ERR(ac108->vol_supply.vcc3v3)) {
++		ret = regulator_enable(ac108->vol_supply.vcc3v3);
++		if(ret != 0)
++			pr_err("[AC108] %s: some error happen, fail to enable regulator!\n", __func__);
++		regulator_en = 1;
++	}
++#endif
++
++#if !AC108_IDLE_RESET_EN
++	for(i=0; i<(AC108_CHANNELS_MAX+3)/4; i++){
++		ac108_hw_init(i2c_clt[i]);
++	}
++#endif
++
++	return 0;
++}
++
++#else
++
++#define ac108_suspend 	NULL
++#define ac108_resume	NULL
++
++#endif
++
++static unsigned int ac108_codec_read(struct snd_soc_codec *codec, unsigned int reg)
++{
++	//AC108_DEBUG("\n--->%s\n",__FUNCTION__);
++	u8 val_r;
++	struct ac108_priv *ac108 = dev_get_drvdata(codec->dev);
++
++	ac108_read(reg, &val_r, ac108->i2c);
++	return val_r;
++}
++
++static int ac108_codec_write(struct snd_soc_codec *codec, unsigned int reg, unsigned int value)
++{
++	//AC108_DEBUG("\n--->%s\n",__FUNCTION__);
++	ac108_multi_chips_write(reg, value);
++	return 0;
++}
++
++
++/*** define  ac108  codec_driver struct ***/
++static const struct snd_soc_codec_driver ac108_soc_codec_driver = {
++	.probe = ac108_probe,
++	.remove = ac108_remove,
++	.suspend = ac108_suspend,
++	.resume = ac108_resume,
++
++#if AC108_CODEC_RW_TEST_EN
++	.read = ac108_codec_read,
++	.write = ac108_codec_write,
++#endif
++	
++#if AC108_DAPM_TEST_EN
++	.controls = ac108_controls,
++	.num_controls = ARRAY_SIZE(ac108_controls),
++	.dapm_widgets = ac108_dapm_widgets,
++	.num_dapm_widgets = ARRAY_SIZE(ac108_dapm_widgets),
++	.dapm_routes = ac108_dapm_routes,
++	.num_dapm_routes = ARRAY_SIZE(ac108_dapm_routes),
++#endif
++};
++
++
++static ssize_t ac108_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
++{
++	int val=0, flag=0;
++	u8 i=0, reg, num, value_w, value_r;
++	
++	struct ac108_priv *ac108 = dev_get_drvdata(dev);
++	val = simple_strtol(buf, NULL, 16);
++	flag = (val >> 16) & 0xFF;
++	
++	if (flag) {
++		reg = (val >> 8) & 0xFF;
++		value_w = val & 0xFF;
++		printk("\nWrite: start REG:0x%02x,val:0x%02x,count:0x%02x\n", reg, value_w, flag);
++		while(flag--){
++			ac108_write(reg, value_w, ac108->i2c);
++			printk("Write 0x%02x to REG:0x%02x\n", value_w, reg);
++			reg++;
++		}
++	} else {
++		reg = (val >> 8) & 0xFF;
++		num = val & 0xff;
++		printk("\nRead: start REG:0x%02x,count:0x%02x\n", reg, num);
++		
++		do {
++			value_r = 0;
++			ac108_read(reg, &value_r, ac108->i2c);
++			printk("REG[0x%02x]: 0x%02x;  ", reg, value_r);
++			reg++;
++			i++;
++			if ((i==num) || (i%4==0))	printk("\n");
++		} while (i<num);
++	}
++	
++	return count;
++}
++
++static ssize_t ac108_show(struct device *dev, struct device_attribute *attr, char *buf)
++{
++	printk("/*** AC108 driver version: V3.0 ***/\n");
++	printk("echo flag|reg|val > ac108\n");
++	printk("eg->read start addres=0x06,count=0x10: echo 0610 >ac108\n");
++	printk("eg->write start addres=0x90,value=0x3c,count=0x4: echo 4903c >ac108\n");
++	//printk("eg write value:0xfe to address:0x06 :echo 106fe > ac108\n");
++	return 0;
++}
++
++static DEVICE_ATTR(ac108, 0644, ac108_show, ac108_store);
++
++static struct attribute *ac108_debug_attrs[] = {
++	&dev_attr_ac108.attr,
++	NULL,
++};
++
++static struct attribute_group ac108_debug_attr_group = {
++	.name   = "ac108_debug",
++	.attrs  = ac108_debug_attrs,
++};
++
++
++static int ac108_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *i2c_id)
++{
++	struct ac108_priv *ac108;
++	struct device_node *np = i2c->dev.of_node;
++	char *regulator_name = NULL;
++	int ret = 0;
++
++	ac108 = devm_kzalloc(&i2c->dev, sizeof(struct ac108_priv), GFP_KERNEL);
++	if (ac108 == NULL) {
++		dev_err(&i2c->dev, "Unable to allocate ac108 private data\n");
++		return -ENOMEM;
++	}
++	
++	ac108->i2c = i2c;
++	dev_set_drvdata(&i2c->dev, ac108);
++
++#if AC108_MATCH_DTS_EN
++	if (!regulator_en) {
++		ret = of_property_read_string(np, AC108_REGULATOR_NAME, &regulator_name);//(const char**)
++		if (ret) {
++			pr_err("get ac108 regulator name failed \n");
++		} else {
++			ac108->vol_supply.vcc3v3 = regulator_get(NULL, regulator_name);
++			if (IS_ERR(ac108->vol_supply.vcc3v3) || !ac108->vol_supply.vcc3v3) {
++				pr_err("get ac108 audio-3v3 failed, return!\n");
++				return -EFAULT;
++			}
++			regulator_set_voltage(ac108->vol_supply.vcc3v3, 3300000, 3300000);
++			ret = regulator_enable(ac108->vol_supply.vcc3v3);
++			if(ret != 0)
++				pr_err("[AC108] %s: some error happen, fail to enable regulator!\n", __func__);
++			regulator_en = 1;
++		}
++	}
++#endif
++
++	if (i2c_id->driver_data < (AC108_CHANNELS_MAX+3)/4) {
++		i2c_clt[i2c_id->driver_data] = i2c;
++		ret = snd_soc_register_codec(&i2c->dev, &ac108_soc_codec_driver, ac108_dai[i2c_id->driver_data], 1);//(struct snd_soc_dai_driver *)
++		if (ret < 0) {
++			dev_err(&i2c->dev, "Failed to register ac108 codec: %d\n", ret);
++		}
++	  #if AC108_POWERON_RESET_EN
++	  	ac108_write(CHIP_AUDIO_RST, 0x12, i2c);
++	  #endif
++	  #if !AC108_IDLE_RESET_EN
++		ac108_hw_init(i2c);
++	  #endif
++	} else {
++		pr_err("The wrong i2c_id number :%d\n", (int)(i2c_id->driver_data));
++	}
++
++	ac108->mclk_rx = devm_clk_get(&i2c->dev, "mclk_rx");
++	if (IS_ERR(ac108->mclk_rx)) {
++		pr_err("Can't get acodec mclk_rx\n");
++		return PTR_ERR(ac108->mclk_rx);
++	}
++
++	ret = clk_prepare_enable(ac108->mclk_rx);
++	if (ret < 0) {
++		pr_err("Failed to enable acodec pclk: %d\n", ret);
++		return ret;
++	}
++    
++    ac108->grf = syscon_regmap_lookup_by_phandle(np, "rockchip,grf");
++    if (IS_ERR(ac108->grf))
++    {
++        pr_err("Missing rockchip,grf property\n");
++        return PTR_ERR(ac108->grf);
++    }
++    regmap_write(ac108->grf, GRF_SOC_CON2, 0x04000400);
++
++	ret = sysfs_create_group(&i2c->dev.kobj, &ac108_debug_attr_group);
++	if (ret) {
++		pr_err("failed to create attr group\n");
++	}
++	
++	return ret;
++}
++
++static int ac108_i2c_remove(struct i2c_client *i2c)
++{
++	//sysfs_remove_group(&i2c->dev.kobj, &ac108_debug_attr_group);
++	snd_soc_unregister_codec(&i2c->dev);
++	return 0;
++}
++
++//I2C devices register method_3: i2c_detect
++static int ac108_i2c_detect(struct i2c_client *client, struct i2c_board_info *info)
++{
++	u8 ac108_chip_id;
++	struct i2c_adapter *adapter = client->adapter;
++
++	ac108_read(CHIP_AUDIO_RST, &ac108_chip_id, client);
++	AC108_DEBUG("\nAC108_Chip_ID on I2C-%d:0x%02X\n", adapter->nr, ac108_chip_id);
++
++	if (ac108_chip_id == 0x4A) {
++		if(client->addr == 0x3b) {
++			strlcpy(info->type, "MicArray_0", I2C_NAME_SIZE);
++			return 0;
++		} else if (client->addr == 0x35) {
++			strlcpy(info->type, "MicArray_1", I2C_NAME_SIZE);
++			return 0;
++		} else if (client->addr == 0x3c) {
++			strlcpy(info->type, "MicArray_2", I2C_NAME_SIZE);
++			return 0;
++		} else if (client->addr == 0x36) {
++			strlcpy(info->type, "MicArray_3", I2C_NAME_SIZE);
++			return 0;
++		}
++	}
++
++	return -ENODEV;
++}
++
++//I2C devices address used in register method_3
++static const unsigned short ac108_i2c_addr[] = {
++#if AC108_CHANNELS_MAX > 0
++	0x3b,
++#endif
++
++#if AC108_CHANNELS_MAX > 4
++	0x35,
++#endif
++
++#if AC108_CHANNELS_MAX > 8
++	0x3c,
++#endif
++
++#if AC108_CHANNELS_MAX > 12
++	0x36,
++#endif
++
++	I2C_CLIENT_END,
++};
++
++//I2C devices register method_1: i2c_board_info (i2c_register_board_info)
++//I2C devices register method_2: device tree source (in .dts file)
++static struct i2c_board_info ac108_i2c_board_info[] = {
++#if AC108_CHANNELS_MAX > 0
++	{I2C_BOARD_INFO("MicArray_0", 0x3b),},//ac108_0
++#endif
++
++#if AC108_CHANNELS_MAX > 4
++	{I2C_BOARD_INFO("MicArray_1", 0x35),},//ac108_1
++#endif
++
++#if AC108_CHANNELS_MAX > 8
++	{I2C_BOARD_INFO("MicArray_2", 0x3c),},//ac108_2
++#endif
++
++#if AC108_CHANNELS_MAX > 12
++	{I2C_BOARD_INFO("MicArray_3", 0x36),},//ac108_3
++#endif
++};
++
++//I2C driver and devices match method_1: i2c_device_id
++static const struct i2c_device_id ac108_i2c_id[] = {
++#if AC108_CHANNELS_MAX > 0
++	{ "MicArray_0", 0 },//ac108_0
++#endif
++
++#if AC108_CHANNELS_MAX > 4
++	{ "MicArray_1", 1 },//ac108_1
++#endif
++
++#if AC108_CHANNELS_MAX > 8
++	{ "MicArray_2", 2 },//ac108_2
++#endif
++
++#if AC108_CHANNELS_MAX > 12
++	{ "MicArray_3", 3 },//ac108_3
++#endif
++	{ }
++};
++MODULE_DEVICE_TABLE(i2c, ac108_i2c_id);
++
++//I2C driver and devices match method_2: of_device_id (devices tree)
++static const struct of_device_id ac108_dt_ids[] = {
++#if AC108_CHANNELS_MAX > 0
++	{ .compatible = "MicArray_0", },//ac108_0
++#endif
++
++#if AC108_CHANNELS_MAX > 4
++	{ .compatible = "MicArray_1", },//ac108_1
++#endif
++
++#if AC108_CHANNELS_MAX > 8
++	{ .compatible = "MicArray_2", },//ac108_2
++#endif
++
++#if AC108_CHANNELS_MAX > 12
++	{ .compatible = "MicArray_3", },//ac108_3
++#endif
++};
++MODULE_DEVICE_TABLE(of, ac108_dt_ids);
++
++static struct i2c_driver ac108_i2c_driver = {
++	.class = I2C_CLASS_HWMON,
++	.driver = {
++		.name = "ac108",
++		.owner = THIS_MODULE,
++#if AC108_MATCH_DTS_EN
++		.of_match_table = ac108_dt_ids,
++#endif
++	},
++	.probe = ac108_i2c_probe,
++	.remove = ac108_i2c_remove,
++	.id_table = ac108_i2c_id,
++#if !AC108_MATCH_DTS_EN
++	.address_list = ac108_i2c_addr,
++	.detect = ac108_i2c_detect,
++#endif
++};
++
++static int __init ac108_init(void)
++{
++	int ret ;
++	ret = i2c_add_driver(&ac108_i2c_driver);
++	if (ret != 0)
++		pr_err("Failed to register ac108 i2c driver : %d \n", ret);
++	
++	return ret;
++}
++module_init(ac108_init);
++
++static void __exit ac108_exit(void)
++{
++	i2c_del_driver(&ac108_i2c_driver);
++}
++module_exit(ac108_exit);
++
++MODULE_DESCRIPTION("ASoC ac108 codec driver");
++MODULE_AUTHOR("panjunwen");
++MODULE_LICENSE("GPL");
++
+diff --git a/sound/soc/codecs/ac108.h b/sound/soc/codecs/ac108.h
+new file mode 100755
+index 000000000000..1688f8763044
+--- /dev/null
++++ b/sound/soc/codecs/ac108.h
+@@ -0,0 +1,810 @@
++/*
++ * ac108.h --  ac108 ALSA Soc Audio driver
++ *
++ * Version: 3.0
++ *
++ * Author: panjunwen
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ *
++ */
++
++#ifndef _AC108_H
++#define _AC108_H
++
++
++/*** AC108 Codec Register Define***/
++
++//Chip Reset
++#define CHIP_AUDIO_RST		0x00
++
++//Power Control
++#define PWR_CTRL1			0x01
++#define PWR_CTRL2			0x02
++#define PWR_CTRL3			0x03
++#define PWR_CTRL4			0x04
++#define PWR_CTRL5			0x05
++#define PWR_CTRL6			0x06
++#define PWR_CTRL7			0x07
++#define PWR_CTRL8			0x08
++#define PWR_CTRL9			0x09
++
++//PLL Configure Control
++#define PLL_CTRL1			0x10
++#define PLL_CTRL2			0x11
++#define PLL_CTRL3			0x12
++#define PLL_CTRL4			0x13
++#define PLL_CTRL5			0x14
++#define PLL_CTRL6			0x16
++#define PLL_CTRL7			0x17
++#define PLL_LOCK_CTRL		0x18
++
++//System Clock Control
++#define SYSCLK_CTRL			0x20
++#define MOD_CLK_EN			0x21
++#define MOD_RST_CTRL		0x22
++#define DSM_CLK_CTRL		0x25
++
++//I2S Common Control
++#define I2S_CTRL			0x30
++#define I2S_BCLK_CTRL		0x31
++#define I2S_LRCK_CTRL1		0x32
++#define I2S_LRCK_CTRL2		0x33
++#define I2S_FMT_CTRL1		0x34
++#define I2S_FMT_CTRL2		0x35
++#define I2S_FMT_CTRL3		0x36
++
++//I2S TX1 Control
++#define I2S_TX1_CTRL1		0x38
++#define I2S_TX1_CTRL2		0x39
++#define I2S_TX1_CTRL3		0x3A
++#define I2S_TX1_CHMP_CTRL1	0x3C
++#define I2S_TX1_CHMP_CTRL2	0x3D
++#define I2S_TX1_CHMP_CTRL3	0x3E
++#define I2S_TX1_CHMP_CTRL4	0x3F
++
++//I2S TX2 Control
++#define I2S_TX2_CTRL1		0x40
++#define I2S_TX2_CTRL2		0x41
++#define I2S_TX2_CTRL3		0x42
++#define I2S_TX2_CHMP_CTRL1	0x44
++#define I2S_TX2_CHMP_CTRL2	0x45
++#define I2S_TX2_CHMP_CTRL3	0x46
++#define I2S_TX2_CHMP_CTRL4	0x47
++
++//I2S RX1 Control
++#define I2S_RX1_CTRL1		0x50
++#define I2S_RX1_CHMP_CTRL1	0x54
++#define I2S_RX1_CHMP_CTRL2	0x55
++#define I2S_RX1_CHMP_CTRL3	0x56
++#define I2S_RX1_CHMP_CTRL4	0x57
++
++//I2S Loopback Debug
++#define I2S_LPB_DEBUG		0x58
++
++//ADC Common Control
++#define ADC_SPRC			0x60
++#define ADC_DIG_EN			0x61
++#define DMIC_EN				0x62
++#define ADC_DSR				0x63
++#define ADC_FIR				0x64
++#define ADC_DDT_CTRL		0x65
++
++//HPF Control
++#define HPF_EN				0x66
++#define HPF_COEF_REGH1		0x67
++#define HPF_COEF_REGH2		0x68
++#define HPF_COEF_REGL1		0x69
++#define HPF_COEF_REGL2		0x6A
++#define HPF_GAIN_REGH1		0x6B
++#define HPF_GAIN_REGH2		0x6C
++#define HPF_GAIN_REGL1		0x6D
++#define HPF_GAIN_REGL2		0x6E
++
++//ADC Digital Channel Volume Control
++#define ADC1_DVOL_CTRL		0x70
++#define ADC2_DVOL_CTRL		0x71
++#define ADC3_DVOL_CTRL		0x72
++#define ADC4_DVOL_CTRL		0x73
++
++//ADC Digital Mixer Source and Gain Control
++#define ADC1_DMIX_SRC		0x76
++#define ADC2_DMIX_SRC		0x77
++#define ADC3_DMIX_SRC		0x78
++#define ADC4_DMIX_SRC		0x79
++
++//ADC Digital Debug Control
++#define ADC_DIG_DEBUG		0x7F
++
++//I2S Pad Drive Control
++#define I2S_DAT_PADDRV_CTRL	0x80
++#define I2S_CLK_PADDRV_CTRL	0x81
++
++//Analog PGA Control
++#define ANA_PGA1_CTRL		0x90
++#define ANA_PGA2_CTRL		0x91
++#define ANA_PGA3_CTRL		0x92
++#define ANA_PGA4_CTRL		0x93
++
++//MIC Offset Control
++#define MIC_OFFSET_CTRL1	0x96
++#define MIC_OFFSET_CTRL2	0x97
++#define MIC1_OFFSET_STATU1	0x98
++#define MIC1_OFFSET_STATU2	0x99
++#define MIC2_OFFSET_STATU1	0x9A
++#define MIC2_OFFSET_STATU2	0x9B
++#define MIC3_OFFSET_STATU1	0x9C
++#define MIC3_OFFSET_STATU2	0x9D
++#define MIC4_OFFSET_STATU1	0x9E
++#define MIC4_OFFSET_STATU2	0x9F
++
++//ADC1 Analog Control
++#define ANA_ADC1_CTRL1		0xA0
++#define ANA_ADC1_CTRL2		0xA1
++#define ANA_ADC1_CTRL3		0xA2
++#define ANA_ADC1_CTRL4		0xA3
++#define ANA_ADC1_CTRL5		0xA4
++#define ANA_ADC1_CTRL6		0xA5
++#define ANA_ADC1_CTRL7		0xA6
++
++//ADC2 Analog Control
++#define ANA_ADC2_CTRL1		0xA7
++#define ANA_ADC2_CTRL2		0xA8
++#define ANA_ADC2_CTRL3		0xA9
++#define ANA_ADC2_CTRL4		0xAA
++#define ANA_ADC2_CTRL5		0xAB
++#define ANA_ADC2_CTRL6		0xAC
++#define ANA_ADC2_CTRL7		0xAD
++
++//ADC3 Analog Control
++#define ANA_ADC3_CTRL1		0xAE
++#define ANA_ADC3_CTRL2		0xAF
++#define ANA_ADC3_CTRL3		0xB0
++#define ANA_ADC3_CTRL4		0xB1
++#define ANA_ADC3_CTRL5		0xB2
++#define ANA_ADC3_CTRL6		0xB3
++#define ANA_ADC3_CTRL7		0xB4
++
++//ADC4 Analog Control
++#define ANA_ADC4_CTRL1		0xB5
++#define ANA_ADC4_CTRL2		0xB6
++#define ANA_ADC4_CTRL3		0xB7
++#define ANA_ADC4_CTRL4		0xB8
++#define ANA_ADC4_CTRL5		0xB9
++#define ANA_ADC4_CTRL6		0xBA
++#define ANA_ADC4_CTRL7		0xBB
++
++//GPIO Configure
++#define GPIO_CFG1			0xC0
++#define GPIO_CFG2			0xC1
++#define GPIO_DAT			0xC2
++#define GPIO_DRV			0xC3
++#define GPIO_PULL			0xC4
++#define GPIO_INT_CFG		0xC5
++#define GPIO_INT_EN			0xC6
++#define GPIO_INT_STATUS		0xC7
++
++//Misc
++#define BGTC_DAT			0xD1
++#define BGVC_DAT			0xD2
++#define PRNG_CLK_CTRL		0xDF
++
++
++
++/*** AC108 Codec Register Bit Define***/
++
++/*PWR_CTRL1*/
++#define CP12_CTRL				4
++#define CP12_SENSE_SELECT		3
++
++/*PWR_CTRL2*/
++#define CP12_SENSE_FILT			6
++#define CP12_COMP_FF_EN			3
++#define CP12_FORCE_ENABLE		2
++#define CP12_FORCE_RSTB			1
++
++/*PWR_CTRL3*/
++#define LDO33DIG_CTRL			0
++
++/*PWR_CTRL6*/
++#define LDO33ANA_2XHDRM			2
++#define LDO33ANA_ENABLE			0
++
++/*PWR_CTRL7*/
++#define VREF_SEL				3
++#define VREF_FASTSTART_ENABLE	1
++#define VREF_ENABLE				0
++
++/*PWR_CTRL9*/
++#define VREFP_FASTSTART_ENABLE	7
++#define VREFP_RESCTRL			5
++#define VREFP_LPMODE			4
++#define IGEN_TRIM				1
++#define VREFP_ENABLE			0
++
++
++/*PLL_CTRL1*/
++#define PLL_IBIAS				4
++#define PLL_NDET				3
++#define PLL_LOCKED_STATUS		2
++#define PLL_COM_EN				1
++#define PLL_EN					0
++
++/*PLL_CTRL2*/
++#define PLL_PREDIV2				5
++#define PLL_PREDIV1				0
++
++/*PLL_CTRL3*/
++#define PLL_LOOPDIV_MSB			0
++
++/*PLL_CTRL4*/
++#define PLL_LOOPDIV_LSB			0
++
++/*PLL_CTRL5*/
++#define PLL_POSTDIV2			5
++#define PLL_POSTDIV1			0
++
++/*PLL_CTRL6*/
++#define PLL_LDO					6
++#define PLL_CP					0
++
++/*PLL_CTRL7*/
++#define PLL_CAP					6
++#define PLL_RES					4
++#define PLL_TEST_EN				0
++
++/*PLL_LOCK_CTRL*/
++#define LOCK_LEVEL1				2
++#define LOCK_LEVEL2				1
++#define PLL_LOCK_EN				0
++
++
++/*SYSCLK_CTRL*/
++#define PLLCLK_EN				7
++#define PLLCLK_SRC				4
++#define SYSCLK_SRC				3
++#define SYSCLK_EN				0
++
++/*MOD_CLK_EN & MOD_RST_CTRL*/
++#define I2S						7
++#define ADC_DIGITAL				4
++#define MIC_OFFSET_CALIBRATION	1
++#define ADC_ANALOG				0
++
++/*DSM_CLK_CTRL*/
++#define MIC_OFFSET_DIV			4
++#define DSM_CLK_SEL				0
++
++
++/*I2S_CTRL*/
++#define BCLK_IOEN				7
++#define LRCK_IOEN				6
++#define SDO2_EN					5
++#define SDO1_EN					4
++#define TXEN					2
++#define RXEN					1
++#define GEN						0
++
++/*I2S_BCLK_CTRL*/
++#define EDGE_TRANSFER			5
++#define BCLK_POLARITY			4
++#define BCLKDIV					0
++
++/*I2S_LRCK_CTRL1*/
++#define LRCK_POLARITY			4
++#define LRCK_PERIODH			0
++
++/*I2S_LRCK_CTRL2*/
++#define LRCK_PERIODL			0
++
++/*I2S_FMT_CTRL1*/
++#define ENCD_SEL				6
++#define MODE_SEL				4
++#define TX2_OFFSET				3
++#define TX1_OFFSET				2
++#define TX_SLOT_HIZ				1
++#define TX_STATE				0
++
++/*I2S_FMT_CTRL2*/
++#define SLOT_WIDTH_SEL			4
++#define SAMPLE_RESOLUTION		0
++
++/*I2S_FMT_CTRL3*/
++#define TX_MLS					7
++#define SEXT					5
++#define OUT2_MUTE				4
++#define OUT1_MUTE				3
++#define LRCK_WIDTH				2
++#define TX_PDM					0
++
++
++/*I2S_TX1_CTRL1*/
++#define TX1_CHSEL				0
++
++/*I2S_TX1_CTRL2*/
++#define TX1_CH8_EN				7
++#define TX1_CH7_EN				6
++#define TX1_CH6_EN				5
++#define TX1_CH5_EN				4
++#define TX1_CH4_EN				3
++#define TX1_CH3_EN				2
++#define TX1_CH2_EN				1
++#define TX1_CH1_EN				0
++
++/*I2S_TX1_CTRL3*/
++#define TX1_CH16_EN				7
++#define TX1_CH15_EN				6
++#define TX1_CH14_EN				5
++#define TX1_CH13_EN				4
++#define TX1_CH12_EN				3
++#define TX1_CH11_EN				2
++#define TX1_CH10_EN				1
++#define TX1_CH9_EN				0
++
++/*I2S_TX1_CHMP_CTRL1*/
++#define TX1_CH4_MAP				6
++#define TX1_CH3_MAP				4
++#define TX1_CH2_MAP				2
++#define TX1_CH1_MAP				0
++
++/*I2S_TX1_CHMP_CTRL2*/
++#define TX1_CH8_MAP				6
++#define TX1_CH7_MAP				4
++#define TX1_CH6_MAP				2
++#define TX1_CH5_MAP				0
++
++/*I2S_TX1_CHMP_CTRL3*/
++#define TX1_CH12_MAP			6
++#define TX1_CH11_MAP			4
++#define TX1_CH10_MAP			2
++#define TX1_CH9_MAP				0
++
++/*I2S_TX1_CHMP_CTRL4*/
++#define TX1_CH16_MAP			6
++#define TX1_CH15_MAP			4
++#define TX1_CH14_MAP			2
++#define TX1_CH13_MAP			0
++
++
++/*I2S_TX2_CTRL1*/
++#define TX2_CHSEL				0
++
++/*I2S_TX2_CHMP_CTRL1*/
++#define TX2_CH4_MAP				6
++#define TX2_CH3_MAP				4
++#define TX2_CH2_MAP				2
++#define TX2_CH1_MAP				0
++
++/*I2S_TX2_CHMP_CTRL2*/
++#define TX2_CH8_MAP				6
++#define TX2_CH7_MAP				4
++#define TX2_CH6_MAP				2
++#define TX2_CH5_MAP				0
++
++/*I2S_TX2_CHMP_CTRL3*/
++#define TX2_CH12_MAP			6
++#define TX2_CH11_MAP			4
++#define TX2_CH10_MAP			2
++#define TX2_CH9_MAP				0
++
++/*I2S_TX2_CHMP_CTRL4*/
++#define TX2_CH16_MAP			6
++#define TX2_CH15_MAP			4
++#define TX2_CH14_MAP			2
++#define TX2_CH13_MAP			0
++
++
++/*I2S_RX1_CTRL1*/
++#define RX1_CHSEL				0
++
++/*I2S_RX1_CHMP_CTRL1*/
++#define RX1_CH4_MAP				6
++#define RX1_CH3_MAP				4
++#define RX1_CH2_MAP				2
++#define RX1_CH1_MAP				0
++
++/*I2S_RX1_CHMP_CTRL2*/
++#define RX1_CH8_MAP				6
++#define RX1_CH7_MAP				4
++#define RX1_CH6_MAP				2
++#define RX1_CH5_MAP				0
++
++/*I2S_RX1_CHMP_CTRL3*/
++#define RX1_CH12_MAP			6
++#define RX1_CH11_MAP			4
++#define RX1_CH10_MAP			2
++#define RX1_CH9_MAP				0
++
++/*I2S_RX1_CHMP_CTRL4*/
++#define RX1_CH16_MAP			6
++#define RX1_CH15_MAP			4
++#define RX1_CH14_MAP			2
++#define RX1_CH13_MAP			0
++
++
++/*I2S_LPB_DEBUG*/
++#define I2S_LPB_DEBUG_EN		0
++
++
++/*ADC_SPRC*/
++#define ADC_FS_I2S1				0
++
++/*ADC_DIG_EN*/
++#define DG_EN					4
++#define ENAD4					3
++#define ENAD3					2
++#define ENAD2					1
++#define ENAD1					0
++
++/*DMIC_EN*/
++#define DMIC2_EN				1
++#define DMIC1_EN				0
++
++/*ADC_DSR*/
++#define DIG_ADC4_SRS			6
++#define DIG_ADC3_SRS			4
++#define DIG_ADC2_SRS			2
++#define DIG_ADC1_SRS			0
++
++/*ADC_DDT_CTRL*/
++#define ADOUT_DLY_EN			2
++#define ADOUT_DTS				0
++
++
++/*HPF_EN*/
++#define DIG_ADC4_HPF_EN			3
++#define DIG_ADC3_HPF_EN			2
++#define DIG_ADC2_HPF_EN			1
++#define DIG_ADC1_HPF_EN			0
++
++
++/*ADC1_DMIX_SRC*/
++#define ADC1_ADC4_DMXL_GC		7
++#define ADC1_ADC3_DMXL_GC		6
++#define ADC1_ADC2_DMXL_GC		5
++#define ADC1_ADC1_DMXL_GC		4
++#define ADC1_ADC4_DMXL_SRC		3
++#define ADC1_ADC3_DMXL_SRC		2
++#define ADC1_ADC2_DMXL_SRC		1
++#define ADC1_ADC1_DMXL_SRC		0
++
++/*ADC2_DMIX_SRC*/
++#define ADC2_ADC4_DMXL_GC		7
++#define ADC2_ADC3_DMXL_GC		6
++#define ADC2_ADC2_DMXL_GC		5
++#define ADC2_ADC1_DMXL_GC		4
++#define ADC2_ADC4_DMXL_SRC		3
++#define ADC2_ADC3_DMXL_SRC		2
++#define ADC2_ADC2_DMXL_SRC		1
++#define ADC2_ADC1_DMXL_SRC		0
++
++/*ADC3_DMIX_SRC*/
++#define ADC3_ADC4_DMXL_GC		7
++#define ADC3_ADC3_DMXL_GC		6
++#define ADC3_ADC2_DMXL_GC		5
++#define ADC3_ADC1_DMXL_GC		4
++#define ADC3_ADC4_DMXL_SRC		3
++#define ADC3_ADC3_DMXL_SRC		2
++#define ADC3_ADC2_DMXL_SRC		1
++#define ADC3_ADC1_DMXL_SRC		0
++
++/*ADC4_DMIX_SRC*/
++#define ADC4_ADC4_DMXL_GC		7
++#define ADC4_ADC3_DMXL_GC		6
++#define ADC4_ADC2_DMXL_GC		5
++#define ADC4_ADC1_DMXL_GC		4
++#define ADC4_ADC4_DMXL_SRC		3
++#define ADC4_ADC3_DMXL_SRC		2
++#define ADC4_ADC2_DMXL_SRC		1
++#define ADC4_ADC1_DMXL_SRC		0
++
++
++/*ADC_DIG_DEBUG*/
++#define ADC_PTN_SEL				0
++
++
++/*I2S_DAT_PADDRV_CTRL*/
++#define TX2_DAT_DRV				4
++#define TX1_DAT_DRV				0
++
++/*I2S_CLK_PADDRV_CTRL*/
++#define LRCK_DRV				4
++#define BCLK_DRV				0
++
++
++/*ANA_PGA1_CTRL*/
++#define ADC1_ANALOG_PGA			1
++#define ADC1_ANALOG_PGA_STEP	0
++
++/*ANA_PGA2_CTRL*/
++#define ADC2_ANALOG_PGA			1
++#define ADC2_ANALOG_PGA_STEP	0
++
++/*ANA_PGA3_CTRL*/
++#define ADC3_ANALOG_PGA			1
++#define ADC3_ANALOG_PGA_STEP	0
++
++/*ANA_PGA4_CTRL*/
++#define ADC4_ANALOG_PGA			1
++#define ADC4_ANALOG_PGA_STEP	0
++
++
++/*MIC_OFFSET_CTRL1*/
++#define MIC_OFFSET_CAL_EN4		3
++#define MIC_OFFSET_CAL_EN3		2
++#define MIC_OFFSET_CAL_EN2		1
++#define MIC_OFFSET_CAL_EN1		0
++
++/*MIC_OFFSET_CTRL2*/
++#define MIC_OFFSET_CAL_GAIN		3
++#define MIC_OFFSET_CAL_CHANNEL	1
++#define MIC_OFFSET_CAL_EN_ONCE	0
++
++/*MIC1_OFFSET_STATU1*/
++#define MIC1_OFFSET_CAL_DONE	7
++#define MIC1_OFFSET_CAL_RUN_STA	6
++#define MIC1_OFFSET_MSB			0
++
++/*MIC1_OFFSET_STATU2*/
++#define MIC1_OFFSET_LSB			0
++
++/*MIC2_OFFSET_STATU1*/
++#define MIC2_OFFSET_CAL_DONE	7
++#define MIC2_OFFSET_CAL_RUN_STA	6
++#define MIC2_OFFSET_MSB			0
++
++/*MIC2_OFFSET_STATU2*/
++#define MIC2_OFFSET_LSB			0
++
++/*MIC3_OFFSET_STATU1*/
++#define MIC3_OFFSET_CAL_DONE	7
++#define MIC3_OFFSET_CAL_RUN_STA	6
++#define MIC3_OFFSET_MSB			0
++
++/*MIC3_OFFSET_STATU2*/
++#define MIC3_OFFSET_LSB			0
++
++/*MIC4_OFFSET_STATU1*/
++#define MIC4_OFFSET_CAL_DONE	7
++#define MIC4_OFFSET_CAL_RUN_STA	6
++#define MIC4_OFFSET_MSB			0
++
++/*MIC4_OFFSET_STATU2*/
++#define MIC4_OFFSET_LSB			0
++
++
++/*ANA_ADC1_CTRL1*/
++#define ADC1_PGA_BYPASS			7
++#define ADC1_PGA_BYP_RCM		6
++#define ADC1_PGA_CTRL_RCM		4
++#define ADC1_PGA_MUTE			3
++#define ADC1_DSM_ENABLE			2
++#define ADC1_PGA_ENABLE			1
++#define ADC1_MICBIAS_EN			0
++
++/*ANA_ADC1_CTRL3*/
++#define ADC1_ANA_CAL_EN			5
++#define ADC1_SEL_OUT_EDGE		3
++#define ADC1_DSM_DISABLE		2
++#define ADC1_VREFP_DISABLE		1
++#define ADC1_AAF_DISABLE		0
++
++/*ANA_ADC1_CTRL6*/
++#define PGA_CTRL_TC				6
++#define PGA_CTRL_RC				4
++#define PGA_CTRL_I_LIN			2
++#define PGA_CTRL_I_IN			0
++
++/*ANA_ADC1_CTRL7*/
++#define PGA_CTRL_HI_Z			7
++#define PGA_CTRL_SHORT_RF		6
++#define PGA_CTRL_VCM_VG			4
++#define PGA_CTRL_VCM_IN			0
++
++
++/*ANA_ADC2_CTRL1*/
++#define ADC2_PGA_BYPASS			7
++#define ADC2_PGA_BYP_RCM		6
++#define ADC2_PGA_CTRL_RCM		4
++#define ADC2_PGA_MUTE			3
++#define ADC2_DSM_ENABLE			2
++#define ADC2_PGA_ENABLE			1
++#define ADC2_MICBIAS_EN			0
++
++/*ANA_ADC2_CTRL3*/
++#define ADC2_ANA_CAL_EN			5
++#define ADC2_SEL_OUT_EDGE		3
++#define ADC2_DSM_DISABLE		2
++#define ADC2_VREFP_DISABLE		1
++#define ADC2_AAF_DISABLE		0
++
++/*ANA_ADC2_CTRL6*/
++#define PGA_CTRL_IBOOST			7
++#define PGA_CTRL_IQCTRL			6
++#define PGA_CTRL_OABIAS			4
++#define PGA_CTRL_CMLP_DIS		3
++#define PGA_CTRL_PDB_RIN		2
++#define PGA_CTRL_PEAKDET		0
++
++/*ANA_ADC2_CTRL7*/
++#define AAF_LPMODE_EN			7
++#define AAF_STG2_IB_SEL			4
++#define AAFDSM_IB_DIV2			3
++#define AAF_STG1_IB_SEL			0
++
++
++/*ANA_ADC3_CTRL1*/
++#define ADC3_PGA_BYPASS			7
++#define ADC3_PGA_BYP_RCM		6
++#define ADC3_PGA_CTRL_RCM		4
++#define ADC3_PGA_MUTE			3
++#define ADC3_DSM_ENABLE			2
++#define ADC3_PGA_ENABLE			1
++#define ADC3_MICBIAS_EN			0
++
++/*ANA_ADC3_CTRL3*/
++#define ADC3_ANA_CAL_EN			5
++#define ADC3_INVERT_CLK			4
++#define ADC3_SEL_OUT_EDGE		3
++#define ADC3_DSM_DISABLE		2
++#define ADC3_VREFP_DISABLE		1
++#define ADC3_AAF_DISABLE		0
++
++/*ANA_ADC3_CTRL7*/
++#define DSM_COMP_IB_SEL			6
++#define DSM_OTA_CTRL			4
++#define DSM_LPMODE				3
++#define DSM_OTA_IB_SEL			0
++
++
++/*ANA_ADC4_CTRL1*/
++#define ADC4_PGA_BYPASS			7
++#define ADC4_PGA_BYP_RCM		6
++#define ADC4_PGA_CTRL_RCM		4
++#define ADC4_PGA_MUTE			3
++#define ADC4_DSM_ENABLE			2
++#define ADC4_PGA_ENABLE			1
++#define ADC4_MICBIAS_EN			0
++
++/*ANA_ADC4_CTRL3*/
++#define ADC4_ANA_CAL_EN			5
++#define ADC4_SEL_OUT_EDGE		3
++#define ADC4_DSM_DISABLE		2
++#define ADC4_VREFP_DISABLE		1
++#define ADC4_AAF_DISABLE		0
++
++/*ANA_ADC4_CTRL6*/
++#define DSM_DEMOFF				5
++#define DSM_EN_DITHER			4
++#define DSM_VREFP_LPMODE		2
++#define DSM_VREFP_OUTCTRL		0
++
++/*ANA_ADC4_CTRL7*/
++#define CK8M_EN					5
++#define OSC_EN					4
++#define ADC4_CLK_GATING			3
++#define ADC3_CLK_GATING			2
++#define ADC2_CLK_GATING			1
++#define ADC1_CLK_GATING			0
++
++
++/*GPIO_CFG1*/
++#define GPIO2_SELECT			4
++#define GPIO1_SELECT			0
++
++/*GPIO_CFG2*/
++#define GPIO4_SELECT			4
++#define GPIO3_SELECT			0
++
++/*GPIO_DAT*/
++#define GPIO4_DAT				3
++#define GPIO3_DAT				2
++#define GPIO2_DAT				1
++#define GPIO1_DAT				0
++
++/*GPIO_DRV*/
++#define GPIO4_DRV				6
++#define GPIO3_DRV				4
++#define GPIO2_DRV				2
++#define GPIO1_DRV				0
++
++/*GPIO_PULL*/
++#define GPIO4_PULL				6
++#define GPIO3_PULL				4
++#define GPIO2_PULL				2
++#define GPIO1_PULL				0
++
++/*GPIO_INT_CFG*/
++#define GPIO4_EINT_CFG			6
++#define GPIO3_EINT_CFG			4
++#define GPIO2_EINT_CFG			2
++#define GPIO1_EINT_CFG			0
++
++/*GPIO_INT_EN*/
++#define GPIO4_EINT_EN			3
++#define GPIO3_EINT_EN			2
++#define GPIO2_EINT_EN			1
++#define GPIO1_EINT_EN			0
++
++/*GPIO_INT_STATUS*/
++#define GPIO4_EINT_STA			3
++#define GPIO3_EINT_STA			2
++#define GPIO2_EINT_STA			1
++#define GPIO1_EINT_STA			0
++
++
++/*PRNG_CLK_CTRL*/
++#define PRNG_CLK_EN				1
++#define PRNG_CLK_POS			0
++
++
++
++/*** Some Config Value ***/
++
++//[SYSCLK_CTRL]: PLLCLK_SRC
++#define PLLCLK_SRC_MCLK			0
++#define PLLCLK_SRC_BCLK			1
++#define PLLCLK_SRC_GPIO2		2
++#define PLLCLK_SRC_GPIO3		3
++
++//[SYSCLK_CTRL]: SYSCLK_SRC
++#define SYSCLK_SRC_MCLK			0
++#define SYSCLK_SRC_PLL			1
++
++//I2S BCLK POLARITY Control
++#define BCLK_NORMAL_DRIVE_N_SAMPLE_P	0
++#define BCLK_INVERT_DRIVE_P_SAMPLE_N	1
++
++//I2S LRCK POLARITY Control
++#define	LRCK_LEFT_LOW_RIGHT_HIGH		0
++#define LRCK_LEFT_HIGH_RIGHT_LOW		1
++
++//I2S Format Selection
++#define PCM_FORMAT						0
++#define LEFT_JUSTIFIED_FORMAT			1
++#define RIGHT_JUSTIFIED_FORMAT			2
++
++//ADC Digital Debug Control
++#define ADC_PTN_NORMAL					0
++#define ADC_PTN_0x5A5A5A				1
++#define ADC_PTN_0x123456				2
++#define ADC_PTN_ZERO					3
++#define ADC_PTN_I2S_RX_DATA				4
++
++//ADC PGA GAIN Control
++#define ADC_PGA_GAIN_0dB				0
++#define ADC_PGA_GAIN_MINUS_6dB			1
++#define ADC_PGA_GAIN_3dB				3
++#define ADC_PGA_GAIN_4dB				4
++#define ADC_PGA_GAIN_5dB				5
++#define ADC_PGA_GAIN_6dB				6
++#define ADC_PGA_GAIN_7dB				7
++#define ADC_PGA_GAIN_8dB				8
++#define ADC_PGA_GAIN_9dB				9
++#define ADC_PGA_GAIN_10dB				10
++#define ADC_PGA_GAIN_11dB				11
++#define ADC_PGA_GAIN_12dB				12
++#define ADC_PGA_GAIN_13dB				13
++#define ADC_PGA_GAIN_14dB				14
++#define ADC_PGA_GAIN_15dB				15
++#define ADC_PGA_GAIN_16dB				16
++#define ADC_PGA_GAIN_17dB				17
++#define ADC_PGA_GAIN_18dB				18
++#define ADC_PGA_GAIN_19dB				19
++#define ADC_PGA_GAIN_20dB				20
++#define ADC_PGA_GAIN_21dB				21
++#define ADC_PGA_GAIN_22dB				22
++#define ADC_PGA_GAIN_23dB				23
++#define ADC_PGA_GAIN_24dB				24
++#define ADC_PGA_GAIN_25dB				25
++#define ADC_PGA_GAIN_26dB				26
++#define ADC_PGA_GAIN_27dB				27
++#define ADC_PGA_GAIN_28dB				28
++#define ADC_PGA_GAIN_29dB				29
++#define ADC_PGA_GAIN_30dB				30
++
++
++#endif
++
+diff --git a/sound/soc/codecs/tlv320dac3100.c b/sound/soc/codecs/tlv320dac3100.c
+new file mode 100644
+index 000000000000..1124bb8284c8
+--- /dev/null
++++ b/sound/soc/codecs/tlv320dac3100.c
+@@ -0,0 +1,813 @@
++/*
++ * tlv320dac3100.c -- Codec driver for TI TLV320DAC3100
++ *
++ * Copyright (c) 2015 Avionic Design GmbH
++ *
++ * Authors: Alban Bedel <alban.bedel@avionic-design.de>
++ *          Julian Scheel <julian@jusst.de>
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2 as
++ * published by the Free Software Foundation.
++ */
++
++#include <linux/module.h>
++#include <linux/delay.h>
++#include <linux/i2c.h>
++#include <linux/regmap.h>
++#include <linux/of_gpio.h>
++#include <linux/gpio/consumer.h>
++#include <linux/pinctrl/consumer.h>
++#include <linux/log2.h>
++#include <sound/soc.h>
++#include <sound/tlv.h>
++#include <sound/pcm_params.h>
++
++#define DAC3100_PAGE_SIZE 128
++#define DAC3100_MAX_PAGES 13
++#define DAC3100_MAX_REGISTERS (DAC3100_MAX_PAGES * DAC3100_PAGE_SIZE)
++
++#define DAC3100_REG(p, r) ((p) * DAC3100_PAGE_SIZE + (r))
++
++#define DAC3100_REG_PAGE(r) ((r) / DAC3100_PAGE_SIZE)
++
++#define DAC3100_RESET			DAC3100_REG(0, 1)
++
++#define DAC3100_CLOCK_GEN_MUX		DAC3100_REG(0, 4)
++#define DAC3100_PLL_P_R			DAC3100_REG(0, 5)
++#define DAC3100_PLL_J			DAC3100_REG(0, 6)
++#define DAC3100_PLL_D_MSB		DAC3100_REG(0, 7)
++#define DAC3100_PLL_D_LSB		DAC3100_REG(0, 8)
++
++#define DAC3100_DAC_NDAC		DAC3100_REG(0, 11)
++#define DAC3100_DAC_MDAC		DAC3100_REG(0, 12)
++#define DAC3100_DAC_DOSR_MSB		DAC3100_REG(0, 13)
++#define DAC3100_DAC_DOSR_LSB		DAC3100_REG(0, 14)
++
++#define DAC3100_CODEC_IFACE_CTRL1	DAC3100_REG(0, 27)
++#define DAC3100_DATA_SLOT_OFFSET	DAC3100_REG(0, 28)
++#define DAC3100_CODEC_IFACE_CTRL2	DAC3100_REG(0, 29)
++
++#define DAC3100_DAC_FLAGS_0		DAC3100_REG(0, 37)
++#define DAC3100_DAC_FLAGS_1		DAC3100_REG(0, 38)
++#define DAC3100_OVERFLOW_FLAGS		DAC3100_REG(0, 39)
++#define DAC3100_DAC_INT_FLAGS		DAC3100_REG(0, 44)
++#define DAC3100_DAC_INT_STATUS		DAC3100_REG(0, 46)
++#define DAC3100_GPIO1_CTRL		DAC3100_REG(0, 51)
++#define DAC3100_DIN_CTRL		DAC3100_REG(0, 54)
++
++#define DAC3100_DAC_PROCESSING_BLOCK	DAC3100_REG(0, 60)
++
++#define DAC3100_DAC_DATA_PATH_SETUP	DAC3100_REG(0, 63)
++#define DAC3100_DAC_VOLUME		DAC3100_REG(0, 64)
++#define DAC3100_DAC_LEFT_VOLUME		DAC3100_REG(0, 65)
++#define DAC3100_DAC_RIGHT_VOLUME	DAC3100_REG(0, 66)
++#define DAC3100_HEADSET_DETECT		DAC3100_REG(0, 67)
++
++#define DAC3100_LEFT_BEEP_GEN		DAC3100_REG(0, 71)
++#define DAC3100_RIGHT_BEEP_GEN		DAC3100_REG(0, 72)
++
++#define DAC3100_MICDET_GAIN		DAC3100_REG(0, 117)
++
++#define DAC3100_HP_DRIVER		DAC3100_REG(1, 31)
++#define DAC3100_SPK_AMP			DAC3100_REG(1, 32)
++
++#define DAC3100_DAC_MIXER		DAC3100_REG(1, 35)
++#define DAC3100_LEFT_VOL_HPL		DAC3100_REG(1, 36)
++#define DAC3100_RIGHT_VOL_HPR		DAC3100_REG(1, 37)
++#define DAC3100_LEFT_VOL_SPK		DAC3100_REG(1, 38)
++#define DAC3100_HPL_DRIVER		DAC3100_REG(1, 40)
++#define DAC3100_HPR_DRIVER		DAC3100_REG(1, 41)
++#define DAC3100_SPK_DRIVER		DAC3100_REG(1, 42)
++
++#define DAC3100_MICBIAS			DAC3100_REG(1, 46)
++
++#define DAC3100_DAC_COEF_RAM		DAC3100_REG(8, 1)
++
++#define DAC3100_PLL_CLK_MIN	80000000
++#define DAC3100_PLL_CLK_MAX	110000000
++
++#define DAC3100_DAC_MOD_CLK_MIN	2800000
++#define DAC3100_DAC_MOD_CLK_MAX	6200000
++
++struct dac3100 {
++	struct device *dev;
++	struct snd_soc_codec *codec;
++	struct regmap *regmap;
++	int reset_gpio;
++
++	unsigned clkin_rate;
++	unsigned clkin_src;
++};
++
++struct dac_filter {
++    unsigned int reg;
++    unsigned int val;
++}; 
++
++struct dac_filter dac_filter_buff[] = {
++    {0, 63},
++    {DAC3100_REG(8, 1), 7},
++    {DAC3100_REG(8, 2), 125},
++    {DAC3100_REG(8, 3), 232},
++    {DAC3100_REG(8, 4), 133},
++    {DAC3100_REG(8, 5), 2},
++    {DAC3100_REG(8, 6), 121},
++    {DAC3100_REG(8, 7), 157},
++    {DAC3100_REG(8, 8), 122},
++    {DAC3100_REG(8, 9), 254},
++    {DAC3100_REG(8, 10), 136},
++    {DAC3100_REG(8, 11), 121},
++    {DAC3100_REG(8, 12), 117},
++    {DAC3100_REG(8, 13), 26},
++    {DAC3100_REG(8, 14), 159},
++    {DAC3100_REG(8, 15), 219},
++    {DAC3100_REG(8, 16), 102},
++    {DAC3100_REG(8, 17), 178},
++    {DAC3100_REG(8, 18), 96},
++    {DAC3100_REG(8, 19), 37},
++    {DAC3100_REG(8, 20), 164},
++    {DAC3100_REG(8, 21), 50},
++    {DAC3100_REG(8, 22), 127},
++    {DAC3100_REG(8, 23), 255},
++    {DAC3100_REG(8, 32), 127},
++    {DAC3100_REG(8, 33), 255},
++    {DAC3100_REG(8, 42), 127},
++    {DAC3100_REG(8, 43), 255},
++    {DAC3100_REG(8, 52), 127},
++    {DAC3100_REG(8, 53), 255},
++    {DAC3100_REG(8, 66), 125},
++    {DAC3100_REG(8, 67), 232},
++    {DAC3100_REG(8, 68), 133},
++    {DAC3100_REG(8, 69), 2},
++    {DAC3100_REG(8, 70), 121},
++    {DAC3100_REG(8, 70), 121},
++    {DAC3100_REG(8, 70), 121},
++    {DAC3100_REG(8, 70), 121},
++    {DAC3100_REG(8, 71), 157},
++    {DAC3100_REG(8, 72), 122},
++    {DAC3100_REG(8, 73), 254},
++    {DAC3100_REG(8, 74), 136},
++    {DAC3100_REG(8, 75), 121},
++    {DAC3100_REG(8, 76), 117},
++    {DAC3100_REG(8, 77), 26},
++    {DAC3100_REG(8, 78), 159},
++    {DAC3100_REG(8, 79), 219},
++    {DAC3100_REG(8, 80), 102},
++    {DAC3100_REG(8, 81), 178},
++    {DAC3100_REG(8, 82), 96},
++    {DAC3100_REG(8, 83), 37},
++    {DAC3100_REG(8, 84), 164},
++    {DAC3100_REG(8, 85), 50},
++    {DAC3100_REG(8, 86), 127},
++    {DAC3100_REG(8, 87), 255},
++    {DAC3100_REG(8, 96), 127},
++    {DAC3100_REG(8, 97), 255},
++    {DAC3100_REG(8, 106), 127},
++    {DAC3100_REG(8, 107), 255},
++    {DAC3100_REG(8, 116), 127},
++    {DAC3100_REG(8, 117), 255},
++    {DAC3100_REG(0, 65), 0},
++    {DAC3100_REG(0, 68), 92}
++};
++
++static bool dac3100_reg_page_is_valid(unsigned int reg)
++{
++	switch (DAC3100_REG_PAGE(reg)) {
++	case 0:
++	case 1:
++	case 3:
++	case 8:
++	case 9:
++	case 12:
++	case 13:
++		return true;
++	default:
++		return false;
++	}
++}
++
++static bool dac3100_readable_register(struct device *dev, unsigned int reg)
++{
++	if (!dac3100_reg_page_is_valid(reg))
++		return false;
++	return true;
++}
++
++static bool dac3100_writable_register(struct device *dev, unsigned int reg)
++{
++	if (!dac3100_reg_page_is_valid(reg))
++		return false;
++	return true;
++}
++
++static bool dac3100_volatile_register(struct device *dev, unsigned int reg)
++{
++	switch (reg) {
++	case DAC3100_RESET:
++	case DAC3100_DAC_FLAGS_0:
++	case DAC3100_DAC_FLAGS_1:
++	case DAC3100_OVERFLOW_FLAGS:
++	case DAC3100_DAC_INT_FLAGS:
++	case DAC3100_DAC_INT_STATUS:
++	case DAC3100_GPIO1_CTRL:
++	case DAC3100_DIN_CTRL:
++	case DAC3100_HEADSET_DETECT:
++	case DAC3100_LEFT_BEEP_GEN:
++	case DAC3100_MICDET_GAIN:
++	case DAC3100_HP_DRIVER:
++	case DAC3100_SPK_AMP:
++	case DAC3100_HPL_DRIVER:
++	case DAC3100_HPR_DRIVER:
++	case DAC3100_SPK_DRIVER:
++	case DAC3100_DAC_COEF_RAM:
++		return true;
++	default:
++		return false;
++	}
++}
++
++static bool dac3100_precious_register(struct device *dev, unsigned int reg)
++{
++	switch (reg) {
++	case DAC3100_OVERFLOW_FLAGS:
++	case DAC3100_DAC_INT_FLAGS:
++		return true;
++	default:
++		return false;
++	}
++}
++
++static const struct regmap_range_cfg dac3100_regmap_pages[] = {
++	{
++		.selector_reg = 0,
++		.selector_mask  = 0xff,
++		.window_start = 0,
++		.window_len = DAC3100_PAGE_SIZE,
++		.range_min = 0,
++		.range_max = DAC3100_MAX_REGISTERS,
++        },
++};
++
++static const struct regmap_config dac3100_regmap = {
++	.reg_bits = 8,
++	.val_bits = 8,
++
++	.max_register = DAC3100_MAX_REGISTERS,
++	.readable_reg = dac3100_readable_register,
++	.writeable_reg = dac3100_writable_register,
++	.volatile_reg = dac3100_volatile_register,
++	.precious_reg = dac3100_precious_register,
++
++	.ranges = dac3100_regmap_pages,
++	.num_ranges = ARRAY_SIZE(dac3100_regmap_pages),
++};
++
++static const DECLARE_TLV_DB_SCALE(dac_gain_tlv, -6350, 50, 0);
++static const DECLARE_TLV_DB_SCALE(hp_gain_tlv, 0, 100, 0);
++static const DECLARE_TLV_DB_SCALE(spk_gain_tlv, 600, 6, 0);
++
++/* It is not supported to supply more than 10 scale items, so the scale is not
++ * 100% exact */
++static const unsigned int analog_att_tlv[] = {
++	TLV_DB_RANGE_HEAD(10),
++	0, 1, TLV_DB_SCALE_ITEM(-7830, 610, 0),
++	2, 3, TLV_DB_SCALE_ITEM(-6870, 250, 0),
++	4, 5, TLV_DB_SCALE_ITEM(-6430, 160, 0),
++	6, 7, TLV_DB_SCALE_ITEM(-6020, 190, 0),
++	8, 9, TLV_DB_SCALE_ITEM(-5670, 140, 0),
++	10, 26, TLV_DB_SCALE_ITEM(-5420, 53, 0),
++	27, 33, TLV_DB_SCALE_ITEM(-4520, 58, 0),
++	34, 48, TLV_DB_SCALE_ITEM(-4170, 50, 0),
++	49, 81, TLV_DB_SCALE_ITEM(-3410, 50, 0),
++	82, 117, TLV_DB_SCALE_ITEM(-1750, 50, 0),
++};
++
++static const char *dac_route_text[] = {
++	"Off", "Mixer", "Driver"
++};
++static const struct soc_enum dac_l_route =
++	SOC_ENUM_SINGLE(DAC3100_DAC_MIXER, 6, 3, dac_route_text);
++
++static const struct soc_enum dac_r_route =
++	SOC_ENUM_SINGLE(DAC3100_DAC_MIXER, 2, 3, dac_route_text);
++
++static const struct snd_kcontrol_new dac3100_snd_controls[] = {
++	/* DAC Mixer */
++	SOC_DOUBLE("DAC Switch", DAC3100_DAC_VOLUME, 3, 2, 1, 1),
++	SOC_DOUBLE_R_S_TLV("DAC Volume", DAC3100_DAC_LEFT_VOLUME,
++		DAC3100_DAC_RIGHT_VOLUME, 0, -127, 48, 7, 0, dac_gain_tlv),
++
++	/* Analog attenuators */
++	SOC_SINGLE("Speaker Switch", DAC3100_LEFT_VOL_SPK,
++		7, 1, 0),
++	SOC_SINGLE_TLV("Speaker Volume", DAC3100_LEFT_VOL_SPK,
++		0, 117, 1, analog_att_tlv),
++	SOC_DOUBLE_R("Headphone Switch", DAC3100_LEFT_VOL_HPL,
++		DAC3100_RIGHT_VOL_HPR, 7, 1, 0),
++	SOC_DOUBLE_R_TLV("Headphone Volume", DAC3100_LEFT_VOL_HPL,
++		DAC3100_RIGHT_VOL_HPR, 0, 117, 1, analog_att_tlv),
++
++	/* DAC Routing */
++	SOC_ENUM("DACL Route", dac_l_route),
++	SOC_ENUM("DACR Route", dac_r_route),
++
++	/* Driver gains + mute */
++	SOC_SINGLE_TLV("Speaker Driver Gain", DAC3100_SPK_DRIVER,
++		3, 3, 0, spk_gain_tlv),
++	SOC_SINGLE("Speaker Driver Switch", DAC3100_SPK_DRIVER,
++		2, 1, 0),
++	SOC_DOUBLE_R_TLV("Headphone Driver Gain", DAC3100_HPL_DRIVER,
++		DAC3100_HPR_DRIVER, 3, 9, 0, hp_gain_tlv),
++	SOC_DOUBLE_R("Headphone Driver Switch", DAC3100_HPL_DRIVER,
++		DAC3100_HPR_DRIVER, 2, 1, 0),
++};
++
++static const struct snd_soc_dapm_widget dac3100_dapm_widgets[] = {
++	SND_SOC_DAPM_INPUT("AIN1"),
++	SND_SOC_DAPM_INPUT("AIN2"),
++
++	SND_SOC_DAPM_OUTPUT("SPK"),
++	SND_SOC_DAPM_OUTPUT("HPL"),
++	SND_SOC_DAPM_OUTPUT("HPR"),
++
++	SND_SOC_DAPM_DAC("DACL", "Left Playback", DAC3100_DAC_DATA_PATH_SETUP, 7, 0),
++	SND_SOC_DAPM_DAC("DACR", "Right Playback", DAC3100_DAC_DATA_PATH_SETUP, 6, 0),
++
++	SND_SOC_DAPM_PGA("Speaker Driver", DAC3100_SPK_AMP, 7, 0, NULL, 0),
++	SND_SOC_DAPM_PGA("HPL Driver", DAC3100_HP_DRIVER, 7, 0, NULL, 0),
++	SND_SOC_DAPM_PGA("HPR Driver", DAC3100_HP_DRIVER, 6, 0, NULL, 0),
++};
++
++static const struct snd_soc_dapm_route dac3100_intercon[] = {
++	{ "HPL Driver", NULL, "DACL" },
++	{ "HPR Driver", NULL, "DACR" },
++
++	{ "Speaker Driver", NULL, "DACL" },
++	{ "Speaker Driver", NULL, "DACR" },
++
++	{ "HPL", NULL, "HPL Driver" },
++	{ "HPR", NULL, "HPR Driver" },
++
++	{ "SPK", NULL, "Speaker Driver" },
++};
++
++static int dac3100_set_dai_sysclk(struct snd_soc_dai *dai,
++				int clk_id, unsigned int freq, int dir)
++{
++	struct snd_soc_codec *codec = dai->codec;
++	struct dac3100 *dac = snd_soc_codec_get_drvdata(codec);
++
++	dac->clkin_src = clk_id;
++	dac->clkin_rate = freq;
++
++	return 0;
++}
++
++static int dac3100_hw_params(struct snd_pcm_substream *substream,
++			struct snd_pcm_hw_params *params,
++			struct snd_soc_dai *dai)
++{
++	struct snd_soc_codec *codec = dai->codec;
++	struct dac3100 *dac = snd_soc_codec_get_drvdata(codec);
++	int channels = params_channels(params);
++	int fs = params_rate(params);
++	int dosr, dosr_round;
++	int mdiv, ndac, mdac;
++	int filter, pb, rc;
++	int jd = 10000;
++	int word_len;
++	int clkmux;
++	int clkin;
++	int err;
++
++	/* Check the word length */
++	switch (params_format(params)) {
++	case SNDRV_PCM_FORMAT_S16_LE:
++		word_len = 0;
++		break;
++	case SNDRV_PCM_FORMAT_S20_3LE:
++		word_len = 1;
++		break;
++	case SNDRV_PCM_FORMAT_S24_LE:
++		word_len = 2;
++		break;
++	case SNDRV_PCM_FORMAT_S32_LE:
++		word_len = 3;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	/* Select the filter and DOSR rounding according to the samplerate */
++	if (fs > 96000) {
++		filter = 2;
++		dosr_round = 2;
++	} else if (fs > 48000) {
++		filter = 1;
++		dosr_round = 4;
++	} else {
++		filter = 0;
++		dosr_round = 8;
++	}
++
++	/* TODO: When implementing filters replace this with a table lookup
++	 * to choose the best processing block. */
++	switch(filter) {
++	case 0:
++		if (channels > 1) {
++			pb = 1;
++			rc = 8;
++		} else {
++			pb = 4;
++			rc = 4;
++		}
++		break;
++	case 1:
++		if (channels > 1) {
++			pb = 7;
++			rc = 6;
++		} else {
++			pb = 12;
++			rc = 3;
++		}
++		break;
++	case 2:
++		if (channels > 1) {
++			pb = 17;
++			rc = 3;
++		} else {
++			pb = 20;
++			rc = 2;
++		}
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	/* If the mclk is not a multiple of the samplerate
++	 * we need to use the fractional PLL to produce such a rate */
++	if (dac->clkin_rate % fs) {
++		/* The PLL output must be between 80 and 110MHz */
++		int mult = roundup_pow_of_two(DAC3100_PLL_CLK_MIN / fs);
++		while (mult <= 1024 * 128 * 128 &&
++				fs * mult <= DAC3100_PLL_CLK_MAX) {
++			u64 c = (u64)fs * mult * 10000;
++			if (!do_div(c, dac->clkin_rate) && c >= 10000) {
++				jd = c;
++				break;
++			}
++			mult *= 2;
++		}
++
++		if (mult > 1024 * 128 * 128 ||
++				fs * mult > DAC3100_PLL_CLK_MAX) {
++			dev_err(codec->dev,
++				"Couldn't setup fractional divider\n");
++			return -EINVAL;
++		}
++		clkin = fs * mult;
++	} else {
++		clkin = dac->clkin_rate;
++		/* Check that the clock is fast enough, if not add a multiplier */
++		if (clkin < rc * fs * 32) {
++			int mult = DIV_ROUND_UP(80000000, clkin);
++
++			/* Check that we are still in the range of the PLL */
++			if (clkin * mult > 110000000 || mult < 4 || mult > 63) {
++				dev_err(codec->dev, "Couldn't find multiplier\n");
++				return -EINVAL;
++			}
++
++			jd = mult * 10000;
++			clkin *= mult;
++		}
++	}
++
++	/* Find the highest possible DOSR value */
++	dosr = DAC3100_DAC_MOD_CLK_MAX / fs;
++	dosr = dosr / dosr_round * dosr_round;
++
++	/* Look for a DOSR value that is a multiple of FS
++	 * and need an acceptable divider */
++	while (dosr * fs >= DAC3100_DAC_MOD_CLK_MIN) {
++		mdiv = clkin / (dosr * fs);
++		if (mdiv * dosr * fs == clkin && mdiv < 128 * 128)
++			break;
++		dosr -= dosr_round;
++	}
++
++	if (dosr * fs < DAC3100_DAC_MOD_CLK_MIN) {
++		dev_err(codec->dev, "Failed to find clock setup\n");
++		return -EINVAL;
++	}
++
++	/* Get the smallest possible MDAC with a valid NDAC */
++	for (mdac = max(rc * 32 / dosr, 1); mdac <= 128; mdac++) {
++		if (mdiv % mdac == 0 && mdiv / mdac <= 128)
++			break;
++	}
++
++	if (mdac > 128) {
++		dev_err(codec->dev, "Failed to find divider setup\n");
++		return -EINVAL;
++	}
++
++	ndac = mdiv / mdac;
++
++	if (clkin / ndac > 48000000) {
++		dev_err(codec->dev, "Failed to find divider setup\n");
++		return -EINVAL;
++	}
++
++	dev_dbg(codec->dev, "codec settings: sysclk=%d, clkin=%d, "
++		"jd=%d, ndac=%d, mdac=%d, dosr=%d, pb=%d, rc=%d\n",
++		dac->clkin_rate, clkin, jd, ndac, mdac, dosr, pb, rc);
++
++	/* Make sure the dividers and PLL are stopped */
++	err = snd_soc_write(codec, DAC3100_DAC_MDAC, 0);
++	if (err)
++		goto error;
++	err = snd_soc_write(codec, DAC3100_DAC_NDAC, 0);
++	if (err)
++		goto error;
++	err = snd_soc_write(codec, DAC3100_PLL_P_R, 0x11);
++	if (err)
++		goto error;
++
++	/* Setup the clock mux */
++	clkmux = dac->clkin_src & 3;
++	if (jd > 10000)
++		clkmux = (clkmux << 2) | 3;
++
++	err = snd_soc_write(codec, DAC3100_CLOCK_GEN_MUX, clkmux);
++	if (err)
++		goto error;
++
++	/* Setup the PLL if needed */
++	if (jd > 10000) {
++		err = snd_soc_write(codec, DAC3100_PLL_J, jd / 10000);
++		if (err)
++			goto error;
++
++		err = snd_soc_write(codec, DAC3100_PLL_D_MSB,
++				(jd % 10000) >> 8);
++		if (err)
++			goto error;
++		err = snd_soc_write(codec, DAC3100_PLL_D_LSB,
++				(jd % 10000) & 0xFF);
++		if (err)
++			goto error;
++
++		/* Start the PLL and wait for the lock */
++		err = snd_soc_write(codec, DAC3100_PLL_P_R, 0x91);
++		if (err)
++			goto error;
++		msleep(10);
++	}
++
++	/* Configure the dividers */
++	err = snd_soc_write(codec, DAC3100_DAC_NDAC, (ndac & 0x7f) | BIT(7));
++	if (err)
++		goto error_stop_pll;
++	err = snd_soc_write(codec, DAC3100_DAC_MDAC, (mdac & 0x7f) | BIT(7));
++	if (err)
++		goto error_ndac;
++	err = snd_soc_write(codec, DAC3100_DAC_DOSR_MSB, (dosr >> 8) & 3);
++	if (err)
++		goto error_mdac;
++	err = snd_soc_write(codec, DAC3100_DAC_DOSR_LSB, dosr & 0xff);
++	if (err)
++		goto error_mdac;
++
++	/* Setup the word size */
++	err = snd_soc_update_bits(codec, DAC3100_CODEC_IFACE_CTRL1,
++				3 << 4, word_len << 4);
++	if (err < 0)
++		goto error_mdac;
++
++	/* Setup the processing block */
++	err = snd_soc_write(codec, DAC3100_DAC_PROCESSING_BLOCK, pb);
++	if (err)
++		goto error_mdac;
++
++	return 0;
++
++error_mdac:
++	snd_soc_write(codec, DAC3100_DAC_MDAC, 0);
++error_ndac:
++	snd_soc_write(codec, DAC3100_DAC_NDAC, 0);
++error_stop_pll:
++	snd_soc_write(codec, DAC3100_PLL_P_R, 0x11);
++error:
++	return err;
++}
++
++static int dac3100_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
++{
++	struct snd_soc_codec *codec = dai->codec;
++	u8 ctrl1 = snd_soc_read(codec, DAC3100_CODEC_IFACE_CTRL1);
++	u8 ctrl2 = snd_soc_read(codec, DAC3100_CODEC_IFACE_CTRL2);
++	int err;
++
++	/* Clear everything except the bit per samples */
++	ctrl1 &= ~(3 << 4);
++
++	/* Set the clocks direction */
++	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
++	case SND_SOC_DAIFMT_CBS_CFS:
++		break;
++	case SND_SOC_DAIFMT_CBS_CFM:
++		ctrl1 |= 1 << 2;
++		break;
++	case SND_SOC_DAIFMT_CBM_CFS:
++		ctrl1 |= 2 << 2;
++		break;
++	case SND_SOC_DAIFMT_CBM_CFM:
++		ctrl1 |= 3 << 2;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	/* Set the data format */
++	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
++	case SND_SOC_DAIFMT_I2S:
++		break;
++	case SND_SOC_DAIFMT_DSP_A:
++		ctrl1 |= 1 << 6;
++		break;
++	case SND_SOC_DAIFMT_RIGHT_J:
++		ctrl1 |= 2 << 6;
++		break;
++	case SND_SOC_DAIFMT_LEFT_J:
++		ctrl1 |= 3 << 6;
++	default:
++		return -EINVAL;
++	}
++
++	/* Set the clocks inversion */
++	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
++	case SND_SOC_DAIFMT_NB_NF:
++		ctrl2 &= ~BIT(3);
++		break;
++	case SND_SOC_DAIFMT_IB_NF:
++		ctrl2 |= BIT(3);
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	err = snd_soc_write(codec, DAC3100_CODEC_IFACE_CTRL1, ctrl1);
++	if (err)
++		return err;
++
++	err = snd_soc_write(codec, DAC3100_CODEC_IFACE_CTRL1, ctrl2);
++	if (err)
++		return err;
++
++	return 0;
++}
++
++static struct snd_soc_dai_ops dac3100_dai_ops = {
++	.set_sysclk	= dac3100_set_dai_sysclk,
++	.set_fmt	= dac3100_set_dai_fmt,
++	.hw_params	= dac3100_hw_params,
++};
++
++static struct snd_soc_dai_driver dac3100_dai = {
++	.name = "tlv320dac3100-hifi",
++	.playback = {
++		.stream_name = "Playback",
++		.channels_min = 1,
++		.channels_max = 2,
++		.rates = SNDRV_PCM_RATE_CONTINUOUS |
++			SNDRV_PCM_RATE_8000_192000,
++		.formats =  SNDRV_PCM_FMTBIT_S16_LE |
++			SNDRV_PCM_FMTBIT_S20_3LE |
++			SNDRV_PCM_FMTBIT_S24_LE |
++			SNDRV_PCM_FMTBIT_S32_LE,
++	},
++	.ops = &dac3100_dai_ops,
++};
++
++static struct snd_soc_codec_driver soc_codec_dac3100 = {
++};
++
++
++static int dac_filter_init(struct regmap *map, struct dac_filter *dac_filter_bp)
++{
++    int i, err;
++    for(i = 1; i < dac_filter_bp[0].val; i++)
++    {
++        err = regmap_write(map, dac_filter_bp[i].reg, dac_filter_bp[i].val);
++	    if (err) {
++		    printk("Error code: %d %s %d\n", err, __func__, __LINE__);
++		return err;
++	}
++    }
++
++    return 0;
++}
++
++static int dac3100_i2c_probe(struct i2c_client *client,
++			    const struct i2c_device_id *id)
++{
++	struct dac3100 *dac;
++    enum of_gpio_flags flags;
++	int err;
++
++    printk("-------------------------------------%s %d\n", __func__, __LINE__);
++	dac = devm_kzalloc(&client->dev, sizeof(*dac), GFP_KERNEL);
++	if (dac == NULL)
++		return -ENOMEM;
++
++	dac->dev = &client->dev;
++	dac->regmap = devm_regmap_init_i2c(client, &dac3100_regmap);
++	if (IS_ERR(dac->regmap)) {
++		dev_err(&client->dev, "Failed to create regmap: %ld\n",
++			PTR_ERR(dac->regmap));
++		return PTR_ERR(dac->regmap);
++	}
++
++	i2c_set_clientdata(client, dac);
++
++	/* Hard reset the chip if possible */
++	dac->reset_gpio = of_get_named_gpio_flags(client->dev.of_node, "reset-gpios", 0, &flags);
++
++	if (!(dac->reset_gpio)) {
++		dev_err(&client->dev, "Failed to get reset GPIO: %d\n",
++			dac->reset_gpio);
++		return dac->reset_gpio;
++	} else if (dac->reset_gpio) {
++        err = gpio_request(dac->reset_gpio, "reset-gpio");
++        if(err < 0)
++        {
++            devm_kfree(&client->dev, dac);
++            return -ENOMEM;
++        }
++        gpio_request(dac->reset_gpio, "reset-gpio");
++		usleep_range(1, 1000);
++        gpio_direction_output(dac->reset_gpio, 1);
++        mdelay(200);
++        gpio_direction_output(dac->reset_gpio, 0);
++        mdelay(300);
++        gpio_direction_output(dac->reset_gpio, 1);
++	}
++
++	/* Soft reset the chip to also check the I2C bus */
++	err = regmap_write(dac->regmap, DAC3100_RESET, 1);
++	if (err) {
++		dev_err(&client->dev, "Failed to reset: %d\n", err);
++		return err;
++	}
++	msleep(1);
++
++    dac_filter_init(dac->regmap, dac_filter_buff);
++    printk("-------------------------------------%s %d\n", __func__, __LINE__);
++	/* Register the codec */
++	return snd_soc_register_codec(&client->dev,
++				&soc_codec_dac3100, &dac3100_dai, 1);
++
++}
++
++static int dac3100_i2c_remove(struct i2c_client *i2c)
++{
++	struct dac3100 *dac = i2c_get_clientdata(i2c);
++
++	snd_soc_unregister_codec(&i2c->dev);
++
++	if (dac->reset_gpio)
++		gpio_direction_output(dac->reset_gpio, 1);
++
++	return 0;
++}
++
++static const struct of_device_id dac3100_of_match[] = {
++	{ .compatible = "ti,tlv320dac3100", },
++	{},
++};
++MODULE_DEVICE_TABLE(of, dac3100_of_match);
++
++static const struct i2c_device_id dac3100_i2c_id[] = {
++	{ "tlv320dac3100", 0x18 },
++	{ }
++};
++MODULE_DEVICE_TABLE(i2c, dac3100_i2c_id);
++
++static struct i2c_driver dac3100_i2c_driver = {
++	.driver = {
++		.name = "tlv320dac3100-codec",
++		.owner = THIS_MODULE,
++		.of_match_table = dac3100_of_match,
++	},
++	.probe = dac3100_i2c_probe,
++	.remove = dac3100_i2c_remove,
++	.id_table = dac3100_i2c_id,
++};
++
++module_i2c_driver(dac3100_i2c_driver);
++
++MODULE_DESCRIPTION("ASoC TLV320DAC3100 codec driver");
++MODULE_AUTHOR("Alban Bedel <alban.bedel@avionic-design.de>");
++MODULE_LICENSE("GPL");
+diff --git a/sound/soc/rockchip/Kconfig b/sound/soc/rockchip/Kconfig
+index e9a97eea68a6..2cc719550f0a 100644
+--- a/sound/soc/rockchip/Kconfig
++++ b/sound/soc/rockchip/Kconfig
+@@ -115,6 +115,24 @@ config SND_SOC_ROCKCHIP_RT5645
+ 	  Say Y or M here if you want to add support for SoC audio on Rockchip
+ 	  boards using the RT5645/RT5650 codec, such as Veyron.
+ 
++config SND_SOC_ROCKCHIP_TLV320DAC3100
++	tristate "ASoC support for Rockchip boards using a TLV320DAC3100 codec"
++	depends on SND_SOC_ROCKCHIP && I2C && GPIOLIB && CLKDEV_LOOKUP
++	select SND_SOC_ROCKCHIP_I2S
++	select SND_SOC_TLV320DAC3100
++	help
++	  Say Y or M here if you want to add support for SoC audio on Rockchip
++	  boards using the TLV320DAC3100 codec, such as Veyron.
++
++config SND_SOC_ROCKCHIP_AC108
++	tristate "ASoC support for Rockchip boards using a AC108 codec"
++	depends on SND_SOC_ROCKCHIP && I2C && GPIOLIB && CLKDEV_LOOKUP
++	select SND_SOC_ROCKCHIP_I2S
++	select SND_SOC_AC108
++	help
++	  Say Y or M here if you want to add support for SoC audio on Rockchip
++	  boards using the AC108 codec.
++
+ config SND_SOC_ROCKCHIP_RT5651_TC358749
+ 	tristate "ASoC support for Rockchip boards RT5651 TC358749 HDMIIN"
+ 	depends on SND_SOC_ROCKCHIP && I2C && GPIOLIB && CLKDEV_LOOKUP
+diff --git a/sound/soc/rockchip/Makefile b/sound/soc/rockchip/Makefile
+index 8518cbaa3822..96e98e826707 100644
+--- a/sound/soc/rockchip/Makefile
++++ b/sound/soc/rockchip/Makefile
+@@ -25,6 +25,8 @@ snd-soc-rockchip-hdmi-dp-objs := rockchip_hdmi_dp.o
+ snd-soc-rockchip-max98090-objs := rockchip_max98090.o
+ snd-soc-rockchip-multicodecs-objs := rockchip_multicodecs.o
+ snd-soc-rockchip-rt5645-objs := rockchip_rt5645.o
++snd-soc-rockchip-tlv320dac3100-objs := rockchip_tlv320dac3100.o
++snd-soc-rockchip-ac108-objs := rockchip_ac108.o
+ snd-soc-rockchip-rt5651-tc358749x-objs := rockchip_rt5651_tc358749x.o
+ snd-soc-rockchip-cdndp-objs := rockchip_cdndp.o
+ 
+@@ -34,5 +36,7 @@ obj-$(CONFIG_SND_SOC_ROCKCHIP_HDMI_DP) += snd-soc-rockchip-hdmi-dp.o
+ obj-$(CONFIG_SND_SOC_ROCKCHIP_MAX98090) += snd-soc-rockchip-max98090.o
+ obj-$(CONFIG_SND_SOC_ROCKCHIP_MULTICODECS) += snd-soc-rockchip-multicodecs.o
+ obj-$(CONFIG_SND_SOC_ROCKCHIP_RT5645) += snd-soc-rockchip-rt5645.o
++obj-$(CONFIG_SND_SOC_ROCKCHIP_TLV320DAC3100) += snd-soc-rockchip-tlv320dac3100.o
++obj-$(CONFIG_SND_SOC_ROCKCHIP_AC108) += snd-soc-rockchip-ac108.o
+ obj-$(CONFIG_SND_SOC_ROCKCHIP_RT5651_TC358749) += snd-soc-rockchip-rt5651-tc358749x.o
+ obj-$(CONFIG_SND_SOC_ROCKCHIP_CDNDP) += snd-soc-rockchip-cdndp.o
+diff --git a/sound/soc/rockchip/rockchip_ac108.c b/sound/soc/rockchip/rockchip_ac108.c
+new file mode 100755
+index 000000000000..94e3376dca0c
+--- /dev/null
++++ b/sound/soc/rockchip/rockchip_ac108.c
+@@ -0,0 +1,255 @@
++/*
++ * Rockchip machine ASoC driver for boards using a RT5645/ac108 CODEC.
++ *
++ * Copyright (c) 2015, ROCKCHIP CORPORATION.  All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms and conditions of the GNU General Public License,
++ * version 2, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ *
++ */
++
++#include <linux/module.h>
++#include <linux/platform_device.h>
++#include <linux/slab.h>
++#include <linux/gpio.h>
++#include <linux/of_gpio.h>
++#include <linux/delay.h>
++#include <sound/core.h>
++#include <sound/jack.h>
++#include <sound/pcm.h>
++#include <sound/pcm_params.h>
++#include <sound/soc.h>
++
++#include "rockchip_i2s_tdm.h"
++
++#define DRV_NAME "rockchip-snd-ac108"
++
++static const struct snd_soc_dapm_widget rk_dapm_widgets[] = {
++	SND_SOC_DAPM_HP("Headphones", NULL),
++	SND_SOC_DAPM_SPK("Speakers", NULL),
++	SND_SOC_DAPM_MIC("Headset Mic", NULL),
++	SND_SOC_DAPM_MIC("Int Mic", NULL),
++};
++
++static const struct snd_soc_dapm_route rk_audio_map[] = {
++	/* Input Lines */
++	{"DMIC L2", NULL, "Int Mic"},
++	{"DMIC R2", NULL, "Int Mic"},
++	{"RECMIXL", NULL, "Headset Mic"},
++	{"RECMIXR", NULL, "Headset Mic"},
++
++	/* Output Lines */
++	{"Headphones", NULL, "HPOR"},
++	{"Headphones", NULL, "HPOL"},
++	{"Speakers", NULL, "SPOL"},
++	{"Speakers", NULL, "SPOR"},
++};
++
++static const struct snd_kcontrol_new rk_mc_controls[] = {
++	SOC_DAPM_PIN_SWITCH("Headphones"),
++	SOC_DAPM_PIN_SWITCH("Speakers"),
++	SOC_DAPM_PIN_SWITCH("Headset Mic"),
++	SOC_DAPM_PIN_SWITCH("Int Mic"),
++};
++
++static int rk_ac108_hw_params(struct snd_pcm_substream *substream,
++			     struct snd_pcm_hw_params *params)
++{
++    struct snd_soc_pcm_runtime *rtd = substream->private_data;
++    struct snd_soc_dai *codec_dai = rtd->codec_dai;
++    struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
++    unsigned int pll_out = 0, dai_fmt = rtd->card->dai_link->dai_fmt;
++    int ret;
++
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
++
++	ret = snd_soc_dai_set_pll(codec_dai, 0, 0, 12288000,
++				     24576000);
++	if (ret < 0) {
++		dev_err(codec_dai->dev, "Can't set codec pll %d\n", ret);
++		return ret;
++	}
++
++	ret = snd_soc_dai_set_sysclk(codec_dai, 0, 12288000,
++				     SND_SOC_CLOCK_IN);
++	if (ret < 0) {
++		dev_err(codec_dai->dev, "Can't set codec clock %d\n", ret);
++		return ret;
++	}
++
++    /* set codec DAI configuration */
++    ret = snd_soc_dai_set_fmt(codec_dai, dai_fmt);
++    if (ret < 0) {
++        printk("%s():failed to set the format for codec side\n", __FUNCTION__);
++        return ret;
++    }
++
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
++    /* set cpu DAI configuration */
++    ret = snd_soc_dai_set_fmt(cpu_dai, dai_fmt);
++    if (ret < 0) {
++        printk("%s():failed to set the format for cpu side\n", __FUNCTION__);
++        return ret;
++    }
++
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
++    switch(params_rate(params)) {
++    case 8000:
++    case 16000:
++    case 24000:
++    case 32000:
++    case 48000:
++        pll_out = 12288000;
++        break;
++    case 11025:
++    case 22050:
++    case 44100:
++        pll_out = 11289600;
++        break;
++    default:
++        printk("Enter:%s, %d, Error rate=%d\n",__FUNCTION__,__LINE__,params_rate(params));
++        return -EINVAL;
++        break;
++    }
++    printk("Enter:%s, %d, rate=%d\n",__FUNCTION__,__LINE__,params_rate(params));
++
++    if ((dai_fmt & SND_SOC_DAIFMT_MASTER_MASK) == SND_SOC_DAIFMT_CBS_CFS) {
++        snd_soc_dai_set_sysclk(cpu_dai, 0, pll_out, 0);
++        snd_soc_dai_set_clkdiv(cpu_dai, ROCKCHIP_DIV_BCLK, (pll_out/4)/params_rate(params)-1);
++        snd_soc_dai_set_clkdiv(cpu_dai, ROCKCHIP_DIV_MCLK, 3);
++    }
++
++    printk("Enter:%s, %d, LRCK=%d\n",__FUNCTION__,__LINE__,(pll_out/4)/params_rate(params));
++    return 0;
++}
++
++static int rk_init(struct snd_soc_pcm_runtime *runtime)
++{
++
++    struct snd_soc_dai *codec_dai = runtime->codec_dai;
++    struct snd_soc_dai *cpu_dai = runtime->cpu_dai;
++    int ret;
++
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
++
++    ret = snd_soc_dai_set_sysclk(codec_dai, 0,
++        12288000 /*11289600*/, SND_SOC_CLOCK_IN);
++    if (ret < 0) {
++        printk(KERN_ERR "Failed to set ac108 SYSCLK: %d\n", ret);
++        return ret;
++    }
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
++    ret = snd_soc_dai_set_sysclk(cpu_dai, 1,
++        12288000 /*11289600*/, SND_SOC_CLOCK_IN);
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
++    if (ret < 0) {
++        printk(KERN_ERR "Failed to set ac108 SYSCLK: %d\n", ret);
++        return ret;
++    }
++
++    return 0;
++}
++
++static struct snd_soc_ops rk_ac108_ops = {
++	.hw_params = rk_ac108_hw_params,
++};
++
++static struct snd_soc_dai_link rk_dailink = {
++	.name = "ac108",
++	.stream_name = "ac108 PCM",
++	.codec_dai_name = "ac108-pcm0",
++	.init = rk_init,
++	.ops = &rk_ac108_ops,
++	/* set ac108 as slave */
++	.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
++		SND_SOC_DAIFMT_CBS_CFS,
++};
++
++static struct snd_soc_card snd_soc_card_rk = {
++	.name = "rockchip,ac108-audio-codec",
++	.owner = THIS_MODULE,
++	.dai_link = &rk_dailink,
++	.num_links = 1,
++	.dapm_widgets = rk_dapm_widgets,
++	.num_dapm_widgets = ARRAY_SIZE(rk_dapm_widgets),
++	.dapm_routes = rk_audio_map,
++	.num_dapm_routes = ARRAY_SIZE(rk_audio_map),
++	.controls = rk_mc_controls,
++	.num_controls = ARRAY_SIZE(rk_mc_controls),
++};
++
++static int snd_rk_mc_probe(struct platform_device *pdev)
++{
++	int ret = 0;
++	struct snd_soc_card *card = &snd_soc_card_rk;
++	struct device_node *np = pdev->dev.of_node;
++
++	/* register the soc card */
++	card->dev = &pdev->dev;
++
++	rk_dailink.codec_of_node = of_parse_phandle(np,
++			"rockchip,audio-codec", 0);
++	if (!rk_dailink.codec_of_node) {
++		dev_err(&pdev->dev,
++			"Property 'rockchip,audio-codec' missing or invalid\n");
++		return -EINVAL;
++	}
++
++	rk_dailink.cpu_of_node = of_parse_phandle(np,
++			"rockchip,i2s-controller", 0);
++	if (!rk_dailink.cpu_of_node) {
++		dev_err(&pdev->dev,
++			"Property 'rockchip,i2s-controller' missing or invalid\n");
++		return -EINVAL;
++	}
++
++	rk_dailink.platform_of_node = rk_dailink.cpu_of_node;
++
++	ret = snd_soc_of_parse_card_name(card, "rockchip,model");
++	if (ret) {
++		dev_err(&pdev->dev,
++			"Soc parse card name failed %d\n", ret);
++		return ret;
++	}
++
++	ret = devm_snd_soc_register_card(&pdev->dev, card);
++	if (ret) {
++		dev_err(&pdev->dev,
++			"Soc register card failed %d\n", ret);
++		return ret;
++	}
++
++	return ret;
++}
++
++static const struct of_device_id rockchip_ac108_of_match[] = {
++	{ .compatible = "rockchip,rockchip-ac108", },
++	{},
++};
++
++MODULE_DEVICE_TABLE(of, rockchip_ac108_of_match);
++
++static struct platform_driver snd_rk_mc_driver = {
++	.probe = snd_rk_mc_probe,
++	.driver = {
++		.name = DRV_NAME,
++		.pm = &snd_soc_pm_ops,
++		.of_match_table = rockchip_ac108_of_match,
++	},
++};
++
++module_platform_driver(snd_rk_mc_driver);
++
++MODULE_AUTHOR("Xing Zheng <zhengxing@rock-chips.com>");
++MODULE_DESCRIPTION("Rockchip ac108 machine ASoC driver");
++MODULE_LICENSE("GPL v2");
++MODULE_ALIAS("platform:" DRV_NAME);
+diff --git a/sound/soc/rockchip/rockchip_tlv320dac3100.c b/sound/soc/rockchip/rockchip_tlv320dac3100.c
+new file mode 100644
+index 000000000000..73dcdc389097
+--- /dev/null
++++ b/sound/soc/rockchip/rockchip_tlv320dac3100.c
+@@ -0,0 +1,291 @@
++/*
++ * Rockchip machine ASoC driver for boards using a tlv320dac3100 CODEC.
++ *
++ * Copyright (c) 2015, ROCKCHIP CORPORATION.  All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms and conditions of the GNU General Public License,
++ * version 2, as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++ * more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
++ *
++ */
++
++#include <linux/module.h>
++#include <linux/platform_device.h>
++#include <linux/slab.h>
++#include <linux/gpio.h>
++#include <linux/of_gpio.h>
++#include <linux/delay.h>
++#include <sound/core.h>
++#include <sound/jack.h>
++#include <sound/pcm.h>
++#include <sound/pcm_params.h>
++#include <sound/soc.h>
++#include "rockchip_i2s_tdm.h"
++
++#define DRV_NAME "rockchip-snd-tlv320dac3100"
++
++static struct snd_soc_jack headset_jack;
++
++/* Jack detect via tlv320dac3100 driver. */
++extern int tlv320dac3100_set_jack_detect(struct snd_soc_codec *codec,
++	struct snd_soc_jack *hp_jack, struct snd_soc_jack *mic_jack,
++	struct snd_soc_jack *btn_jack);
++
++static const struct snd_soc_dapm_widget rk_dapm_widgets[] = {
++	SND_SOC_DAPM_HP("Headphones", NULL),
++	SND_SOC_DAPM_SPK("Speakers", NULL),
++	SND_SOC_DAPM_MIC("Headset Mic", NULL),
++	SND_SOC_DAPM_MIC("Int Mic", NULL),
++};
++
++static const struct snd_soc_dapm_route rk_audio_map[] = {
++	/* Input Lines */
++	{"DMIC L2", NULL, "Int Mic"},
++	{"DMIC R2", NULL, "Int Mic"},
++	{"RECMIXL", NULL, "Headset Mic"},
++	{"RECMIXR", NULL, "Headset Mic"},
++
++	/* Output Lines */
++	{"Headphones", NULL, "HPOR"},
++	{"Headphones", NULL, "HPOL"},
++	{"Speakers", NULL, "SPOL"},
++	{"Speakers", NULL, "SPOR"},
++};
++
++static const struct snd_kcontrol_new rk_mc_controls[] = {
++	SOC_DAPM_PIN_SWITCH("Headphones"),
++	SOC_DAPM_PIN_SWITCH("Speakers"),
++	SOC_DAPM_PIN_SWITCH("Headset Mic"),
++	SOC_DAPM_PIN_SWITCH("Int Mic"),
++};
++
++static int rk_tlv320dac3100_hw_params(struct snd_pcm_substream *substream,
++			     struct snd_pcm_hw_params *params)
++{
++#if 0
++	int ret = 0;
++	struct snd_soc_pcm_runtime *rtd = substream->private_data;
++	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
++	struct snd_soc_dai *codec_dai = rtd->codec_dai;
++	int mclk;
++
++	switch (params_rate(params)) {
++	case 8000:
++	case 16000:
++	case 24000:
++	case 32000:
++	case 48000:
++	case 64000:
++	case 96000:
++		mclk = 12288000;
++		break;
++	case 11025:
++	case 22050:
++	case 44100:
++	case 88200:
++		mclk = 11289600;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, mclk,
++				     SND_SOC_CLOCK_OUT);
++	if (ret < 0) {
++		dev_err(codec_dai->dev, "Can't set codec clock %d\n", ret);
++		return ret;
++	}
++
++	ret = snd_soc_dai_set_sysclk(codec_dai, 0, mclk,
++				     SND_SOC_CLOCK_IN);
++	if (ret < 0) {
++		dev_err(codec_dai->dev, "Can't set codec clock %d\n", ret);
++		return ret;
++	}
++
++	return ret;
++#else
++    struct snd_soc_pcm_runtime *rtd = substream->private_data;
++    struct snd_soc_dai *codec_dai = rtd->codec_dai;
++    struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
++    unsigned int pll_out = 0, dai_fmt = rtd->card->dai_link->dai_fmt;
++    int ret;
++
++    dev_err(codec_dai->dev, "Enter::%s----%d\n",__FUNCTION__,__LINE__);
++
++    /* set codec DAI configuration */
++    ret = snd_soc_dai_set_fmt(codec_dai, dai_fmt);
++    if (ret < 0) {
++        printk("%s():failed to set the format for codec side\n", __FUNCTION__);
++        return ret;
++    }
++
++    /* set cpu DAI configuration */
++    ret = snd_soc_dai_set_fmt(cpu_dai, dai_fmt);
++    if (ret < 0) {
++        printk("%s():failed to set the format for cpu side\n", __FUNCTION__);
++        return ret;
++    }
++
++    switch(params_rate(params)) {
++    case 8000:
++    case 16000:
++    case 24000:
++    case 32000:
++    case 48000:
++        pll_out = 12288000;
++        break;
++    case 11025:
++    case 22050:
++    case 44100:
++        pll_out = 11289600;
++        break;
++    default:
++        dev_err(codec_dai->dev, "Enter:%s, %d, Error rate=%d\n",__FUNCTION__,__LINE__,params_rate(params));
++        return -EINVAL;
++        break;
++    }
++    dev_err(codec_dai->dev, "Enter:%s, %d, rate=%d\n",__FUNCTION__,__LINE__,params_rate(params));
++
++    if ((dai_fmt & SND_SOC_DAIFMT_MASTER_MASK) == SND_SOC_DAIFMT_CBS_CFS) {
++        snd_soc_dai_set_sysclk(cpu_dai, 0, pll_out, 0);
++        snd_soc_dai_set_clkdiv(cpu_dai, ROCKCHIP_DIV_BCLK, (pll_out/4)/params_rate(params)-1);
++        snd_soc_dai_set_clkdiv(cpu_dai, ROCKCHIP_DIV_MCLK, 3);
++    }
++
++    dev_err(codec_dai->dev, "Enter:%s, %d, LRCK=%d\n",__FUNCTION__,__LINE__,(pll_out/4)/params_rate(params));
++    return 0;
++
++#endif
++}
++
++static int rk_init(struct snd_soc_pcm_runtime *runtime)
++{
++#if 0
++	/* Enable Headset and 4 Buttons Jack detection */
++	ret = snd_soc_card_jack_new(card, "Headset Jack",
++				    SND_JACK_HEADPHONE | SND_JACK_MICROPHONE |
++				    SND_JACK_BTN_0 | SND_JACK_BTN_1 |
++				    SND_JACK_BTN_2 | SND_JACK_BTN_3,
++				    &headset_jack, NULL, 0);
++	if (ret) {
++		dev_err(card->dev, "New Headset Jack failed! (%d)\n", ret);
++		return ret;
++	}
++#else
++    struct snd_soc_dai *codec_dai = runtime->codec_dai;
++    int ret;
++
++    dev_err(codec_dai->dev, "Enter::%s----%d\n",__FUNCTION__,__LINE__);
++    ret = snd_soc_dai_set_sysclk(codec_dai, 0,
++        12288000 /*11289600*/, SND_SOC_CLOCK_IN);
++    if (ret < 0) {
++        printk(KERN_ERR "Failed to set dac3100 SYSCLK: %d\n", ret);
++        return ret;
++    }
++#endif  
++    return 0;
++}
++
++static struct snd_soc_ops rk_aif1_ops = {
++	.hw_params = rk_tlv320dac3100_hw_params,
++};
++
++static struct snd_soc_dai_link rk_dailink = {
++	.name = "tlv320dac3100",
++	.stream_name = "tlv320dac3100 PCM",
++	.codec_dai_name = "tlv320dac3100-hifi",
++	.init = rk_init,
++	.ops = &rk_aif1_ops,
++	/* set tlv320dac3100 as slave */
++	.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF |
++		SND_SOC_DAIFMT_CBS_CFS,
++};
++
++static struct snd_soc_card snd_soc_card_rk = {
++	.name = "rockchip,tlv320dac3100-audio-codec",
++	.owner = THIS_MODULE,
++	.dai_link = &rk_dailink,
++	.num_links = 1,
++	.dapm_widgets = rk_dapm_widgets,
++	.num_dapm_widgets = ARRAY_SIZE(rk_dapm_widgets),
++	.dapm_routes = rk_audio_map,
++	.num_dapm_routes = ARRAY_SIZE(rk_audio_map),
++	.controls = rk_mc_controls,
++	.num_controls = ARRAY_SIZE(rk_mc_controls),
++};
++
++static int snd_rk_tlv320dac3100_probe(struct platform_device *pdev)
++{
++	int ret = 0;
++	struct snd_soc_card *card = &snd_soc_card_rk;
++	struct device_node *np = pdev->dev.of_node;
++
++	/* register the soc card */
++	card->dev = &pdev->dev;
++
++	rk_dailink.codec_of_node = of_parse_phandle(np,
++			"rockchip,audio-codec", 0);
++	if (!rk_dailink.codec_of_node) {
++		dev_err(&pdev->dev,
++			"Property 'rockchip,audio-codec' missing or invalid\n");
++		return -EINVAL;
++	}
++
++	rk_dailink.cpu_of_node = of_parse_phandle(np,
++			"rockchip,i2s-controller", 0);
++	if (!rk_dailink.cpu_of_node) {
++		dev_err(&pdev->dev,
++			"Property 'rockchip,i2s-controller' missing or invalid\n");
++		return -EINVAL;
++	}
++
++	rk_dailink.platform_of_node = rk_dailink.cpu_of_node;
++
++	ret = snd_soc_of_parse_card_name(card, "rockchip,card-name");
++	if (ret) {
++		dev_err(&pdev->dev,
++			"Soc parse card name failed %d\n", ret);
++		return ret;
++	}
++
++	ret = devm_snd_soc_register_card(&pdev->dev, card);
++	if (ret) {
++		dev_err(&pdev->dev,
++			"Soc register card failed %d\n", ret);
++		return ret;
++	}
++
++	return ret;
++}
++
++static const struct of_device_id rockchip_tlv320dac3100_of_match[] = {
++	{ .compatible = "rockchip,rockchip-tlv320dac3100", },
++	{},
++};
++
++MODULE_DEVICE_TABLE(of, rockchip_tlv320dac3100_of_match);
++
++static struct platform_driver snd_rk_tlv320dac3100_driver = {
++	.probe = snd_rk_tlv320dac3100_probe,
++	.driver = {
++		.name = DRV_NAME,
++		.pm = &snd_soc_pm_ops,
++		.of_match_table = rockchip_tlv320dac3100_of_match,
++	},
++};
++
++module_platform_driver(snd_rk_tlv320dac3100_driver);
++
++MODULE_AUTHOR("Xing Zheng <zhengxing@rock-chips.com>");
++MODULE_DESCRIPTION("Rockchip tlv320dac3100 machine ASoC driver");
++MODULE_LICENSE("GPL v2");
++MODULE_ALIAS("platform:" DRV_NAME);
+-- 
+2.11.0
+

@@ -1,0 +1,9 @@
+define KMACHINE linkit7688
+
+define KARCH mips
+
+include ktypes/tiny/tiny.scc
+define KTYPE standard/base
+branch linkit7688
+
+include linkit7688.scc

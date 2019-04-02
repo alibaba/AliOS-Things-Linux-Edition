@@ -1,0 +1,40 @@
+From cc49535abfea1caeabf966e9d76b131213c9df25 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 9 Aug 2018 17:51:42 +0800
+Subject: [PATCH 1/5] arm: configs: rk3308_linux_aarch32: Enable
+ CONFIG_ROCKCHIP_OTP
+
+Change-Id: Ie04961b1abfdc2e4f13316d2d8924aeae1affd91
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ arch/arm/configs/rk3308_linux_aarch32_debug_defconfig | 1 +
+ arch/arm/configs/rk3308_linux_aarch32_defconfig       | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig b/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
+index d07f378d9ded..a22d2901ef06 100644
+--- a/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
++++ b/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
+@@ -207,6 +207,7 @@ CONFIG_PWM_ROCKCHIP=y
+ CONFIG_PHY_ROCKCHIP_INNO_USB2=y
+ CONFIG_ANDROID=y
+ CONFIG_NVMEM=y
++CONFIG_ROCKCHIP_OTP=y
+ CONFIG_RK_FLASH=y
+ CONFIG_RK_NANDC_NAND=y
+ CONFIG_RK_SFC_NAND=y
+diff --git a/arch/arm/configs/rk3308_linux_aarch32_defconfig b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+index c3ae17d11191..a28a6e1801cf 100644
+--- a/arch/arm/configs/rk3308_linux_aarch32_defconfig
++++ b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+@@ -207,6 +207,7 @@ CONFIG_PWM_ROCKCHIP=y
+ CONFIG_PHY_ROCKCHIP_INNO_USB2=m
+ CONFIG_ANDROID=y
+ CONFIG_NVMEM=y
++CONFIG_ROCKCHIP_OTP=y
+ CONFIG_RK_FLASH=y
+ CONFIG_RK_NANDC_NAND=y
+ CONFIG_RK_SFC_NAND=y
+-- 
+2.11.0
+

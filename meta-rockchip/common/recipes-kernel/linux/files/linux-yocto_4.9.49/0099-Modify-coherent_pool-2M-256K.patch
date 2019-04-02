@@ -1,0 +1,25 @@
+From cb494fdd282c66af8ee8e43899378a2eb73b137d Mon Sep 17 00:00:00 2001
+From: Bruce Lee <lr437200361@126.com>
+Date: Thu, 31 Jan 2019 15:44:39 +0800
+Subject: [PATCH] Modify coherent_pool 2M -> 256K
+
+---
+ arch/arm/configs/rk3308_linux_aarch32_defconfig | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm/configs/rk3308_linux_aarch32_defconfig b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+index cee85f0..cc4b9f1 100644
+--- a/arch/arm/configs/rk3308_linux_aarch32_defconfig
++++ b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+@@ -39,7 +39,7 @@ CONFIG_AEABI=y
+ # CONFIG_COMPACTION is not set
+ CONFIG_DEFAULT_MMAP_MIN_ADDR=32768
+ CONFIG_UACCESS_WITH_MEMCPY=y
+-CONFIG_CMDLINE="coherent_pool=2M loglevel=0"
++CONFIG_CMDLINE="coherent_pool=256K loglevel=0"
+ CONFIG_CMDLINE_EXTEND=y
+ CONFIG_CPU_FREQ=y
+ CONFIG_CPU_FREQ_GOV_USERSPACE=y
+-- 
+2.7.4
+

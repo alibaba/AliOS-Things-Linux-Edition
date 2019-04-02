@@ -1,0 +1,411 @@
+From 14c8c991b708508ca132aa1d1831e4a357ad41bc Mon Sep 17 00:00:00 2001
+From: lr437200361@126.com
+Date: Thu, 13 Sep 2018 19:59:16 +0800
+Subject: [PATCH] Fixed AC108 record error caused by LRCLK.
+
+---
+ .../boot/dts/rk3308-ali-module-v10-aarch32.dtsi    |   2 +
+ sound/soc/codecs/ac108.c                           | 135 ++++++++-------------
+ sound/soc/rockchip/rockchip_ac108.c                |   9 +-
+ 3 files changed, 56 insertions(+), 90 deletions(-)
+
+diff --git a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+index c5f7c76..b79be1f 100644
+--- a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
++++ b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+@@ -245,6 +245,8 @@
+ 
+ &i2s_8ch_0 {
+ 	status = "okay";
++    assigned-clocks = <&cru SCLK_I2S0_8CH_RX>;
++    assigned-clock-parents = <&cru SCLK_I2S0_8CH_TX_MUX>;
+ 	rockchip,clk-trcm=<1>;
+ };
+ 
+diff --git a/sound/soc/codecs/ac108.c b/sound/soc/codecs/ac108.c
+index 1544d3f..ee19020 100755
+--- a/sound/soc/codecs/ac108.c
++++ b/sound/soc/codecs/ac108.c
+@@ -31,8 +31,6 @@
+ #include <sound/tlv.h>
+ #include <linux/regulator/consumer.h>
+ #include <linux/io.h>
+-#include <linux/clk.h>
+-#include <linux/mfd/syscon.h>
+ 
+ #include "ac108.h"
+ 
+@@ -54,22 +52,22 @@
+ 
+ //AC108 config
+ #define AC108_CHANNELS_MAX	    4			//range[1, 16]
+-#define AC108_SLOT_WIDTH		16		//16bit or 32bit slot width, other value will be reserved
++#define AC108_SLOT_WIDTH		32		//16bit or 32bit slot width, other value will be reserved
+ #define AC108_ENCODING_EN		0		//TX Encoding mode enable
+ #define AC108_ENCODING_CH_NUMS 	8		//TX Encoding channel numbers, must be dual, range[1, 16]
+ #define AC108_PGA_GAIN			ADC_PGA_GAIN_28dB	//0dB~30dB and -6dB, except 1~2dB
+-#define AC108_LRCK_PERIOD		(AC108_SLOT_WIDTH*(AC108_ENCODING_EN ? 2 : AC108_CHANNELS_MAX))	//range[1, 1024], default PCM mode, I2S/LJ/RJ mode shall divide by 2
++//#define AC108_LRCK_PERIOD		(AC108_SLOT_WIDTH*ENCODING_EN ? 2 : AC108_CHANNELS_MAX))	//range[1, 1024], default PCM mode, I2S/LJ/RJ mode shall divide by 2
++#define AC108_LRCK_PERIOD       (AC108_SLOT_WIDTH)  //range[1, 1024], default PCM mode, I2S/LJ/RJ mode shall divide by 2
+ 
+-#define AC108_SDO2_EN			0		//AC108 SDO2/TX2 Enable (SDO1 has be enabled default)
++#define AC108_SDO2_EN			1		//AC108 SDO2/TX2 Enable (SDO1 has be enabled default)
+ #define AC108_DMIC_EN			0		//0:ADC	 1:DMIC
+-#define AC108_IDLE_RESET_EN		0		//reset AC108 when in idle time
++#define AC108_IDLE_RESET_EN		1		//reset AC108 when in idle time
+ #define AC108_POWERON_RESET_EN	1		//AC108 poweron soft reset enable
+ #define AC108_MATCH_DTS_EN		0		//AC108 match method select: 0: i2c_detect, 1:devices tree
+ 
+ #define AC108_REGULATOR_NAME	"voltage_enable"
+ #define AC108_RATES 			(SNDRV_PCM_RATE_8000_96000 | SNDRV_PCM_RATE_KNOT)
+ #define AC108_FORMATS			(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S20_3LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S32_LE)
+-#define GRF_SOC_CON2 0x308
+ 
+ 
+ struct i2c_client *i2c_clt[(AC108_CHANNELS_MAX+3)/4];
+@@ -83,8 +81,6 @@ struct ac108_priv {
+ 	struct i2c_client *i2c;
+ 	struct snd_soc_codec *codec;
+ 	struct voltage_supply vol_supply;
+-	struct clk *mclk_rx;
+-    struct regmap *grf;
+ };
+ 
+ static const struct regmap_config ac108_regmap_config = {
+@@ -746,9 +742,8 @@ static int ac108_multi_chips_update_bits(u8 reg, u8 mask, u8 value)
+ static void ac108_hw_init(struct i2c_client *i2c)
+ {
+ 	/*** Chip reset ***/
+-	ac108_write(CHIP_AUDIO_RST, 0x12, i2c);	/*0x00=0x12: reset all registers to their default state*/
++	//ac108_write(CHIP_AUDIO_RST, 0x12, i2c);	/*0x00=0x12: reset all registers to their default state*/
+ 
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ #if !AC108_DMIC_EN
+ 	/*** Analog voltage enable ***/
+ 	ac108_write(PWR_CTRL6, 0x01, i2c);		/*0x06=0x01: Enable Analog LDO*/
+@@ -756,50 +751,50 @@ static void ac108_hw_init(struct i2c_client *i2c)
+ 	ac108_write(PWR_CTRL9, 0x81, i2c);		/*0x09=0x81: VREFP faststart Enable, Enable VREFP (needed by all audio input channels)*/
+ 	ac108_write(ANA_ADC3_CTRL7, 0x0b, i2c);	/*DSM low power mode enable, Control bias current for DSM integrator opamps*/
+ #endif
+-	//Config PLL DIV param M1/M2/N/K1/K2
+-	ac108_write(PLL_CTRL2, 0x0C,i2c);
+-	ac108_write(PLL_CTRL3, 0x02,i2c);
+-	ac108_write(PLL_CTRL4, 0x8A,i2c);
+-	ac108_write(PLL_CTRL5, 0x18,i2c);
+-
+-	ac108_write(PLL_LOCK_CTRL, 0x01,i2c);						//PLL CLK lock enable
+-	ac108_write(PLL_CTRL1, 0x4f,i2c);	//PLL Common voltage Enable, PLL Enable
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++
+ 	/*** SYSCLK Config ***/
+-	ac108_write(SYSCLK_CTRL, 0x89, i2c);	/*SYSCLK Enable*/
++	ac108_update_bits(SYSCLK_CTRL, 0x1<<SYSCLK_EN, 0x1<<SYSCLK_EN, i2c);	/*SYSCLK Enable*/
+ 	ac108_write(MOD_CLK_EN, 0x93, i2c);		/*0x21=0x93: Module clock enable<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
+ 	ac108_write(MOD_RST_CTRL, 0x93, i2c);	/*0x22=0x93: Module reset de-asserted<I2S, ADC digital, MIC offset Calibration, ADC analog>*/
+ 
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	/*** I2S Common Config ***/
+-	ac108_write(I2S_CTRL, 0x35, i2c);	/*SDO1 enable, SDO2 Enable*/
+-	//ac108_write(I2S_BCLK_CTRL, 0x1<<EDGE_TRANSFER, 0x0<<EDGE_TRANSFER, i2c);	/*SDO drive data and SDI sample data at the different BCLK edge*/
+-	//ac108_write(I2S_LRCK_CTRL1, 0x3<<LRCK_PERIODH, ((AC108_LRCK_PERIOD-1) >> 8)<<LRCK_PERIODH, i2c);
+-	ac108_write(I2S_LRCK_CTRL2, 0x1F, i2c);	/*config LRCK period: 16bit * 8ch = 128, 32bit * 8ch = 256, 32bit *16ch =512*/
++	ac108_update_bits(I2S_CTRL, 0x1<<SDO1_EN | 0x1<<SDO2_EN, 0x1<<SDO1_EN | !!AC108_SDO2_EN<<SDO2_EN, i2c);	/*SDO1 enable, SDO2 Enable*/
++	ac108_update_bits(I2S_BCLK_CTRL, 0x1<<EDGE_TRANSFER, 0x0<<EDGE_TRANSFER, i2c);	/*SDO drive data and SDI sample data at the different BCLK edge*/
++	ac108_update_bits(I2S_LRCK_CTRL1, 0x3<<LRCK_PERIODH, ((AC108_LRCK_PERIOD-1) >> 8)<<LRCK_PERIODH, i2c);
++	ac108_write(I2S_LRCK_CTRL2, (u8)(AC108_LRCK_PERIOD-1), i2c);	/*config LRCK period: 16bit * 8ch = 128, 32bit * 8ch = 256, 32bit *16ch =512*/
+ 	/*Encoding mode enable, Turn to hi-z state (TDM) when not transferring slot*/
+-	ac108_write(I2S_FMT_CTRL1, 0x1d, i2c);
+-	ac108_write(I2S_FMT_CTRL2, 0x73, i2c);		/*8/12/16/20/24/28/32bit Slot Width*/
++	ac108_update_bits(I2S_FMT_CTRL1, 0x1<<ENCD_SEL | 0x1<<TX_SLOT_HIZ | 0x1<<TX_STATE, !!AC108_ENCODING_EN<<ENCD_SEL | 0x0<<TX_SLOT_HIZ | 0x1<<TX_STATE, i2c);
++	ac108_update_bits(I2S_FMT_CTRL2, 0x7<<SLOT_WIDTH_SEL, (AC108_SLOT_WIDTH/4-1)<<SLOT_WIDTH_SEL, i2c);		/*8/12/16/20/24/28/32bit Slot Width*/
+ 	/*0x36=0x70: TX MSB first, TX2 Mute, Transfer 0 after each sample in each slot(sample resolution < slot width), LRCK = 1 BCLK width (short frame), Linear PCM Data Mode*/
+-	ac108_write(I2S_FMT_CTRL3, 0x60, i2c);
+-
+-	ac108_write(I2S_TX1_CTRL1, 0x01, i2c);
+-	ac108_write(I2S_TX1_CTRL2, 0x03, i2c);
++	ac108_write(I2S_FMT_CTRL3, AC108_SDO2_EN ? 0x60 : 0x70, i2c);
+ 	
+ 	ac108_write(I2S_TX1_CHMP_CTRL1, 0x04, i2c);		/*0x3C=0xe4: TX1 CHn Map to CHn adc sample, n=[1,4]*/
+-	ac108_write(I2S_TX2_CTRL1, 0x01, i2c);
+-	ac108_write(I2S_TX2_CTRL2, 0x03, i2c);
+-	ac108_write(I2S_TX2_CHMP_CTRL1, 0x0e, i2c);
+-	
++	ac108_write(I2S_TX1_CHMP_CTRL2, 0x00, i2c);		/*0x3D=0xe4: TX1 CHn Map to CH(n-4) adc sample, n=[5,8]*/
++	ac108_write(I2S_TX1_CHMP_CTRL3, 0x00, i2c);		/*0x3E=0xe4: TX1 CHn Map to CH(n-8) adc sample, n=[9,12]*/
++	ac108_write(I2S_TX1_CHMP_CTRL4, 0x00, i2c);		/*0x3F=0xe4: TX1 CHn Map to CH(n-12) adc sample, n=[13,16]*/
++#if AC108_SDO2_EN
++	ac108_write(I2S_TX2_CHMP_CTRL1, 0x0e, i2c); 	/*0x44=0x4e: TX2 CH1/2 Map to CH3/4 adc sample, TX2 CH3/4 Map to CH1/2 adc sample*/
++	ac108_write(I2S_TX2_CHMP_CTRL2, 0x00, i2c); 	/*0x45=0xe4: TX2 CHn Map to CH(n-4) adc sample, n=[5,8]*/
++	ac108_write(I2S_TX2_CHMP_CTRL3, 0x00, i2c); 	/*0x46=0xe4: TX2 CHn Map to CH(n-8) adc sample, n=[9,12]*/
++	ac108_write(I2S_TX2_CHMP_CTRL4, 0x00, i2c); 	/*0x47=0xe4: TX2 CHn Map to CH(n-12) adc sample, n=[13,16]*/
++#endif
++
+ 	/*** ADC DIG part Config***/
+-	ac108_write(ADC_SPRC, 0x08, i2c);					/*0x60=0x03: ADC Sample Rate 16KHz*/
++	//ac108_write(ADC_SPRC, 0x03, i2c);					/*0x60=0x03: ADC Sample Rate 16KHz*/
+ 	ac108_write(ADC_DIG_EN, 0x1f, i2c);				/*0x61=0x1f: Digital part globe enable, ADCs digital part enable*/
+ 	ac108_write(ANA_ADC4_CTRL7, 0x0f, i2c);			/*0xBB=0x0f: Gating ADCs CLK de-asserted (ADCs CLK Enable)*/
+ 	
++#if AC108_ADC_PATTERN_SEL
++	ac108_write(HPF_EN, 0x00, i2c);									/*0x66=0x00: Digital ADCs channel HPF disable*/
++	ac108_write(ADC_DIG_DEBUG, AC108_ADC_PATTERN_SEL & 0x7, i2c);	/*0X7F=0x00: ADC pattern select: 0:ADC normal, 1:0x5A5A5A, 2:0x123456, 3:0x00, 4~7:I2S RX data*/
++#endif
++
++#if !AC108_DMIC_EN
+ 	/*** ADCs analog PGA gain Config***/
+-	ac108_write(ANA_PGA1_CTRL, 0x3c, i2c);				/*0x90=0x3d: ADC1 PGA gain 30.5dB*/
+-	ac108_write(ANA_PGA2_CTRL, 0x3c, i2c);				/*0x91=0x3d: ADC2 PGA gain 30.5dB*/
+-	ac108_write(ANA_PGA3_CTRL, 0x3c, i2c);				/*0x92=0x3d: ADC3 PGA gain 30.5dB*/
+-	ac108_write(ANA_PGA4_CTRL, 0x3c, i2c);				/*0x93=0x3d: ADC4 PGA gain 30.5dB*/
++	ac108_write(ANA_PGA1_CTRL, AC108_PGA_GAIN<<1, i2c);				/*0x90=0x3d: ADC1 PGA gain 30.5dB*/
++	ac108_write(ANA_PGA2_CTRL, AC108_PGA_GAIN<<1, i2c);				/*0x91=0x3d: ADC2 PGA gain 30.5dB*/
++	ac108_write(ANA_PGA3_CTRL, AC108_PGA_GAIN<<1, i2c);				/*0x92=0x3d: ADC3 PGA gain 30.5dB*/
++	ac108_write(ANA_PGA4_CTRL, AC108_PGA_GAIN<<1, i2c);				/*0x93=0x3d: ADC4 PGA gain 30.5dB*/
+ 
+ 	/*** enable AAF/ADC/PGA  and UnMute Config ***/
+ 	ac108_write(ANA_ADC1_CTRL1, 0x07, i2c);			/*0xA0=0x07: ADC1 AAF & ADC enable, ADC1 PGA enable, ADC1 MICBIAS enable and UnMute*/
+@@ -807,6 +802,15 @@ static void ac108_hw_init(struct i2c_client *i2c)
+ 	ac108_write(ANA_ADC3_CTRL1, 0x07, i2c);			/*0xAE=0x07: ADC3 AAF & ADC enable, ADC3 PGA enable, ADC3 MICBIAS enable and UnMute*/
+ 	ac108_write(ANA_ADC4_CTRL1, 0x07, i2c);			/*0xB5=0x07: ADC4 AAF & ADC enable, ADC4 PGA enable, ADC4 MICBIAS enable and UnMute*/
+ 
++	msleep(50);										/*delay 50ms to let VREF/VRP faststart powerup stable, then disable faststart*/
++	ac108_update_bits(PWR_CTRL7, 0x1<<VREF_FASTSTART_ENABLE, 0x0<<VREF_FASTSTART_ENABLE, i2c);		/*VREF faststart disable*/
++	ac108_update_bits(PWR_CTRL9, 0x1<<VREFP_FASTSTART_ENABLE, 0x0<<VREFP_FASTSTART_ENABLE, i2c);	/*VREFP faststart disable*/
++#else
++	/*** DMIC module Enable ***/
++	ac108_write(DMIC_EN, 0x03, i2c);				/*DMIC1/2 Enable, while ADC DIG source select DMIC1/2*/
++	ac108_write(GPIO_CFG1, 0xee, i2c);				/*GPIO1 as DMIC1_DAT, GPIO2 as DMIC_CLK*/
++	ac108_write(GPIO_CFG2, 0x7e, i2c);				/*GPIO3 as DMIC2_DAT*/
++#endif
+ }
+ 
+ 
+@@ -921,8 +925,8 @@ static int ac108_set_clkdiv(struct snd_soc_dai *dai, int div_id, int div)
+ 		return 0;
+ 	}
+ 
+-	bclk_div = div/(AC108_LRCK_PERIOD);		//default PCM mode
+-	//bclk_div = div/(2*AC108_LRCK_PERIOD);	//I2S/LJ/RJ mode
++	//bclk_div = div/(AC108_LRCK_PERIOD);		//default PCM mode
++	bclk_div = div/(2*AC108_LRCK_PERIOD);	//I2S/LJ/RJ mode
+ 
+ 	for(i=0; i<ARRAY_SIZE(ac108_bclk_div); i++){
+ 		if(ac108_bclk_div[i].real_val == bclk_div){
+@@ -948,7 +952,6 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+ 	u8 i, tx_offset, i2s_mode, lrck_polarity, brck_polarity;
+ 	struct ac108_priv *ac108 = dev_get_drvdata(dai->dev);
+ 
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	//AC108 config Master/Slave mode
+ 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
+ 		case SND_SOC_DAIFMT_CBM_CFM:	//AC108 Master
+@@ -963,14 +966,11 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+ 			pr_err("AC108 Master/Slave mode config error:%u\n\n",(fmt & SND_SOC_DAIFMT_MASTER_MASK)>>12);
+ 			return -EINVAL;
+ 	}
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	for(i=0; i<(AC108_CHANNELS_MAX+3)/4; i++){	//multi_chips: only one chip set as Master, and the others also need to set as Slave
+ 		if(i2c_clt[i] == ac108->i2c) continue;
+-	    AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 		ac108_update_bits(I2S_CTRL, 0x3<<LRCK_IOEN, 0x0<<LRCK_IOEN, i2c_clt[i]);
+ 	}
+ 
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	//AC108 config I2S/LJ/RJ/PCM format
+ 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
+ 		case SND_SOC_DAIFMT_I2S:
+@@ -1002,11 +1002,9 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+ 			pr_err("AC108 I2S format config error:%u\n\n",fmt & SND_SOC_DAIFMT_FORMAT_MASK);
+ 			return -EINVAL;
+ 	}
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	ac108_multi_chips_update_bits(I2S_FMT_CTRL1, 0x3<<MODE_SEL | 0x1<<TX2_OFFSET | 0x1<<TX1_OFFSET,\
+ 		i2s_mode<<MODE_SEL | tx_offset<<TX2_OFFSET | tx_offset<<TX1_OFFSET);
+ 
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	//AC108 config BCLK&LRCK polarity
+ 	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
+ 		case SND_SOC_DAIFMT_NB_NF:
+@@ -1033,7 +1031,6 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+ 			pr_err("AC108 config BCLK/LRCLK polarity error:%u\n\n",(fmt & SND_SOC_DAIFMT_INV_MASK)>>8);
+ 			return -EINVAL;
+ 	}
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	ac108_multi_chips_update_bits(I2S_BCLK_CTRL,  0x1<<BCLK_POLARITY, brck_polarity<<BCLK_POLARITY);
+ 	ac108_multi_chips_update_bits(I2S_LRCK_CTRL1, 0x1<<LRCK_POLARITY, lrck_polarity<<LRCK_POLARITY);
+ 	
+@@ -1042,7 +1039,7 @@ static int ac108_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
+ 
+ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
+ {
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
++	AC108_DEBUG("\n--->%s\n",__FUNCTION__);
+ 	u16 i, channels, channels_en, sample_resolution;
+     u8 reg_val;
+ 
+@@ -1051,17 +1048,13 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
+ 		ac108_hw_init(i2c_clt[i]);
+ 	}
+ 
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+-
+ 	//AC108 set sample rate
+ 	for(i=0; i<ARRAY_SIZE(ac108_sample_rate); i++){
+ 		if(ac108_sample_rate[i].real_val == params_rate(params) / (AC108_ENCODING_EN ? AC108_ENCODING_CH_NUMS/2 : 1)){
+-	        AC108_DEBUG("\n--->%s %d sample_rate.reg_val = %x\n",__func__, __LINE__, ac108_sample_rate[i].reg_val);
+ 			ac108_multi_chips_update_bits(ADC_SPRC, 0xf<<ADC_FS_I2S1, ac108_sample_rate[i].reg_val<<ADC_FS_I2S1);
+ 			break;
+ 		}
+ 	}
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 
+ 	//AC108 set channels
+ #if !AC108_SDO2_EN
+@@ -1080,7 +1073,6 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
+ 	
+ #else
+ 	
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	channels = params_channels(params);
+ 	for(i=0; i<(channels+3)/4; i++){
+ 		channels_en = 0x03;//(2 >= 4*(i+1)) ? 0x000f<<(4*i) : ((1<<(2%4))-1)<<(4*i);
+@@ -1088,21 +1080,18 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
+ 		ac108_write(I2S_TX1_CTRL2, (u8)channels_en, i2c_clt[i]);
+ 		ac108_write(I2S_TX1_CTRL3, channels_en>>8, i2c_clt[i]);
+ 	}
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	for(; i<(AC108_CHANNELS_MAX+3)/4; i++){
+ 		ac108_write(I2S_TX1_CTRL1, 0, i2c_clt[i]);
+ 		ac108_write(I2S_TX1_CTRL2, 0, i2c_clt[i]);
+ 		ac108_write(I2S_TX1_CTRL3, 0, i2c_clt[i]);
+ 	}
+ 
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	for(i=0; i<(channels+3)/4; i++){
+ 		channels_en = 0x03;//(2 >= 4*(i+1)) ? 0x000f<<(4*i) : ((1<<(2%4))-1)<<(4*i);
+ 		ac108_write(I2S_TX2_CTRL1, 2-1, i2c_clt[i]);
+ 		ac108_write(I2S_TX2_CTRL2, (u8)channels_en, i2c_clt[i]);
+ 		ac108_write(I2S_TX2_CTRL3, channels_en>>8, i2c_clt[i]);
+ 	}
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	for(; i<(AC108_CHANNELS_MAX+3)/4; i++){
+ 		ac108_write(I2S_TX2_CTRL1, 0, i2c_clt[i]);
+ 		ac108_write(I2S_TX2_CTRL2, 0, i2c_clt[i]);
+@@ -1110,7 +1099,6 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
+ 	}
+ #endif
+ 
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	//AC108 set sample resorution
+ 	switch (params_format(params)) {
+ 	case SNDRV_PCM_FORMAT_S8:
+@@ -1133,7 +1121,6 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
+ 		return -EINVAL;
+ 	}
+ 	
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+   #if 0//AC108_ENCODING_EN
+ 	if(sample_resolution <= 24 && sample_resolution != 16)	sample_resolution += 4;		//TX Encoding mode, SR add 4bits to mark channel number
+   #endif
+@@ -1144,24 +1131,19 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
+ 		}
+ 	}
+ 
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	ac108_read(SYSCLK_CTRL, &reg_val, i2c_clt[0]);
+ 	if(reg_val&0x80){			//PLLCLK Enable
+ 		//PLL Common voltage Enable, PLL Enable
+-	    AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 		ac108_multi_chips_update_bits(PLL_CTRL1, 0x1<<PLL_EN | 0x1<<PLL_COM_EN, 0x1<<PLL_EN | 0x1<<PLL_COM_EN);
+ 		if(!(reg_val&0x08)){	//SYSCLK select MCLK
+-	        AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 			//GPIO4 output Clock 24MHz from DPLL
+ 			ac108_multi_chips_update_bits(GPIO_CFG2, 0xf<<GPIO4_SELECT, 0x9<<GPIO4_SELECT);
+ 		}
+ 	}
+ 
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	//AC108 TX enable, Globle enable
+ 	ac108_multi_chips_update_bits(I2S_CTRL, 0x1<<TXEN | 0x1<<GEN, 0x1<<TXEN | 0x1<<GEN);
+ 
+-	AC108_DEBUG("\n--->%s %d\n",__func__, __LINE__);
+ 	return 0;
+ }
+ 
+@@ -1182,7 +1164,6 @@ static int ac108_hw_free(struct snd_pcm_substream *substream, struct snd_soc_dai
+ 
+ 	AC108_DEBUG("AC108 reset all register to their default value\n\n");
+ 	ac108_multi_chips_write(CHIP_AUDIO_RST, 0x12);
+-	mdelay(200);
+ #endif
+ 
+ 	return 0;
+@@ -1496,26 +1477,6 @@ static int ac108_i2c_probe(struct i2c_client *i2c, const struct i2c_device_id *i
+ 		pr_err("The wrong i2c_id number :%d\n", (int)(i2c_id->driver_data));
+ 	}
+ 
+-	ac108->mclk_rx = devm_clk_get(&i2c->dev, "mclk_rx");
+-	if (IS_ERR(ac108->mclk_rx)) {
+-		pr_err("Can't get acodec mclk_rx\n");
+-		return PTR_ERR(ac108->mclk_rx);
+-	}
+-
+-	ret = clk_prepare_enable(ac108->mclk_rx);
+-	if (ret < 0) {
+-		pr_err("Failed to enable acodec pclk: %d\n", ret);
+-		return ret;
+-	}
+-    
+-    ac108->grf = syscon_regmap_lookup_by_phandle(np, "rockchip,grf");
+-    if (IS_ERR(ac108->grf))
+-    {
+-        pr_err("Missing rockchip,grf property\n");
+-        return PTR_ERR(ac108->grf);
+-    }
+-    regmap_write(ac108->grf, GRF_SOC_CON2, 0x04000400);
+-
+ 	ret = sysfs_create_group(&i2c->dev.kobj, &ac108_debug_attr_group);
+ 	if (ret) {
+ 		pr_err("failed to create attr group\n");
+diff --git a/sound/soc/rockchip/rockchip_ac108.c b/sound/soc/rockchip/rockchip_ac108.c
+index d26c604..dac13f9 100755
+--- a/sound/soc/rockchip/rockchip_ac108.c
++++ b/sound/soc/rockchip/rockchip_ac108.c
+@@ -72,6 +72,8 @@ static int rk_ac108_hw_params(struct snd_pcm_substream *substream,
+ 
+     dev_err(codec_dai->dev, "Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 
++
++
+     ret = snd_soc_dai_set_sysclk(codec_dai, 1,
+         12288000 /*11289600*/, SND_SOC_CLOCK_IN);
+     if (ret < 0) {
+@@ -79,13 +81,14 @@ static int rk_ac108_hw_params(struct snd_pcm_substream *substream,
+         return ret;
+     }
+ 
+-    ret = snd_soc_dai_set_pll(codec_dai, 0,
+-        0/*unused*/, 12288000, 24576000);
++    ret = snd_soc_dai_set_pll(codec_dai, 1,
++        0/*unused*/, 1024000, 24576000);
+     if (ret < 0) {
+         printk(KERN_ERR "Failed to set ac108 pll: %d\n", ret);
+         return ret;
+     }
+ 
++
+     /* set codec DAI configuration */
+     ret = snd_soc_dai_set_fmt(codec_dai, dai_fmt);
+     if (ret < 0) {
+@@ -140,7 +143,7 @@ static int rk_init(struct snd_soc_pcm_runtime *runtime)
+ 
+     printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 
+-    ret = snd_soc_dai_set_sysclk(codec_dai, 0,
++    ret = snd_soc_dai_set_sysclk(codec_dai, 1,
+         12288000 /*11289600*/, SND_SOC_CLOCK_IN);
+     if (ret < 0) {
+         printk(KERN_ERR "Failed to set ac108 SYSCLK: %d\n", ret);
+-- 
+2.7.4
+

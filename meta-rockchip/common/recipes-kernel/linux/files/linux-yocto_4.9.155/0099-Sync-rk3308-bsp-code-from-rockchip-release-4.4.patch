@@ -1,0 +1,5097 @@
+From d3160eb431a7bac3b4282b95dc027cc2f07acdd3 Mon Sep 17 00:00:00 2001
+From: Jinliang Li <jinliang.li@linux.alibaba.com>
+Date: Tue, 12 Mar 2019 13:44:35 +0800
+Subject: [PATCH] Sync rk3308 bsp code from rockchip release-4.4
+
+Signed-off-by: Jinliang Li <jinliang.li@linux.alibaba.com>
+---
+ arch/arm64/boot/dts/rockchip/rk3308.dtsi |  564 ++++++++-
+ drivers/clk/rockchip/clk-rk3308.c        |   65 +-
+ drivers/pinctrl/pinctrl-rockchip.c       |  696 ++++++++++-
+ drivers/soc/rockchip/rockchip-cpuinfo.c  |   19 +-
+ include/dt-bindings/clock/rk3308-cru.h   |   25 +-
+ include/linux/rockchip/cpu.h             |   17 +
+ sound/soc/codecs/rk3308_codec.c          | 1842 +++++++++++++++++++++++-------
+ sound/soc/codecs/rk3308_codec.h          |   88 +-
+ 8 files changed, 2796 insertions(+), 520 deletions(-)
+ mode change 100755 => 100644 arch/arm64/boot/dts/rockchip/rk3308.dtsi
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3308.dtsi b/arch/arm64/boot/dts/rockchip/rk3308.dtsi
+old mode 100755
+new mode 100644
+index 3c7b162..6a613721
+--- a/arch/arm64/boot/dts/rockchip/rk3308.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3308.dtsi
+@@ -50,6 +50,7 @@
+ 			dynamic-power-coefficient = <90>;
+ 			operating-points-v2 = <&cpu0_opp_table>;
+ 			cpu-idle-states = <&CPU_SLEEP>;
++			next-level-cache = <&l2>;
+ 		};
+ 
+ 		cpu1: cpu@1 {
+@@ -59,6 +60,7 @@
+ 			enable-method = "psci";
+ 			operating-points-v2 = <&cpu0_opp_table>;
+ 			cpu-idle-states = <&CPU_SLEEP>;
++			next-level-cache = <&l2>;
+ 		};
+ 
+ 		cpu2: cpu@2 {
+@@ -68,6 +70,7 @@
+ 			enable-method = "psci";
+ 			operating-points-v2 = <&cpu0_opp_table>;
+ 			cpu-idle-states = <&CPU_SLEEP>;
++			next-level-cache = <&l2>;
+ 		};
+ 
+ 		cpu3: cpu@3 {
+@@ -77,6 +80,7 @@
+ 			enable-method = "psci";
+ 			operating-points-v2 = <&cpu0_opp_table>;
+ 			cpu-idle-states = <&CPU_SLEEP>;
++			next-level-cache = <&l2>;
+ 		};
+ 
+ 		idle-states {
+@@ -91,15 +95,47 @@
+ 				min-residency-us = <900>;
+ 			};
+ 		};
++
++		l2: l2-cache {
++			compatible = "cache";
++		};
+ 	};
+ 
+ 	cpu0_opp_table: cpu0-opp-table {
+ 		compatible = "operating-points-v2";
+ 		opp-shared;
+ 
++		rockchip,temp-hysteresis = <5000>;
++		rockchip,low-temp = <0>;
++		rockchip,low-temp-min-volt = <1000000>;
++		rockchip,max-volt = <1340000>;
++		rockchip,low-temp-adjust-volt = <
++			/* MHz    MHz    uV */
++			   0      1296   50000
++		>;
++
++		rockchip,evb-irdrop = <25000>;
+ 		nvmem-cells = <&cpu_leakage>;
+ 		nvmem-cell-names = "leakage";
+ 
++		rockchip,pvtm-voltage-sel = <
++			0        54000   0
++			54001    56000   1
++			56001    58500   2
++			58501    61000   3
++			61001    63500   4
++			63501    99999   5
++		>;
++		rockchip,pvtm-freq = <408000>;
++		rockchip,pvtm-volt = <1025000>;
++		rockchip,pvtm-ch = <0 0>;
++		rockchip,pvtm-sample-time = <1000>;
++		rockchip,pvtm-number = <10>;
++		rockchip,pvtm-error = <1000>;
++		rockchip,pvtm-ref-temp = <35>;
++		rockchip,pvtm-temp-prop = <(-15) (-37)>;
++		rockchip,thermal-zone = "soc-thermal";
++
+ 		opp-408000000 {
+ 			opp-hz = /bits/ 64 <408000000>;
+ 			opp-microvolt = <950000 950000 1340000>;
+@@ -113,23 +149,47 @@
+ 		};
+ 		opp-816000000 {
+ 			opp-hz = /bits/ 64 <816000000>;
+-			opp-microvolt = <1050000 1050000 1340000>;
++			opp-microvolt = <1025000 1025000 1340000>;
++			opp-microvolt-L0 = <1025000 1025000 1340000>;
++			opp-microvolt-L1 = <1025000 1025000 1340000>;
++			opp-microvolt-L2 = <1025000 1025000 1340000>;
++			opp-microvolt-L3 = <1000000 1000000 1340000>;
++			opp-microvolt-L4 = <975000 975000 1340000>;
++			opp-microvolt-L5 = <950000 950000 1340000>;
+ 			clock-latency-ns = <40000>;
+ 		};
+ 		opp-1008000000 {
+ 			opp-hz = /bits/ 64 <1008000000>;
+-			opp-microvolt = <1100000 1100000 1340000>;
++			opp-microvolt = <1125000 1125000 1340000>;
++			opp-microvolt-L0 = <1125000 1125000 1340000>;
++			opp-microvolt-L1 = <1100000 1100000 1340000>;
++			opp-microvolt-L2 = <1100000 1100000 1340000>;
++			opp-microvolt-L3 = <1075000 1075000 1340000>;
++			opp-microvolt-L4 = <1050000 1050000 1340000>;
++			opp-microvolt-L5 = <1025000 1025000 1340000>;
+ 			clock-latency-ns = <40000>;
+ 		};
+ 		opp-1200000000 {
+ 			opp-hz = /bits/ 64 <1200000000>;
+-			opp-microvolt = <1200000 1200000 1340000>;
++			opp-microvolt = <1250000 1250000 1340000>;
++			opp-microvolt-L0 = <1250000 1250000 1340000>;
++			opp-microvolt-L1 = <1225000 1225000 1340000>;
++			opp-microvolt-L2 = <1200000 1200000 1340000>;
++			opp-microvolt-L3 = <1175000 1175000 1340000>;
++			opp-microvolt-L4 = <1150000 1150000 1340000>;
++			opp-microvolt-L5 = <1125000 1125000 1340000>;
+ 			clock-latency-ns = <40000>;
+ 			status = "disabled";
+ 		};
+ 		opp-1296000000 {
+ 			opp-hz = /bits/ 64 <1296000000>;
+-			opp-microvolt = <1250000 1250000 1340000>;
++			opp-microvolt = <1300000 1300000 1340000>;
++			opp-microvolt-L0 = <1300000 1300000 1340000>;
++			opp-microvolt-L1 = <1275000 1275000 1340000>;
++			opp-microvolt-L2 = <1250000 1250000 1340000>;
++			opp-microvolt-L3 = <1225000 1225000 1340000>;
++			opp-microvolt-L4 = <1200000 1200000 1340000>;
++			opp-microvolt-L5 = <1175000 1175000 1340000>;
+ 			clock-latency-ns = <40000>;
+ 			status = "disabled";
+ 		};
+@@ -179,6 +239,8 @@
+ 	dmc_opp_table: dmc-opp-table {
+ 		compatible = "operating-points-v2";
+ 
++		rockchip,evb-irdrop = <25000>;
++
+ 		opp-394000000 {
+ 			opp-hz = /bits/ 64 <394000000>;
+ 			opp-microvolt = <950000>;
+@@ -215,13 +277,18 @@
+ 		method = "smc";
+ 	};
+ 
++	ramoops_mem: ramoops_mem {
++		reg = <0x0 0x110000 0x0 0xf0000>;
++		reg-names = "ramoops_mem";
++	};
++
+ 	ramoops: ramoops {
+ 		compatible = "ramoops";
+-		reg = <0x0 0x110000 0x0 0xf0000>;
+-		record-size = <0x30000>;
+-		console-size = <0xc0000>;
+-		ftrace-size = <0x0000>;
+-		pmsg-size = <0x0000>;
++		record-size = <0x0 0x30000>;
++		console-size = <0x0 0xc0000>;
++		ftrace-size = <0x0 0x00000>;
++		pmsg-size = <0x0 0x00000>;
++		memory-region = <&ramoops_mem>;
+ 	};
+ 
+ 	rgb: rgb {
+@@ -317,6 +384,13 @@
+ 		};
+ 	};
+ 
++	detect_grf: syscon@ff00b000 {
++		compatible = "syscon", "simple-mfd";
++		reg = <0x0 0xff00b000 0x0 0x1000>;
++		#address-cells = <1>;
++		#size-cells = <1>;
++	};
++
+ 	core_grf: syscon@ff00c000 {
+ 		compatible = "syscon", "simple-mfd";
+ 		reg = <0x0 0xff00c000 0x0 0x1000>;
+@@ -437,7 +511,6 @@
+ 		reg-io-width = <4>;
+ 		dmas = <&dmac0 4>, <&dmac0 5>;
+ 		dma-names = "tx", "rx";
+-		#dma-cells = <2>;
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&uart0_xfer &uart0_cts &uart0_rts>;
+ 		status = "disabled";
+@@ -453,7 +526,6 @@
+ 		reg-io-width = <4>;
+ 		dmas = <&dmac0 6>, <&dmac0 7>;
+ 		dma-names = "tx", "rx";
+-		#dma-cells = <2>;
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&uart1_xfer &uart1_cts &uart1_rts>;
+ 		status = "disabled";
+@@ -469,7 +541,6 @@
+ 		reg-io-width = <4>;
+ 		dmas = <&dmac0 8>, <&dmac0 9>;
+ 		dma-names = "tx", "rx";
+-		#dma-cells = <2>;
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&uart2m0_xfer>;
+ 		status = "disabled";
+@@ -485,7 +556,6 @@
+ 		reg-io-width = <4>;
+ 		dmas = <&dmac0 10>, <&dmac0 11>;
+ 		dma-names = "tx", "rx";
+-		#dma-cells = <2>;
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&uart3_xfer>;
+ 		status = "disabled";
+@@ -501,7 +571,6 @@
+ 		reg-io-width = <4>;
+ 		dmas = <&dmac1 18>, <&dmac1 19>;
+ 		dma-names = "tx", "rx";
+-		#dma-cells = <2>;
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&uart4_xfer &uart4_cts &uart4_rts>;
+ 		status = "disabled";
+@@ -516,7 +585,6 @@
+ 		clocks = <&cru SCLK_SPI0>, <&cru PCLK_SPI0>;
+ 		clock-names = "spiclk", "apb_pclk";
+ 		dmas = <&dmac0 0>, <&dmac0 1>;
+-		#dma-cells = <2>;
+ 		dma-names = "tx", "rx";
+ 		pinctrl-names = "default", "high_speed";
+ 		pinctrl-0 = <&spi0_clk &spi0_csn0 &spi0_miso &spi0_mosi>;
+@@ -533,7 +601,6 @@
+ 		clocks = <&cru SCLK_SPI1>, <&cru PCLK_SPI1>;
+ 		clock-names = "spiclk", "apb_pclk";
+ 		dmas = <&dmac0 2>, <&dmac0 3>;
+-		#dma-cells = <2>;
+ 		dma-names = "tx", "rx";
+ 		pinctrl-names = "default", "high_speed";
+ 		pinctrl-0 = <&spi1_clk &spi1_csn0 &spi1_miso &spi1_mosi>;
+@@ -550,7 +617,6 @@
+ 		clocks = <&cru SCLK_SPI2>, <&cru PCLK_SPI2>;
+ 		clock-names = "spiclk", "apb_pclk";
+ 		dmas = <&dmac1 16>, <&dmac1 17>;
+-		#dma-cells = <2>;
+ 		dma-names = "tx", "rx";
+ 		pinctrl-names = "default", "high_speed";
+ 		pinctrl-0 = <&spi2_clk &spi2_csn0 &spi2_miso &spi2_mosi>;
+@@ -558,13 +624,101 @@
+ 		status = "disabled";
+ 	};
+ 
++	pwm8: pwm@ff160000 {
++		compatible = "rockchip,rk3308-pwm", "rockchip,rk3328-pwm";
++		reg = <0x0 0xff160000 0x0 0x10>;
++		#pwm-cells = <3>;
++		pinctrl-names = "active";
++		pinctrl-0 = <&pwm8_pin>;
++		clocks = <&cru SCLK_PWM2>, <&cru PCLK_PWM2>;
++		clock-names = "pwm", "pclk";
++		status = "disabled";
++	};
++
++	pwm9: pwm@ff160010 {
++		compatible = "rockchip,rk3308-pwm", "rockchip,rk3328-pwm";
++		reg = <0x0 0xff160010 0x0 0x10>;
++		#pwm-cells = <3>;
++		pinctrl-names = "active";
++		pinctrl-0 = <&pwm9_pin>;
++		clocks = <&cru SCLK_PWM2>, <&cru PCLK_PWM2>;
++		clock-names = "pwm", "pclk";
++		status = "disabled";
++	};
++
++	pwm10: pwm@ff160020 {
++		compatible = "rockchip,rk3308-pwm", "rockchip,rk3328-pwm";
++		reg = <0x0 0xff160020 0x0 0x10>;
++		#pwm-cells = <3>;
++		pinctrl-names = "active";
++		pinctrl-0 = <&pwm10_pin>;
++		clocks = <&cru SCLK_PWM2>, <&cru PCLK_PWM2>;
++		clock-names = "pwm", "pclk";
++		status = "disabled";
++	};
++
++	pwm11: pwm@ff160030 {
++		compatible = "rockchip,rk3308-pwm", "rockchip,rk3328-pwm";
++		reg = <0x0 0xff160030 0x0 0x10>;
++		#pwm-cells = <3>;
++		pinctrl-names = "active";
++		pinctrl-0 = <&pwm11_pin>;
++		clocks = <&cru SCLK_PWM2>, <&cru PCLK_PWM2>;
++		clock-names = "pwm", "pclk";
++		status = "disabled";
++	};
++
++	pwm4: pwm@ff170000 {
++		compatible = "rockchip,rk3308-pwm", "rockchip,rk3328-pwm";
++		reg = <0x0 0xff170000 0x0 0x10>;
++		#pwm-cells = <3>;
++		pinctrl-names = "active";
++		pinctrl-0 = <&pwm4_pin>;
++		clocks = <&cru SCLK_PWM1>, <&cru PCLK_PWM1>;
++		clock-names = "pwm", "pclk";
++		status = "disabled";
++	};
++
++	pwm5: pwm@ff170010 {
++		compatible = "rockchip,rk3308-pwm", "rockchip,rk3328-pwm";
++		reg = <0x0 0xff170010 0x0 0x10>;
++		#pwm-cells = <3>;
++		pinctrl-names = "active";
++		pinctrl-0 = <&pwm5_pin>;
++		clocks = <&cru SCLK_PWM1>, <&cru PCLK_PWM1>;
++		clock-names = "pwm", "pclk";
++		status = "disabled";
++	};
++
++	pwm6: pwm@ff170020 {
++		compatible = "rockchip,rk3308-pwm", "rockchip,rk3328-pwm";
++		reg = <0x0 0xff170020 0x0 0x10>;
++		#pwm-cells = <3>;
++		pinctrl-names = "active";
++		pinctrl-0 = <&pwm6_pin>;
++		clocks = <&cru SCLK_PWM1>, <&cru PCLK_PWM1>;
++		clock-names = "pwm", "pclk";
++		status = "disabled";
++	};
++
++	pwm7: pwm@ff170030 {
++		compatible = "rockchip,rk3308-pwm", "rockchip,rk3328-pwm";
++		reg = <0x0 0xff170030 0x0 0x10>;
++		#pwm-cells = <3>;
++		pinctrl-names = "active";
++		pinctrl-0 = <&pwm7_pin>;
++		clocks = <&cru SCLK_PWM1>, <&cru PCLK_PWM1>;
++		clock-names = "pwm", "pclk";
++		status = "disabled";
++	};
++
+ 	pwm0: pwm@ff180000 {
+ 		compatible = "rockchip,rk3308-pwm", "rockchip,rk3328-pwm";
+ 		reg = <0x0 0xff180000 0x0 0x10>;
+ 		#pwm-cells = <3>;
+ 		pinctrl-names = "active";
+ 		pinctrl-0 = <&pwm0_pin>;
+-		clocks = <&cru SCLK_PWM>, <&cru PCLK_PWM>;
++		clocks = <&cru SCLK_PWM0>, <&cru PCLK_PWM0>;
+ 		clock-names = "pwm", "pclk";
+ 		status = "disabled";
+ 	};
+@@ -575,7 +729,7 @@
+ 		#pwm-cells = <3>;
+ 		pinctrl-names = "active";
+ 		pinctrl-0 = <&pwm1_pin>;
+-		clocks = <&cru SCLK_PWM>, <&cru PCLK_PWM>;
++		clocks = <&cru SCLK_PWM0>, <&cru PCLK_PWM0>;
+ 		clock-names = "pwm", "pclk";
+ 		status = "disabled";
+ 	};
+@@ -586,7 +740,7 @@
+ 		#pwm-cells = <3>;
+ 		pinctrl-names = "active";
+ 		pinctrl-0 = <&pwm2_pin>;
+-		clocks = <&cru SCLK_PWM>, <&cru PCLK_PWM>;
++		clocks = <&cru SCLK_PWM0>, <&cru PCLK_PWM0>;
+ 		clock-names = "pwm", "pclk";
+ 		status = "disabled";
+ 	};
+@@ -597,19 +751,28 @@
+ 		#pwm-cells = <3>;
+ 		pinctrl-names = "active";
+ 		pinctrl-0 = <&pwm3_pin>;
+-		clocks = <&cru SCLK_PWM>, <&cru PCLK_PWM>;
++		clocks = <&cru SCLK_PWM0>, <&cru PCLK_PWM0>;
+ 		clock-names = "pwm", "pclk";
+ 		status = "disabled";
+ 	};
+ 
+ 	rktimer: rktimer@ff1a0000 {
+ 		compatible = "rockchip,rk3288-timer";
+-		reg = <0x0 0xff1a0000 0x0 0x1000>;
++		reg = <0x0 0xff1a0000 0x0 0x20>;
+ 		interrupts = <GIC_SPI 25 IRQ_TYPE_LEVEL_HIGH>;
+ 		clocks = <&cru PCLK_TIMER>, <&cru SCLK_TIMER0>;
+ 		clock-names = "pclk", "timer";
+ 	};
+ 
++	rk_timer_rtc: rk-timer-rtc@ff1a0020 {
++		compatible = "rockchip,rk3308-timer-rtc";
++		reg = <0x0 0xff1a0020 0x0 0x20>;
++		interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_HIGH>;
++		clocks = <&cru PCLK_TIMER>, <&cru SCLK_TIMER1>;
++		clock-names = "pclk", "timer";
++		status = "disabled";
++	};
++
+ 	saradc: saradc@ff1e0000 {
+ 		compatible = "rockchip,rk3308-saradc", "rockchip,rk3399-saradc";
+ 		reg = <0x0 0xff1e0000 0x0 0x100>;
+@@ -678,10 +841,9 @@
+ 		assigned-clock-rates = <50000>;
+ 		resets = <&cru SRST_TSADC>;
+ 		reset-names = "tsadc-apb";
+-		pinctrl-names = "init", "default", "sleep";
++		pinctrl-names = "gpio", "otpout";
+ 		pinctrl-0 = <&tsadc_otp_gpio>;
+ 		pinctrl-1 = <&tsadc_otp_out>;
+-		pinctrl-2 = <&tsadc_otp_gpio>;
+ 		#thermal-sensor-cells = <1>;
+ 		rockchip,hw-tshut-temp = <120000>;
+ 		status = "disabled";
+@@ -760,6 +922,22 @@
+ 		};
+ 	};
+ 
++	rng: rng@ff2f0000 {
++		compatible = "rockchip,cryptov2-rng";
++		reg = <0x0 0xff2f0000 0x0 0x4000>;
++		clocks = <&cru SCLK_CRYPTO>, <&cru SCLK_CRYPTO_APK>,
++			<&cru ACLK_CRYPTO>, <&cru HCLK_CRYPTO>;
++		clock-names = "clk_crypto", "clk_crypto_apk",
++				"aclk_crypto", "hclk_crypto";
++		assigned-clocks = <&cru SCLK_CRYPTO>, <&cru SCLK_CRYPTO_APK>,
++					<&cru ACLK_CRYPTO>, <&cru HCLK_CRYPTO>;
++		assigned-clock-rates = <150000000>, <150000000>,
++					<200000000>, <100000000>;
++		resets = <&cru SRST_CRYPTO>;
++		reset-names = "reset";
++		status = "disabled";
++	};
++
+ 	i2s_8ch_0: i2s@ff300000 {
+ 		compatible = "rockchip,rk3308-i2s-tdm";
+ 		reg = <0x0 0xff300000 0x0 0x1000>;
+@@ -777,6 +955,7 @@
+ 		resets = <&cru SRST_I2S0_8CH_TX_M>, <&cru SRST_I2S0_8CH_RX_M>;
+ 		reset-names = "tx-m", "rx-m";
+ 		rockchip,cru = <&cru>;
++		rockchip,grf = <&grf>;
+ 		rockchip,mclk-calibrate;
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&i2s_8ch_0_sclktx
+@@ -812,6 +991,7 @@
+ 		resets = <&cru SRST_I2S1_8CH_TX_M>, <&cru SRST_I2S1_8CH_RX_M>;
+ 		reset-names = "tx-m", "rx-m";
+ 		rockchip,cru = <&cru>;
++		rockchip,grf = <&grf>;
+ 		rockchip,mclk-calibrate;
+ 		status = "disabled";
+ 	};
+@@ -833,6 +1013,7 @@
+ 		resets = <&cru SRST_I2S2_8CH_TX_M>, <&cru SRST_I2S2_8CH_RX_M>;
+ 		reset-names = "tx-m", "rx-m";
+ 		rockchip,cru = <&cru>;
++		rockchip,grf = <&grf>;
+ 		rockchip,mclk-calibrate;
+ 		status = "disabled";
+ 	};
+@@ -854,6 +1035,7 @@
+ 		resets = <&cru SRST_I2S3_8CH_TX_M>, <&cru SRST_I2S3_8CH_RX_M>;
+ 		reset-names = "tx-m", "rx-m";
+ 		rockchip,cru = <&cru>;
++		rockchip,grf = <&grf>;
+ 		rockchip,mclk-calibrate;
+ 		status = "disabled";
+ 	};
+@@ -866,6 +1048,8 @@
+ 		clock-names = "i2s_clk", "i2s_hclk";
+ 		dmas = <&dmac1 8>, <&dmac1 9>;
+ 		dma-names = "tx", "rx";
++		resets = <&cru SRST_I2S0_2CH_M>, <&cru SRST_I2S0_2CH_H>;
++		reset-names = "reset-m", "reset-h";
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&i2s_2ch_0_sclk
+ 			     &i2s_2ch_0_lrck
+@@ -882,6 +1066,8 @@
+ 		clock-names = "i2s_clk", "i2s_hclk";
+ 		dmas = <&dmac1 11>;
+ 		dma-names = "rx";
++		resets = <&cru SRST_I2S1_2CH_M>, <&cru SRST_I2S1_2CH_H>;
++		reset-names = "reset-m", "reset-h";
+ 		status = "disabled";
+ 	};
+ 
+@@ -916,13 +1102,29 @@
+ 		status = "disabled";
+ 	};
+ 
++	spdif_rx: spdif-rx@ff3b0000 {
++		compatible = "rockchip,rk3308-spdifrx";
++		reg = <0x0 0xff3b0000 0x0 0x1000>;
++		interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
++		clocks = <&cru SCLK_SPDIF_RX>, <&cru HCLK_SPDIFRX>;
++		clock-names = "mclk", "hclk";
++		dmas = <&dmac1 14>;
++		dma-names = "rx";
++		resets = <&cru SRST_SPDIFRX_M>;
++		reset-names = "spdifrx-m";
++		pinctrl-names = "default";
++		pinctrl-0 = <&spdif_in>;
++		status = "disabled";
++	};
++
+ 	vad: vad@ff3c0000 {
+-		compatible = "rockchip,rk3308-vad", "rockchip,vad";
+-		reg = <0x0 0xff3c0000 0x0 0x10000>, <0x0 0xfff88000 0x0 0x38000>;
+-		reg-names = "vad", "vad-memory";
++		compatible = "rockchip,rk3308-vad";
++		reg = <0x0 0xff3c0000 0x0 0x10000>;
++		reg-names = "vad";
+ 		clocks = <&cru HCLK_VAD>;
+ 		clock-names = "hclk";
+ 		interrupts = <GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH>;
++		rockchip,audio-sram = <&vad_sram>;
+ 		rockchip,audio-src = <0>;
+ 		rockchip,det-channel = <0>;
+ 		rockchip,mode = <0>;
+@@ -1074,7 +1276,9 @@
+ 		compatible = "rockchip,rk3308-codec";
+ 		reg = <0x0 0xff560000 0x0 0x10000>;
+ 		rockchip,grf = <&grf>;
+-		interrupts = <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>;
++		rockchip,detect-grf = <&detect_grf>;
++		interrupts = <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>,
++			     <GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH>;
+ 		clocks = <&cru PCLK_ACODEC>,
+ 			 <&cru SCLK_I2S2_8CH_TX_OUT>,
+ 			 <&cru SCLK_I2S2_8CH_RX_OUT>;
+@@ -1097,6 +1301,22 @@
+ 		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
+ 	};
+ 
++	sram: sram@fff80000 {
++		compatible = "mmio-sram";
++		reg = <0x0 0xfff80000 0x0 0x40000>;
++		#address-cells = <1>;
++		#size-cells = <1>;
++		ranges = <0 0x0 0xfff80000 0x40000>;
++		/* reserved for ddr dvfs and system suspend/resume */
++		ddr-sram@0 {
++			reg = <0x0 0x8000>;
++		};
++		/* reserved for vad audio buffer */
++		vad_sram: vad-sram@8000 {
++			reg = <0x8000 0x38000>;
++		};
++	};
++
+ 	pinctrl: pinctrl {
+ 		compatible = "rockchip,rk3308-pinctrl";
+ 		rockchip,grf = <&grf>;
+@@ -1283,6 +1503,14 @@
+ 			};
+ 		};
+ 
++		i2c3-m2 {
++			i2c3m2_xfer: i2c3m2-xfer {
++				rockchip,pins =
++					<2 RK_PA1 3 &pcfg_pull_none_smt>,
++					<2 RK_PA0 3 &pcfg_pull_none_smt>;
++			};
++		};
++
+ 		i2s_2ch_0 {
+ 			i2s_2ch_0_mclk: i2s-2ch-0-mclk {
+ 				rockchip,pins =
+@@ -1529,6 +1757,38 @@
+ 					/* d17 */
+ 					<1 RK_PC5 RK_FUNC_1 &pcfg_pull_none>;
+ 			};
++
++			lcdc_rgb888_m0: lcdc-rgb888-m0 {
++				rockchip,pins =
++					/* d18 */
++					<1 RK_PC6 RK_FUNC_6 &pcfg_pull_none>,
++					/* d19 */
++					<1 RK_PC7 RK_FUNC_6 &pcfg_pull_none>,
++					/* d20 */
++					<2 RK_PB1 RK_FUNC_3 &pcfg_pull_none>,
++					/* d21 */
++					<2 RK_PB2 RK_FUNC_3 &pcfg_pull_none>,
++					/* d22 */
++					<2 RK_PB7 RK_FUNC_3 &pcfg_pull_none>,
++					/* d23 */
++					<2 RK_PC0 RK_FUNC_3 &pcfg_pull_none>;
++			};
++
++			lcdc_rgb888_m1: lcdc-rgb888-m1 {
++				rockchip,pins =
++					/* d18 */
++					<3 RK_PA6 RK_FUNC_3 &pcfg_pull_none>,
++					/* d19 */
++					<3 RK_PA7 RK_FUNC_3 &pcfg_pull_none>,
++					/* d20 */
++					<3 RK_PB0 RK_FUNC_3 &pcfg_pull_none>,
++					/* d21 */
++					<3 RK_PB1 RK_FUNC_3 &pcfg_pull_none>,
++					/* d22 */
++					<3 RK_PB2 RK_FUNC_4 &pcfg_pull_none>,
++					/* d23 */
++					<3 RK_PB3 RK_FUNC_4 &pcfg_pull_none>;
++			};
+ 		};
+ 
+ 		pdm_m0 {
+@@ -1588,7 +1848,7 @@
+ 		pdm_m2 {
+ 			pdm_m2_clkm: pdm-m2-clkm {
+ 				rockchip,pins =
+-					<2 RK_PA4 RK_FUNC_2 &pcfg_pull_none>;
++					<2 RK_PA4 RK_FUNC_3 &pcfg_pull_none>;
+ 			};
+ 
+ 			pdm_m2_clk: pdm-m2-clk {
+@@ -1617,6 +1877,13 @@
+ 			};
+ 		};
+ 
++		spdif_in {
++			spdif_in: spdif-in {
++				rockchip,pins =
++					<0 RK_PC2 RK_FUNC_1 &pcfg_pull_none>;
++			};
++		};
++
+ 		spdif_out {
+ 			spdif_out: spdif-out {
+ 				rockchip,pins =
+@@ -1652,6 +1919,11 @@
+ 				rockchip,pins =
+ 					<2 RK_PA3 1 &pcfg_pull_none>;
+ 			};
++
++			uart0_rts_gpio: uart0-rts-gpio {
++				rockchip,pins =
++					<2 RK_PA3 RK_FUNC_GPIO &pcfg_pull_none>;
++			};
+ 		};
+ 
+ 		uart1 {
+@@ -1696,6 +1968,14 @@
+ 			};
+ 		};
+ 
++		uart3-m1 {
++			uart3m1_xfer: uart3m1-xfer {
++				rockchip,pins =
++					<0 RK_PC2 3 &pcfg_pull_up>,
++					<0 RK_PC1 3 &pcfg_pull_up>;
++			};
++		};
++
+ 		uart4 {
+ 
+ 			uart4_xfer: uart4-xfer {
+@@ -1796,6 +2076,48 @@
+ 			};
+ 		};
+ 
++		spi1-m1 {
++			spi1m1_miso: spi1m1-miso {
++				rockchip,pins =
++					<2 RK_PA4 2 &pcfg_pull_up_4ma>;
++			};
++
++			spi1m1_mosi: spi1m1-mosi {
++				rockchip,pins =
++					<2 RK_PA5 2 &pcfg_pull_up_4ma>;
++			};
++
++			spi1m1_clk: spi1m1-clk {
++				rockchip,pins =
++					<2 RK_PA7 2 &pcfg_pull_up_4ma>;
++			};
++
++			spi1m1_csn0: spi1m1-csn0 {
++				rockchip,pins =
++					<2 RK_PB1 2 &pcfg_pull_up_4ma>;
++			};
++
++			spi1m1_miso_hs: spi1m1-miso-hs {
++				rockchip,pins =
++					<2 RK_PA4 2 &pcfg_pull_up_8ma>;
++			};
++
++			spi1m1_mosi_hs: spi1m1-mosi-hs {
++				rockchip,pins =
++					<2 RK_PA5 2 &pcfg_pull_up_8ma>;
++			};
++
++			spi1m1_clk_hs: spi1m1-clk-hs {
++				rockchip,pins =
++					<2 RK_PA7 2 &pcfg_pull_up_8ma>;
++			};
++
++			spi1m1_csn0_hs: spi1m1-csn0-hs {
++				rockchip,pins =
++					<2 RK_PB1 2 &pcfg_pull_up_8ma>;
++			};
++		};
++
+ 		spi2 {
+ 			spi2_clk: spi2-clk {
+ 				rockchip,pins =
+@@ -2068,6 +2390,102 @@
+ 			};
+ 		};
+ 
++		pwm4 {
++			pwm4_pin: pwm4-pin {
++				rockchip,pins =
++					<0 RK_PA1 2 &pcfg_pull_none>;
++			};
++
++			pwm4_pin_pull_down: pwm4-pin-pull-down {
++				rockchip,pins =
++					<0 RK_PA1 2 &pcfg_pull_down>;
++			};
++		};
++
++		pwm5 {
++			pwm5_pin: pwm5-pin {
++				rockchip,pins =
++					<0 RK_PC1 2 &pcfg_pull_none>;
++			};
++
++			pwm5_pin_pull_down: pwm5-pin-pull-down {
++				rockchip,pins =
++					<0 RK_PC1 2 &pcfg_pull_down>;
++			};
++		};
++
++		pwm6 {
++			pwm6_pin: pwm6-pin {
++				rockchip,pins =
++					<0 RK_PC2 2 &pcfg_pull_none>;
++			};
++
++			pwm6_pin_pull_down: pwm6-pin-pull-down {
++				rockchip,pins =
++					<0 RK_PC2 2 &pcfg_pull_down>;
++			};
++		};
++
++		pwm7 {
++			pwm7_pin: pwm7-pin {
++				rockchip,pins =
++					<2 RK_PB0 2 &pcfg_pull_none>;
++			};
++
++			pwm7_pin_pull_down: pwm7-pin-pull-down {
++				rockchip,pins =
++					<2 RK_PB0 2 &pcfg_pull_down>;
++			};
++		};
++
++		pwm8 {
++			pwm8_pin: pwm8-pin {
++				rockchip,pins =
++					<2 RK_PB2 2 &pcfg_pull_none>;
++			};
++
++			pwm8_pin_pull_down: pwm8-pin-pull-down {
++				rockchip,pins =
++					<2 RK_PB2 2 &pcfg_pull_down>;
++			};
++		};
++
++		pwm9 {
++			pwm9_pin: pwm9-pin {
++				rockchip,pins =
++					<2 RK_PB3 2 &pcfg_pull_none>;
++			};
++
++			pwm9_pin_pull_down: pwm9-pin-pull-down {
++				rockchip,pins =
++					<2 RK_PB3 2 &pcfg_pull_down>;
++			};
++		};
++
++		pwm10 {
++			pwm10_pin: pwm10-pin {
++				rockchip,pins =
++					<2 RK_PB4 2 &pcfg_pull_none>;
++			};
++
++			pwm10_pin_pull_down: pwm10-pin-pull-down {
++				rockchip,pins =
++					<2 RK_PB4 2 &pcfg_pull_down>;
++			};
++		};
++
++		pwm11 {
++			pwm11_pin: pwm11-pin {
++				rockchip,pins =
++					<2 RK_PC0 4 &pcfg_pull_none>;
++			};
++
++			pwm11_pin_pull_down: pwm11-pin-pull-down {
++				rockchip,pins =
++					<2 RK_PC0 4 &pcfg_pull_down>;
++			};
++		};
++
+ 		gmac {
+ 			rmii_pins: rmii-pins {
+ 				rockchip,pins =
+@@ -2102,11 +2520,99 @@
+ 			};
+ 		};
+ 
++		gmac-m1 {
++			rmiim1_pins: rmiim1-pins {
++				rockchip,pins =
++					/* mac_txen */
++					<4 RK_PB7 2 &pcfg_pull_none_12ma>,
++					/* mac_txd1 */
++					<4 RK_PA5 2 &pcfg_pull_none_12ma>,
++					/* mac_txd0 */
++					<4 RK_PA4 2 &pcfg_pull_none_12ma>,
++					/* mac_rxd0 */
++					<4 RK_PA2 2 &pcfg_pull_none>,
++					/* mac_rxd1 */
++					<4 RK_PA3 2 &pcfg_pull_none>,
++					/* mac_rxer */
++					<4 RK_PA0 2 &pcfg_pull_none>,
++					/* mac_rxdv */
++					<4 RK_PA1 2 &pcfg_pull_none>,
++					/* mac_mdio */
++					<4 RK_PB6 2 &pcfg_pull_none>,
++					/* mac_mdc */
++					<4 RK_PB5 2 &pcfg_pull_none>;
++			};
++
++			macm1_refclk_12ma: macm1-refclk-12ma {
++				rockchip,pins =
++					<4 RK_PB4 2 &pcfg_pull_none_12ma>;
++			};
++
++			macm1_refclk: macm1-refclk {
++				rockchip,pins =
++					<4 RK_PB4 2 &pcfg_pull_none>;
++			};
++		};
++
+ 		rtc {
+ 			rtc_32k: rtc-32k {
+ 				rockchip,pins =
+ 					<0 RK_PC3 1 &pcfg_pull_none>;
+ 			};
+ 		};
++
++		can-m0 {
++			canm0_pins: canm0-pins {
++				rockchip,pins =
++					/* can_rxd_m0 */
++					<0 RK_PB3 2 &pcfg_pull_none>,
++					/* can_txd_m0 */
++					<0 RK_PB4 2 &pcfg_pull_none>;
++			};
++		};
++
++		can-m1 {
++			canm1_pins: canm1-pins {
++				rockchip,pins =
++					/* can_rxd_m1 */
++					<1 RK_PC6 5 &pcfg_pull_none>,
++					/* can_txd_m1 */
++					<1 RK_PC7 5 &pcfg_pull_none>;
++			};
++		};
++
++		can-m2 {
++			canm2_pins: canm2-pins {
++				rockchip,pins =
++					/* can_rxd_m2 */
++					<2 RK_PA2 4 &pcfg_pull_none>,
++					/* can_txd_m2 */
++					<2 RK_PA3 4 &pcfg_pull_none>;
++			};
++		};
++
++		owire-m0 {
++			owirem0_pins: owirem0-pins {
++				rockchip,pins =
++					/* owire_m0 */
++					<0 RK_PB3 3 &pcfg_pull_none>;
++			};
++		};
++
++		owire-m1 {
++			owirem1_pins: owirem1-pins {
++				rockchip,pins =
++					/* owire_m1 */
++					<1 RK_PC6 7 &pcfg_pull_none>;
++			};
++		};
++
++		owire-m2 {
++			owirem2_pins: owirem2-pins {
++				rockchip,pins =
++					/* owire_m2 */
++					<2 RK_PA2 5 &pcfg_pull_none>;
++			};
++		};
+ 	};
+ };
+diff --git a/drivers/clk/rockchip/clk-rk3308.c b/drivers/clk/rockchip/clk-rk3308.c
+index 79f6f98..2310187 100644
+--- a/drivers/clk/rockchip/clk-rk3308.c
++++ b/drivers/clk/rockchip/clk-rk3308.c
+@@ -16,12 +16,14 @@
+ #include <linux/clk-provider.h>
+ #include <linux/of.h>
+ #include <linux/of_address.h>
++#include <linux/rockchip/cpu.h>
+ #include <linux/syscore_ops.h>
+ #include <dt-bindings/clock/rk3308-cru.h>
+ #include "clk.h"
+ 
+ #define RK3308_GRF_SOC_STATUS0		0x380
+ #define RK3308_VOP_FRAC_MAX_PRATE	270000000
++#define RK3308B_VOP_FRAC_MAX_PRATE	800000000
+ #define RK3308_UART_FRAC_MAX_PRATE	800000000
+ #define RK3308_PDM_FRAC_MAX_PRATE	800000000
+ #define RK3308_SPDIF_FRAC_MAX_PRATE	800000000
+@@ -158,7 +160,8 @@ PNAME(mux_mac_rmii_sel_p)	= { "clk_mac_rx_tx_div20", "clk_mac_rx_tx_div2" };
+ PNAME(mux_ddrstdby_p)		= { "clk_ddrphy1x_out", "clk_ddr_stdby_div4" };
+ PNAME(mux_rtc32k_p)		= { "xin32k", "clk_pvtm_32k", "clk_rtc32k_frac", "clk_rtc32k_div" };
+ PNAME(mux_usbphy_ref_p)		= { "xin24m", "clk_usbphy_ref_src" };
+-PNAME(mux_wifi_p)		= { "xin24m", "clk_wifi_src" };
++PNAME(mux_wifi_src_p)		= { "clk_wifi_dpll", "clk_wifi_vpll0" };
++PNAME(mux_wifi_p)		= { "clk_wifi_osc", "clk_wifi_src" };
+ PNAME(mux_pdm_p)		= { "clk_pdm_src", "clk_pdm_frac" };
+ PNAME(mux_i2s0_8ch_tx_p)	= { "clk_i2s0_8ch_tx_src", "clk_i2s0_8ch_tx_frac", "mclk_i2s0_8ch_in" };
+ PNAME(mux_i2s0_8ch_tx_rx_p)	= { "clk_i2s0_8ch_tx_mux", "clk_i2s0_8ch_rx_mux"};
+@@ -190,7 +193,7 @@ PNAME(mux_spdif_rx_src_p)	= { "clk_spdif_rx_div", "clk_spdif_rx_div50" };
+ PNAME(mux_spdif_rx_p)		= { "clk_spdif_rx_src", "clk_spdif_rx_frac" };
+ 
+ static struct rockchip_pll_clock rk3308_pll_clks[] __initdata = {
+-	[apll] = PLL_BOOST(pll_rk3328, PLL_APLL, "apll", mux_pll_p,
++	[apll] = PLL(pll_rk3328, PLL_APLL, "apll", mux_pll_p,
+ 		     0, RK3308_PLL_CON(0),
+ 		     RK3308_MODE_CON, 0, 0, 0, rk3308_pll_rates),
+ 	[dpll] = PLL(pll_rk3328, PLL_DPLL, "dpll", mux_pll_p,
+@@ -403,17 +406,23 @@ static struct rockchip_clk_branch rk3308_clk_branches[] __initdata = {
+ 			RK3308_CLKSEL_CON(28), 14, 2, MFLAGS, 0, 7, DFLAGS,
+ 			RK3308_CLKGATE_CON(3), 0, GFLAGS),
+ 
+-	COMPOSITE(SCLK_PWM, "clk_pwm", mux_dpll_vpll0_xin24m_p, 0,
++	COMPOSITE(SCLK_PWM0, "clk_pwm0", mux_dpll_vpll0_xin24m_p, 0,
+ 			RK3308_CLKSEL_CON(29), 14, 2, MFLAGS, 0, 7, DFLAGS,
+ 			RK3308_CLKGATE_CON(3), 1, GFLAGS),
+-
+-	COMPOSITE(SCLK_SPI0, "clk_isp0", mux_dpll_vpll0_xin24m_p, 0,
++	COMPOSITE(SCLK_PWM1, "clk_pwm1", mux_dpll_vpll0_xin24m_p, 0,
++			RK3308_CLKSEL_CON(74), 14, 2, MFLAGS, 0, 7, DFLAGS,
++			RK3308_CLKGATE_CON(15), 0, GFLAGS),
++	COMPOSITE(SCLK_PWM2, "clk_pwm2", mux_dpll_vpll0_xin24m_p, 0,
++			RK3308_CLKSEL_CON(75), 14, 2, MFLAGS, 0, 7, DFLAGS,
++			RK3308_CLKGATE_CON(15), 1, GFLAGS),
++
++	COMPOSITE(SCLK_SPI0, "clk_spi0", mux_dpll_vpll0_xin24m_p, 0,
+ 			RK3308_CLKSEL_CON(30), 14, 2, MFLAGS, 0, 7, DFLAGS,
+ 			RK3308_CLKGATE_CON(3), 2, GFLAGS),
+-	COMPOSITE(SCLK_SPI1, "clk_isp1", mux_dpll_vpll0_xin24m_p, 0,
++	COMPOSITE(SCLK_SPI1, "clk_spi1", mux_dpll_vpll0_xin24m_p, 0,
+ 			RK3308_CLKSEL_CON(31), 14, 2, MFLAGS, 0, 7, DFLAGS,
+ 			RK3308_CLKGATE_CON(3), 3, GFLAGS),
+-	COMPOSITE(SCLK_SPI2, "clk_isp2", mux_dpll_vpll0_xin24m_p, 0,
++	COMPOSITE(SCLK_SPI2, "clk_spi2", mux_dpll_vpll0_xin24m_p, 0,
+ 			RK3308_CLKSEL_CON(32), 14, 2, MFLAGS, 0, 7, DFLAGS,
+ 			RK3308_CLKGATE_CON(3), 4, GFLAGS),
+ 
+@@ -457,10 +466,6 @@ static struct rockchip_clk_branch rk3308_clk_branches[] __initdata = {
+ 	COMPOSITE(0, "dclk_vop_src", mux_dpll_vpll0_vpll1_p, 0,
+ 			RK3308_CLKSEL_CON(8), 10, 2, MFLAGS, 0, 8, DFLAGS,
+ 			RK3308_CLKGATE_CON(1), 6, GFLAGS),
+-	COMPOSITE_FRACMUX(0, "dclk_vop_frac", "dclk_vop_src", CLK_SET_RATE_PARENT,
+-			RK3308_CLKSEL_CON(9), 0,
+-			RK3308_CLKGATE_CON(1), 7, GFLAGS,
+-			&rk3308_dclk_vop_fracmux, RK3308_VOP_FRAC_MAX_PRATE),
+ 	GATE(DCLK_VOP, "dclk_vop", "dclk_vop_mux", 0,
+ 			RK3308_CLKGATE_CON(1), 8, GFLAGS),
+ 
+@@ -548,6 +553,10 @@ static struct rockchip_clk_branch rk3308_clk_branches[] __initdata = {
+ 	MUX(SCLK_MAC_RMII, "clk_mac_rmii_sel", mux_mac_rmii_sel_p,  CLK_SET_RATE_PARENT,
+ 			RK3308_CLKSEL_CON(43), 15, 1, MFLAGS),
+ 
++	COMPOSITE(SCLK_OWIRE, "clk_owire", mux_dpll_vpll0_xin24m_p, 0,
++			RK3308_CLKSEL_CON(44), 14, 2, MFLAGS, 8, 6, DFLAGS,
++			RK3308_CLKGATE_CON(8), 15, GFLAGS),
++
+ 	/*
+ 	 * Clock-Architecture Diagram 5
+ 	 */
+@@ -603,7 +612,13 @@ static struct rockchip_clk_branch rk3308_clk_branches[] __initdata = {
+ 			RK3308_CLKSEL_CON(72), 7, 1, MFLAGS,
+ 			RK3308_CLKGATE_CON(4), 8, GFLAGS),
+ 
+-	COMPOSITE(0, "clk_wifi_src", mux_dpll_vpll0_p, 0,
++	GATE(0, "clk_wifi_dpll", "dpll", 0,
++			RK3308_CLKGATE_CON(15), 2, GFLAGS),
++	GATE(0, "clk_wifi_vpll0", "vpll0", 0,
++			RK3308_CLKGATE_CON(15), 3, GFLAGS),
++	GATE(0, "clk_wifi_osc", "xin24m", 0,
++			RK3308_CLKGATE_CON(15), 4, GFLAGS),
++	COMPOSITE(0, "clk_wifi_src", mux_wifi_src_p, 0,
+ 			RK3308_CLKSEL_CON(44), 6, 1, MFLAGS, 0, 6, DFLAGS,
+ 			RK3308_CLKGATE_CON(4), 0, GFLAGS),
+ 	COMPOSITE_NODIV(SCLK_WIFI, "clk_wifi", mux_wifi_p, CLK_SET_RATE_PARENT,
+@@ -864,7 +879,7 @@ static struct rockchip_clk_branch rk3308_clk_branches[] __initdata = {
+ 	GATE(PCLK_I2C1, "pclk_i2c1", "pclk_bus", 0, RK3308_CLKGATE_CON(6), 0, GFLAGS),
+ 	GATE(PCLK_I2C2, "pclk_i2c2", "pclk_bus", 0, RK3308_CLKGATE_CON(6), 1, GFLAGS),
+ 	GATE(PCLK_I2C3, "pclk_i2c3", "pclk_bus", 0, RK3308_CLKGATE_CON(6), 2, GFLAGS),
+-	GATE(PCLK_PWM, "pclk_pwm", "pclk_bus", 0, RK3308_CLKGATE_CON(6), 3, GFLAGS),
++	GATE(PCLK_PWM0, "pclk_pwm0", "pclk_bus", 0, RK3308_CLKGATE_CON(6), 3, GFLAGS),
+ 	GATE(PCLK_SPI0, "pclk_spi0", "pclk_bus", 0, RK3308_CLKGATE_CON(6), 4, GFLAGS),
+ 	GATE(PCLK_SPI1, "pclk_spi1", "pclk_bus", 0, RK3308_CLKGATE_CON(6), 5, GFLAGS),
+ 	GATE(PCLK_SPI2, "pclk_spi2", "pclk_bus", 0, RK3308_CLKGATE_CON(6), 6, GFLAGS),
+@@ -888,6 +903,24 @@ static struct rockchip_clk_branch rk3308_clk_branches[] __initdata = {
+ 	GATE(PCLK_CRU, "pclk_cru", "pclk_bus", CLK_IGNORE_UNUSED, RK3308_CLKGATE_CON(7), 9, GFLAGS),
+ 	GATE(PCLK_OTP_PHY, "pclk_otp_phy", "pclk_bus", 0, RK3308_CLKGATE_CON(7), 10, GFLAGS),
+ 	GATE(PCLK_CPU_BOOST, "pclk_cpu_boost", "pclk_bus", CLK_IGNORE_UNUSED, RK3308_CLKGATE_CON(7), 11, GFLAGS),
++	GATE(PCLK_PWM1, "pclk_pwm1", "pclk_bus", CLK_IGNORE_UNUSED, RK3308_CLKGATE_CON(7), 12, GFLAGS),
++	GATE(PCLK_PWM2, "pclk_pwm2", "pclk_bus", CLK_IGNORE_UNUSED, RK3308_CLKGATE_CON(7), 13, GFLAGS),
++	GATE(PCLK_CAN, "pclk_can", "pclk_bus", CLK_IGNORE_UNUSED, RK3308_CLKGATE_CON(7), 14, GFLAGS),
++	GATE(PCLK_OWIRE, "pclk_owire", "pclk_bus", CLK_IGNORE_UNUSED, RK3308_CLKGATE_CON(7), 15, GFLAGS),
++};
++
++static struct rockchip_clk_branch rk3308_dclk_vop_frac[] __initdata = {
++	COMPOSITE_FRACMUX(0, "dclk_vop_frac", "dclk_vop_src", CLK_SET_RATE_PARENT,
++			RK3308_CLKSEL_CON(9), 0,
++			RK3308_CLKGATE_CON(1), 7, GFLAGS,
++			&rk3308_dclk_vop_fracmux, RK3308_VOP_FRAC_MAX_PRATE),
++};
++
++static struct rockchip_clk_branch rk3308b_dclk_vop_frac[] __initdata = {
++	COMPOSITE_FRACMUX(0, "dclk_vop_frac", "dclk_vop_src", CLK_SET_RATE_PARENT,
++			RK3308_CLKSEL_CON(9), 0,
++			RK3308_CLKGATE_CON(1), 7, GFLAGS,
++			&rk3308_dclk_vop_fracmux, RK3308B_VOP_FRAC_MAX_PRATE),
+ };
+ 
+ static const char *const rk3308_critical_clocks[] __initconst = {
+@@ -976,6 +1009,12 @@ static void __init rk3308_clk_init(struct device_node *np)
+ 				   RK3308_GRF_SOC_STATUS0);
+ 	rockchip_clk_register_branches(ctx, rk3308_clk_branches,
+ 				       ARRAY_SIZE(rk3308_clk_branches));
++	if (soc_is_rk3308b())
++		rockchip_clk_register_branches(ctx, rk3308_dclk_vop_frac,
++					       ARRAY_SIZE(rk3308_dclk_vop_frac));
++	else
++		rockchip_clk_register_branches(ctx, rk3308b_dclk_vop_frac,
++					       ARRAY_SIZE(rk3308b_dclk_vop_frac));
+ 	rockchip_clk_protect_critical(rk3308_critical_clocks,
+ 				      ARRAY_SIZE(rk3308_critical_clocks));
+ 
+diff --git a/drivers/pinctrl/pinctrl-rockchip.c b/drivers/pinctrl/pinctrl-rockchip.c
+index 30379c3..523d72d 100644
+--- a/drivers/pinctrl/pinctrl-rockchip.c
++++ b/drivers/pinctrl/pinctrl-rockchip.c
+@@ -39,6 +39,7 @@
+ #include <linux/clk.h>
+ #include <linux/regmap.h>
+ #include <linux/mfd/syscon.h>
++#include <linux/rockchip/cpu.h>
+ #include <dt-bindings/pinctrl/rockchip.h>
+ 
+ #include "core.h"
+@@ -61,6 +62,7 @@
+ enum rockchip_pinctrl_type {
+ 	PX30,
+ 	RV1108,
++	RK1808,
+ 	RK2928,
+ 	RK3066B,
+ 	RK3128,
+@@ -396,6 +398,10 @@ struct rockchip_pin_ctrl {
+ 	struct rockchip_mux_route_data *iomux_routes;
+ 	u32				niomux_routes;
+ 
++	int	(*ctrl_data_re_init)(struct rockchip_pin_ctrl *ctrl);
++
++	int	(*soc_data_init)(struct rockchip_pinctrl *info);
++
+ 	void	(*pull_calc_reg)(struct rockchip_pin_bank *bank,
+ 				 int pin_num, struct regmap **regmap,
+ 				 int *reg, u8 *bit);
+@@ -410,6 +416,9 @@ struct rockchip_pin_ctrl {
+ 	int	(*schmitt_calc_reg)(struct rockchip_pin_bank *bank,
+ 				    int pin_num, struct regmap **regmap,
+ 				    int *reg, u8 *bit);
++	int	(*slew_rate_calc_reg)(struct rockchip_pin_bank *bank,
++				      int pin_num, struct regmap **regmap,
++				      int *reg, u8 *bit);
+ };
+ 
+ struct rockchip_pin_config {
+@@ -782,6 +791,100 @@ static struct rockchip_mux_recalced_data rk3308_mux_recalced_data[] = {
+ 	},
+ };
+ 
++static struct rockchip_mux_recalced_data rk3308b_mux_recalced_data[] = {
++	{
++		.num = 1,
++		.pin = 14,
++		.reg = 0x28,
++		.bit = 12,
++		.mask = 0xf
++	}, {
++		.num = 1,
++		.pin = 15,
++		.reg = 0x2c,
++		.bit = 0,
++		.mask = 0x3
++	}, {
++		.num = 1,
++		.pin = 18,
++		.reg = 0x30,
++		.bit = 4,
++		.mask = 0xf
++	}, {
++		.num = 1,
++		.pin = 19,
++		.reg = 0x30,
++		.bit = 8,
++		.mask = 0xf
++	}, {
++		.num = 1,
++		.pin = 20,
++		.reg = 0x30,
++		.bit = 12,
++		.mask = 0xf
++	}, {
++		.num = 1,
++		.pin = 21,
++		.reg = 0x34,
++		.bit = 0,
++		.mask = 0xf
++	}, {
++		.num = 1,
++		.pin = 22,
++		.reg = 0x34,
++		.bit = 4,
++		.mask = 0xf
++	}, {
++		.num = 1,
++		.pin = 23,
++		.reg = 0x34,
++		.bit = 8,
++		.mask = 0xf
++	}, {
++		.num = 3,
++		.pin = 12,
++		.reg = 0x68,
++		.bit = 8,
++		.mask = 0xf
++	}, {
++		.num = 3,
++		.pin = 13,
++		.reg = 0x68,
++		.bit = 12,
++		.mask = 0xf
++	}, {
++		.num = 2,
++		.pin = 2,
++		.reg = 0x608,
++		.bit = 0,
++		.mask = 0x7
++	}, {
++		.num = 2,
++		.pin = 3,
++		.reg = 0x608,
++		.bit = 4,
++		.mask = 0x7
++	}, {
++		.num = 2,
++		.pin = 16,
++		.reg = 0x610,
++		.bit = 8,
++		.mask = 0x7
++	}, {
++		.num = 3,
++		.pin = 10,
++		.reg = 0x610,
++		.bit = 0,
++		.mask = 0x7
++	}, {
++		.num = 3,
++		.pin = 11,
++		.reg = 0x610,
++		.bit = 4,
++		.mask = 0x7
++	},
++};
++
+ static struct rockchip_mux_recalced_data rk3328_mux_recalced_data[] = {
+ 	{
+ 		.num = 2,
+@@ -827,6 +930,87 @@ static void rockchip_get_recalced_mux(struct rockchip_pin_bank *bank, int pin,
+ 	*bit = data->bit;
+ }
+ 
++static struct rockchip_mux_route_data rk1808_mux_route_data[] = {
++	{
++		/* i2c2m0_sda */
++		.bank_num = 3,
++		.pin = 12,
++		.func = 2,
++		.route_offset = 0x190,
++		.route_val = BIT(16 + 3),
++	}, {
++		/* i2c2m1_sda */
++		.bank_num = 1,
++		.pin = 13,
++		.func = 2,
++		.route_offset = 0x190,
++		.route_val = BIT(16 + 3) | BIT(3),
++	}, {
++		/* spi2m0_miso */
++		.bank_num = 1,
++		.pin = 6,
++		.func = 2,
++		.route_offset = 0x190,
++		.route_val = BIT(16 + 4),
++	}, {
++		/* spi2m1_miso */
++		.bank_num = 2,
++		.pin = 4,
++		.func = 3,
++		.route_offset = 0x190,
++		.route_val = BIT(16 + 4) | BIT(4),
++	}, {
++		/* spi1m0_miso */
++		.bank_num = 4,
++		.pin = 15,
++		.func = 2,
++		.route_offset = 0x190,
++		.route_val = BIT(16 + 5),
++	}, {
++		/* spi1m1_miso */
++		.bank_num = 3,
++		.pin = 26,
++		.func = 3,
++		.route_offset = 0x190,
++		.route_val = BIT(16 + 5) | BIT(5),
++	}, {
++		/* uart1_rxm0 */
++		.bank_num = 4,
++		.pin = 8,
++		.func = 2,
++		.route_offset = 0x190,
++		.route_val = BIT(16 + 13),
++	}, {
++		/* uart1_rxm1 */
++		.bank_num = 1,
++		.pin = 12,
++		.func = 3,
++		.route_offset = 0x190,
++		.route_val = BIT(16 + 13) | BIT(13),
++	}, {
++		/* uart2_rxm0 */
++		.bank_num = 4,
++		.pin = 3,
++		.func = 2,
++		.route_offset = 0x190,
++		.route_val = BIT(16 + 14) | BIT(16 + 15),
++	}, {
++		/* uart2_rxm1 */
++		.bank_num = 2,
++		.pin = 25,
++		.func = 2,
++		.route_offset = 0x190,
++		.route_val = BIT(16 + 14) | BIT(16 + 15) | BIT(14),
++	}, {
++		/* uart2_rxm2 */
++		.bank_num = 3,
++		.pin = 4,
++		.func = 2,
++		.route_offset = 0x190,
++		.route_val = BIT(16 + 14) | BIT(16 + 15) | BIT(15),
++	},
++};
++
+ static struct rockchip_mux_route_data px30_mux_route_data[] = {
+ 	{
+ 		/* cif-d2m0 */
+@@ -1105,63 +1289,249 @@ static struct rockchip_mux_route_data rk3308_mux_route_data[] = {
+ 		.pin = 12,
+ 		.func = 2,
+ 		.route_offset = 0x314,
+-		.route_val =  BIT(16 + 4) | BIT(4),
++		.route_val = BIT(16 + 4) | BIT(4),
+ 	}, {
+ 		/* i2s-8ch-1-sclktxm0 */
+ 		.bank_num = 1,
+ 		.pin = 3,
+ 		.func = 2,
+ 		.route_offset = 0x308,
+-		.route_val =  BIT(16 + 3),
++		.route_val = BIT(16 + 3),
+ 	}, {
+ 		/* i2s-8ch-1-sclkrxm0 */
+ 		.bank_num = 1,
+ 		.pin = 4,
+ 		.func = 2,
+ 		.route_offset = 0x308,
+-		.route_val =  BIT(16 + 3),
++		.route_val = BIT(16 + 3),
+ 	}, {
+ 		/* i2s-8ch-1-sclktxm1 */
+ 		.bank_num = 1,
+ 		.pin = 13,
+ 		.func = 2,
+ 		.route_offset = 0x308,
+-		.route_val =  BIT(16 + 3) | BIT(3),
++		.route_val = BIT(16 + 3) | BIT(3),
+ 	}, {
+ 		/* i2s-8ch-1-sclkrxm1 */
+ 		.bank_num = 1,
+ 		.pin = 14,
+ 		.func = 2,
+ 		.route_offset = 0x308,
+-		.route_val =  BIT(16 + 3) | BIT(3),
++		.route_val = BIT(16 + 3) | BIT(3),
+ 	}, {
+ 		/* pdm-clkm0 */
+ 		.bank_num = 1,
+ 		.pin = 4,
+ 		.func = 3,
+ 		.route_offset = 0x308,
+-		.route_val =  BIT(16 + 12) | BIT(16 + 13),
++		.route_val = BIT(16 + 12) | BIT(16 + 13),
+ 	}, {
+ 		/* pdm-clkm1 */
+ 		.bank_num = 1,
+ 		.pin = 14,
+ 		.func = 4,
+ 		.route_offset = 0x308,
+-		.route_val =  BIT(16 + 12) | BIT(16 + 13) | BIT(12),
++		.route_val = BIT(16 + 12) | BIT(16 + 13) | BIT(12),
+ 	}, {
+ 		/* pdm-clkm2 */
+ 		.bank_num = 2,
+ 		.pin = 6,
+ 		.func = 2,
+ 		.route_offset = 0x308,
+-		.route_val =  BIT(16 + 12) | BIT(16 + 13) | BIT(13),
++		.route_val = BIT(16 + 12) | BIT(16 + 13) | BIT(13),
+ 	}, {
+ 		/* pdm-clkm-m2 */
+ 		.bank_num = 2,
+ 		.pin = 4,
++		.func = 3,
++		.route_offset = 0x600,
++		.route_val = BIT(16 + 2) | BIT(2),
++	},
++};
++
++static struct rockchip_mux_route_data rk3308b_mux_route_data[] = {
++	{
++		/* rtc_clk */
++		.bank_num = 0,
++		.pin = 19,
++		.func = 1,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 0) | BIT(0),
++	}, {
++		/* uart2_rxm0 */
++		.bank_num = 1,
++		.pin = 22,
+ 		.func = 2,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 2) | BIT(16 + 3),
++	}, {
++		/* uart2_rxm1 */
++		.bank_num = 4,
++		.pin = 26,
++		.func = 2,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 2) | BIT(16 + 3) | BIT(2),
++	}, {
++		/* i2c3_sdam0 */
++		.bank_num = 0,
++		.pin = 15,
++		.func = 2,
++		.route_offset = 0x608,
++		.route_val = BIT(16 + 8) | BIT(16 + 9),
++	}, {
++		/* i2c3_sdam1 */
++		.bank_num = 3,
++		.pin = 12,
++		.func = 2,
++		.route_offset = 0x608,
++		.route_val = BIT(16 + 8) | BIT(16 + 9) | BIT(8),
++	}, {
++		/* i2c3_sdam2 */
++		.bank_num = 2,
++		.pin = 0,
++		.func = 3,
++		.route_offset = 0x608,
++		.route_val = BIT(16 + 8) | BIT(16 + 9) | BIT(9),
++	}, {
++		/* i2s-8ch-1-sclktxm0 */
++		.bank_num = 1,
++		.pin = 3,
++		.func = 2,
++		.route_offset = 0x308,
++		.route_val = BIT(16 + 3),
++	}, {
++		/* i2s-8ch-1-sclkrxm0 */
++		.bank_num = 1,
++		.pin = 4,
++		.func = 2,
++		.route_offset = 0x308,
++		.route_val = BIT(16 + 3),
++	}, {
++		/* i2s-8ch-1-sclktxm1 */
++		.bank_num = 1,
++		.pin = 13,
++		.func = 2,
++		.route_offset = 0x308,
++		.route_val = BIT(16 + 3) | BIT(3),
++	}, {
++		/* i2s-8ch-1-sclkrxm1 */
++		.bank_num = 1,
++		.pin = 14,
++		.func = 2,
++		.route_offset = 0x308,
++		.route_val = BIT(16 + 3) | BIT(3),
++	}, {
++		/* pdm-clkm0 */
++		.bank_num = 1,
++		.pin = 4,
++		.func = 3,
++		.route_offset = 0x308,
++		.route_val =  BIT(16 + 12) | BIT(16 + 13),
++	}, {
++		/* pdm-clkm1 */
++		.bank_num = 1,
++		.pin = 14,
++		.func = 4,
++		.route_offset = 0x308,
++		.route_val = BIT(16 + 12) | BIT(16 + 13) | BIT(12),
++	}, {
++		/* pdm-clkm2 */
++		.bank_num = 2,
++		.pin = 6,
++		.func = 2,
++		.route_offset = 0x308,
++		.route_val = BIT(16 + 12) | BIT(16 + 13) | BIT(13),
++	}, {
++		/* pdm-clkm-m2 */
++		.bank_num = 2,
++		.pin = 4,
++		.func = 3,
+ 		.route_offset = 0x600,
+-		.route_val =  BIT(16 + 2) | BIT(2),
++		.route_val = BIT(16 + 2) | BIT(2),
++	}, {
++		/* spi1_miso */
++		.bank_num = 3,
++		.pin = 10,
++		.func = 3,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 9),
++	}, {
++		/* spi1_miso_m1 */
++		.bank_num = 2,
++		.pin = 4,
++		.func = 2,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 9) | BIT(9),
++	}, {
++		/* owire_m0 */
++		.bank_num = 0,
++		.pin = 11,
++		.func = 3,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 10) | BIT(16 + 11),
++	}, {
++		/* owire_m1 */
++		.bank_num = 1,
++		.pin = 22,
++		.func = 7,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 10) | BIT(16 + 11) | BIT(10),
++	}, {
++		/* owire_m2 */
++		.bank_num = 2,
++		.pin = 2,
++		.func = 5,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 10) | BIT(16 + 11) | BIT(11),
++	}, {
++		/* can_rxd_m0 */
++		.bank_num = 0,
++		.pin = 11,
++		.func = 2,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 12) | BIT(16 + 13),
++	}, {
++		/* can_rxd_m1 */
++		.bank_num = 1,
++		.pin = 22,
++		.func = 5,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 12) | BIT(16 + 13) | BIT(12),
++	}, {
++		/* can_rxd_m2 */
++		.bank_num = 2,
++		.pin = 2,
++		.func = 4,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 12) | BIT(16 + 13) | BIT(13),
++	}, {
++		/* mac_rxd0_m0 */
++		.bank_num = 1,
++		.pin = 20,
++		.func = 3,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 14),
++	}, {
++		/* mac_rxd0_m1 */
++		.bank_num = 4,
++		.pin = 2,
++		.func = 2,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 14) | BIT(14),
++	}, {
++		/* uart3_rx */
++		.bank_num = 3,
++		.pin = 12,
++		.func = 4,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 15),
++	}, {
++		/* uart3_rx_m1 */
++		.bank_num = 0,
++		.pin = 17,
++		.func = 3,
++		.route_offset = 0x314,
++		.route_val = BIT(16 + 15) | BIT(15),
+ 	},
+ };
+ 
+@@ -1466,6 +1836,9 @@ static int rockchip_set_mux(struct rockchip_pin_bank *bank, int pin, int mux)
+ 	if (bank->recalced_mask & BIT(pin))
+ 		rockchip_get_recalced_mux(bank, pin, &reg, &bit, &mask);
+ 
++	if (mux > mask)
++		return -EINVAL;
++
+ 	if (bank->route_mask & BIT(pin)) {
+ 		if (rockchip_get_mux_route(bank, pin, mux, &route_reg,
+ 					   &route_val)) {
+@@ -1648,6 +2021,87 @@ static int rv1108_calc_schmitt_reg_and_bit(struct rockchip_pin_bank *bank,
+ 	return 0;
+ }
+ 
++#define RK1808_PULL_PMU_OFFSET		0x10
++#define RK1808_PULL_GRF_OFFSET		0x80
++#define RK1808_PULL_PINS_PER_REG	8
++#define RK1808_PULL_BITS_PER_PIN	2
++#define RK1808_PULL_BANK_STRIDE		16
++
++static void rk1808_calc_pull_reg_and_bit(struct rockchip_pin_bank *bank,
++					 int pin_num, struct regmap **regmap,
++					 int *reg, u8 *bit)
++{
++	struct rockchip_pinctrl *info = bank->drvdata;
++
++	if (bank->bank_num == 0) {
++		*regmap = info->regmap_pmu;
++		*reg = RK1808_PULL_PMU_OFFSET;
++	} else {
++		*reg = RK1808_PULL_GRF_OFFSET;
++		*regmap = info->regmap_base;
++		*reg += (bank->bank_num - 1) * RK1808_PULL_BANK_STRIDE;
++	}
++
++	*reg += ((pin_num / RK1808_PULL_PINS_PER_REG) * 4);
++	*bit = (pin_num % RK1808_PULL_PINS_PER_REG);
++	*bit *= RK1808_PULL_BITS_PER_PIN;
++}
++
++#define RK1808_DRV_PMU_OFFSET		0x20
++#define RK1808_DRV_GRF_OFFSET		0x140
++#define RK1808_DRV_BITS_PER_PIN		2
++#define RK1808_DRV_PINS_PER_REG		8
++#define RK1808_DRV_BANK_STRIDE		16
++
++static enum rockchip_pin_drv_type
++rk1808_calc_drv_reg_and_bit(struct rockchip_pin_bank *bank,
++			    int pin_num, struct regmap **regmap,
++			    int *reg, u8 *bit)
++{
++	struct rockchip_pinctrl *info = bank->drvdata;
++
++	if (bank->bank_num == 0) {
++		*regmap = info->regmap_pmu;
++		*reg = RK1808_DRV_PMU_OFFSET;
++	} else {
++		*regmap = info->regmap_base;
++		*reg = RK1808_DRV_GRF_OFFSET;
++		*reg += (bank->bank_num - 1) * RK1808_DRV_BANK_STRIDE;
++	}
++
++	*reg += ((pin_num / RK1808_DRV_PINS_PER_REG) * 4);
++	*bit = pin_num % RK1808_DRV_PINS_PER_REG;
++	*bit *= RK1808_DRV_BITS_PER_PIN;
++
++	return DRV_TYPE_IO_DEFAULT;
++}
++
++#define RK1808_SCHMITT_PMU_OFFSET		0x0040
++#define RK1808_SCHMITT_GRF_OFFSET		0x0100
++#define RK1808_SCHMITT_BANK_STRIDE		16
++#define RK1808_SCHMITT_PINS_PER_REG		8
++
++static int rk1808_calc_schmitt_reg_and_bit(struct rockchip_pin_bank *bank,
++					   int pin_num,
++					   struct regmap **regmap,
++					   int *reg, u8 *bit)
++{
++	struct rockchip_pinctrl *info = bank->drvdata;
++
++	if (bank->bank_num == 0) {
++		*regmap = info->regmap_pmu;
++		*reg = RK1808_SCHMITT_PMU_OFFSET;
++	} else {
++		*regmap = info->regmap_base;
++		*reg = RK1808_SCHMITT_GRF_OFFSET;
++		*reg += (bank->bank_num  - 1) * RK1808_SCHMITT_BANK_STRIDE;
++	}
++	*reg += ((pin_num / RK1808_SCHMITT_PINS_PER_REG) * 4);
++	*bit = pin_num % RK1808_SCHMITT_PINS_PER_REG;
++
++	return 0;
++}
++
+ #define RK2928_PULL_OFFSET		0x118
+ #define RK2928_PULL_PINS_PER_REG	16
+ #define RK2928_PULL_BANK_STRIDE		8
+@@ -2468,6 +2922,7 @@ static int rockchip_get_pull(struct rockchip_pin_bank *bank, int pin_num)
+ 				: PIN_CONFIG_BIAS_DISABLE;
+ 	case PX30:
+ 	case RV1108:
++	case RK1808:
+ 	case RK3188:
+ 	case RK3288:
+ 	case RK3308:
+@@ -2514,6 +2969,7 @@ static int rockchip_set_pull(struct rockchip_pin_bank *bank,
+ 		break;
+ 	case PX30:
+ 	case RV1108:
++	case RK1808:
+ 	case RK3188:
+ 	case RK3288:
+ 	case RK3308:
+@@ -2668,6 +3124,81 @@ static int rockchip_set_schmitt(struct rockchip_pin_bank *bank,
+ 	return regmap_update_bits(regmap, reg, rmask, data);
+ }
+ 
++#define PX30_SLEW_RATE_PMU_OFFSET		0x30
++#define PX30_SLEW_RATE_GRF_OFFSET		0x90
++#define PX30_SLEW_RATE_PINS_PER_PMU_REG		16
++#define PX30_SLEW_RATE_BANK_STRIDE		16
++#define PX30_SLEW_RATE_PINS_PER_GRF_REG		8
++
++static int px30_calc_slew_rate_reg_and_bit(struct rockchip_pin_bank *bank,
++					   int pin_num,
++					   struct regmap **regmap,
++					   int *reg, u8 *bit)
++{
++	struct rockchip_pinctrl *info = bank->drvdata;
++	int pins_per_reg;
++
++	if (bank->bank_num == 0) {
++		*regmap = info->regmap_pmu;
++		*reg = PX30_SLEW_RATE_PMU_OFFSET;
++		pins_per_reg = PX30_SLEW_RATE_PINS_PER_PMU_REG;
++	} else {
++		*regmap = info->regmap_base;
++		*reg = PX30_SLEW_RATE_GRF_OFFSET;
++		pins_per_reg = PX30_SLEW_RATE_PINS_PER_GRF_REG;
++		*reg += (bank->bank_num  - 1) * PX30_SLEW_RATE_BANK_STRIDE;
++	}
++	*reg += ((pin_num / pins_per_reg) * 4);
++	*bit = pin_num % pins_per_reg;
++
++	return 0;
++}
++
++static int rockchip_get_slew_rate(struct rockchip_pin_bank *bank, int pin_num)
++{
++	struct rockchip_pinctrl *info = bank->drvdata;
++	struct rockchip_pin_ctrl *ctrl = info->ctrl;
++	struct regmap *regmap;
++	int reg, ret;
++	u8 bit;
++	u32 data;
++
++	ret = ctrl->slew_rate_calc_reg(bank, pin_num, &regmap, &reg, &bit);
++	if (ret)
++		return ret;
++
++	ret = regmap_read(regmap, reg, &data);
++	if (ret)
++		return ret;
++
++	data >>= bit;
++	return data & 0x1;
++}
++
++static int rockchip_set_slew_rate(struct rockchip_pin_bank *bank,
++				  int pin_num, int speed)
++{
++	struct rockchip_pinctrl *info = bank->drvdata;
++	struct rockchip_pin_ctrl *ctrl = info->ctrl;
++	struct regmap *regmap;
++	int reg, ret;
++	u8 bit;
++	u32 data, rmask;
++
++	dev_dbg(info->dev, "setting slew rate of GPIO%d-%d to %d\n",
++		bank->bank_num, pin_num, speed);
++
++	ret = ctrl->slew_rate_calc_reg(bank, pin_num, &regmap, &reg, &bit);
++	if (ret)
++		return ret;
++
++	/* enable the write to the equivalent lower bits */
++	data = BIT(bit + 16) | (speed << bit);
++	rmask = BIT(bit + 16) | BIT(bit);
++
++	return regmap_update_bits(regmap, reg, rmask, data);
++}
++
+ /*
+  * Pinmux_ops handling
+  */
+@@ -2829,6 +3360,7 @@ static bool rockchip_pinconf_pull_valid(struct rockchip_pin_ctrl *ctrl,
+ 		return pull ? false : true;
+ 	case PX30:
+ 	case RV1108:
++	case RK1808:
+ 	case RK3188:
+ 	case RK3288:
+ 	case RK3308:
+@@ -2908,6 +3440,15 @@ static int rockchip_pinconf_set(struct pinctrl_dev *pctldev, unsigned int pin,
+ 			if (rc < 0)
+ 				return rc;
+ 			break;
++		case PIN_CONFIG_SLEW_RATE:
++			if (!info->ctrl->slew_rate_calc_reg)
++				return -ENOTSUPP;
++
++			rc = rockchip_set_slew_rate(bank,
++						    pin - bank->pin_base, arg);
++			if (rc < 0)
++				return rc;
++			break;
+ 		default:
+ 			return -ENOTSUPP;
+ 			break;
+@@ -2978,6 +3519,16 @@ static int rockchip_pinconf_get(struct pinctrl_dev *pctldev, unsigned int pin,
+ 
+ 		arg = rc;
+ 		break;
++	case PIN_CONFIG_SLEW_RATE:
++		if (!info->ctrl->slew_rate_calc_reg)
++			return -ENOTSUPP;
++
++		rc = rockchip_get_slew_rate(bank, pin - bank->pin_base);
++		if (rc < 0)
++			return rc;
++
++		arg = rc;
++		break;
+ 	default:
+ 		return -ENOTSUPP;
+ 		break;
+@@ -3384,6 +3935,7 @@ static int rockchip_irq_set_type(struct irq_data *d, unsigned int type)
+ 	u32 polarity;
+ 	u32 level;
+ 	u32 data;
++	u32 inten;
+ 	unsigned long flags;
+ 	int ret;
+ 
+@@ -3454,8 +4006,19 @@ static int rockchip_irq_set_type(struct irq_data *d, unsigned int type)
+ 		return -EINVAL;
+ 	}
+ 
++	/*
++	 * Accroding to the steps of gpio interrupt, write GPIO_INTEN[x] as
++	 * 1 to enable GPIO’s interrupt should be done after the level and
++	 * polarity configured.
++	 */
++
++	inten = readl_relaxed(gc->reg_base + GPIO_INTEN);
++	inten &= ~mask;
++	writel_relaxed(inten, gc->reg_base + GPIO_INTEN);
+ 	writel_relaxed(level, gc->reg_base + GPIO_INTTYPE_LEVEL);
+ 	writel_relaxed(polarity, gc->reg_base + GPIO_INT_POLARITY);
++	inten |= mask;
++	writel_relaxed(inten, gc->reg_base + GPIO_INTEN);
+ 
+ 	irq_gc_unlock(gc);
+ 	raw_spin_unlock_irqrestore(&bank->slock, flags);
+@@ -3701,6 +4264,24 @@ static int rockchip_get_bank_data(struct rockchip_pin_bank *bank,
+ 
+ static const struct of_device_id rockchip_pinctrl_dt_match[];
+ 
++/* Ctrl data specially handle */
++static int rk3308b_ctrl_data_re_init(struct rockchip_pin_ctrl *ctrl)
++{
++	/*
++	 * Special for rk3308b, where we need to replace the recalced
++	 * and routed arrays.
++	 */
++	if (soc_is_rk3308b()) {
++		ctrl->iomux_recalced = rk3308b_mux_recalced_data;
++		ctrl->niomux_recalced = ARRAY_SIZE(rk3308b_mux_recalced_data);
++		ctrl->iomux_routes = rk3308b_mux_route_data;
++		ctrl->niomux_routes = ARRAY_SIZE(rk3308b_mux_route_data);
++
++	}
++
++	return 0;
++}
++
+ /* retrieve the soc specific data */
+ static struct rockchip_pin_ctrl *rockchip_pinctrl_get_soc_data(
+ 						struct rockchip_pinctrl *d,
+@@ -3733,6 +4314,12 @@ static struct rockchip_pin_ctrl *rockchip_pinctrl_get_soc_data(
+ 		}
+ 	}
+ 
++	/* Ctrl data re-initialize for some Socs */
++	if (ctrl->ctrl_data_re_init) {
++		if (ctrl->ctrl_data_re_init(ctrl))
++			return NULL;
++	}
++
+ 	grf_offs = ctrl->grf_mux_offset;
+ 	pmu_offs = ctrl->pmu_mux_offset;
+ 	drv_pmu_offs = ctrl->pmu_drv_offset;
+@@ -3879,6 +4466,48 @@ static int __maybe_unused rockchip_pinctrl_resume(struct device *dev)
+ static SIMPLE_DEV_PM_OPS(rockchip_pinctrl_dev_pm_ops, rockchip_pinctrl_suspend,
+ 			 rockchip_pinctrl_resume);
+ 
++/* SoC data specially handle */
++
++/* rk3308b SoC data initialize */
++#define RK3308B_GRF_SOC_CON13			0x608
++#define RK3308B_GRF_SOC_CON15			0x610
++
++/* RK3308B_GRF_SOC_CON13 */
++#define RK3308B_GRF_I2C3_IOFUNC_SRC_CTRL	(BIT(16 + 10) | BIT(10))
++#define RK3308B_GRF_GPIO2A3_SEL_SRC_CTRL	(BIT(16 + 7)  | BIT(7))
++#define RK3308B_GRF_GPIO2A2_SEL_SRC_CTRL	(BIT(16 + 3)  | BIT(3))
++
++/* RK3308B_GRF_SOC_CON15 */
++#define RK3308B_GRF_GPIO2C0_SEL_SRC_CTRL	(BIT(16 + 11) | BIT(11))
++#define RK3308B_GRF_GPIO3B3_SEL_SRC_CTRL	(BIT(16 + 7)  | BIT(7))
++#define RK3308B_GRF_GPIO3B2_SEL_SRC_CTRL	(BIT(16 + 3)  | BIT(3))
++
++static int rk3308b_soc_data_init(struct rockchip_pinctrl *info)
++{
++	int ret;
++
++	/*
++	 * Enable the special ctrl of selected sources.
++	 */
++	if (soc_is_rk3308b()) {
++		ret = regmap_write(info->regmap_base, RK3308B_GRF_SOC_CON13,
++				   RK3308B_GRF_I2C3_IOFUNC_SRC_CTRL |
++				   RK3308B_GRF_GPIO2A3_SEL_SRC_CTRL |
++				   RK3308B_GRF_GPIO2A2_SEL_SRC_CTRL);
++		if (ret)
++			return ret;
++
++		ret = regmap_write(info->regmap_base, RK3308B_GRF_SOC_CON15,
++				   RK3308B_GRF_GPIO2C0_SEL_SRC_CTRL |
++				   RK3308B_GRF_GPIO3B3_SEL_SRC_CTRL |
++				   RK3308B_GRF_GPIO3B2_SEL_SRC_CTRL);
++		if (ret)
++			return ret;
++	}
++
++	return 0;
++}
++
+ static int rockchip_pinctrl_probe(struct platform_device *pdev)
+ {
+ 	struct rockchip_pinctrl *info;
+@@ -3950,6 +4579,13 @@ static int rockchip_pinctrl_probe(struct platform_device *pdev)
+ 			return PTR_ERR(info->regmap_pmu);
+ 	}
+ 
++	/* Special handle for some Socs */
++	if (ctrl->soc_data_init) {
++		ret = ctrl->soc_data_init(info);
++		if (ret)
++			return ret;
++	}
++
+ 	ret = rockchip_gpiolib_register(pdev, info);
+ 	if (ret)
+ 		return ret;
+@@ -4000,6 +4636,7 @@ static struct rockchip_pin_ctrl px30_pin_ctrl = {
+ 		.pull_calc_reg		= px30_calc_pull_reg_and_bit,
+ 		.drv_calc_reg		= px30_calc_drv_reg_and_bit,
+ 		.schmitt_calc_reg	= px30_calc_schmitt_reg_and_bit,
++		.slew_rate_calc_reg	= px30_calc_slew_rate_reg_and_bit,
+ };
+ 
+ static struct rockchip_pin_bank rv1108_pin_banks[] = {
+@@ -4026,6 +4663,43 @@ static struct rockchip_pin_ctrl rv1108_pin_ctrl = {
+ 	.schmitt_calc_reg	= rv1108_calc_schmitt_reg_and_bit,
+ };
+ 
++static struct rockchip_pin_bank rk1808_pin_banks[] = {
++	PIN_BANK_IOMUX_FLAGS(0, 32, "gpio0", IOMUX_SOURCE_PMU,
++					     IOMUX_SOURCE_PMU,
++					     IOMUX_SOURCE_PMU,
++					     IOMUX_SOURCE_PMU),
++	PIN_BANK_IOMUX_FLAGS(1, 32, "gpio1", IOMUX_WIDTH_4BIT,
++					     IOMUX_WIDTH_4BIT,
++					     IOMUX_WIDTH_4BIT,
++					     IOMUX_WIDTH_4BIT),
++	PIN_BANK_IOMUX_FLAGS(2, 32, "gpio2", IOMUX_WIDTH_4BIT,
++					     IOMUX_WIDTH_4BIT,
++					     IOMUX_WIDTH_4BIT,
++					     IOMUX_WIDTH_4BIT),
++	PIN_BANK_IOMUX_FLAGS(3, 32, "gpio3", IOMUX_WIDTH_4BIT,
++					     IOMUX_WIDTH_4BIT,
++					     IOMUX_WIDTH_4BIT,
++					     IOMUX_WIDTH_4BIT),
++	PIN_BANK_IOMUX_FLAGS(4, 32, "gpio4", IOMUX_WIDTH_4BIT,
++					     IOMUX_WIDTH_4BIT,
++					     IOMUX_WIDTH_4BIT,
++					     IOMUX_WIDTH_4BIT),
++};
++
++static struct rockchip_pin_ctrl rk1808_pin_ctrl = {
++	.pin_banks		= rk1808_pin_banks,
++	.nr_banks		= ARRAY_SIZE(rk1808_pin_banks),
++	.label			= "RK1808-GPIO",
++	.type			= RK1808,
++	.iomux_routes		= rk1808_mux_route_data,
++	.niomux_routes		= ARRAY_SIZE(rk1808_mux_route_data),
++	.grf_mux_offset		= 0x0,
++	.pmu_mux_offset		= 0x0,
++	.pull_calc_reg		= rk1808_calc_pull_reg_and_bit,
++	.drv_calc_reg		= rk1808_calc_drv_reg_and_bit,
++	.schmitt_calc_reg	= rk1808_calc_schmitt_reg_and_bit,
++};
++
+ static struct rockchip_pin_bank rk2928_pin_banks[] = {
+ 	PIN_BANK(0, 32, "gpio0"),
+ 	PIN_BANK(1, 32, "gpio1"),
+@@ -4223,6 +4897,8 @@ static struct rockchip_pin_ctrl rk3308_pin_ctrl = {
+ 		.niomux_recalced	= ARRAY_SIZE(rk3308_mux_recalced_data),
+ 		.iomux_routes		= rk3308_mux_route_data,
+ 		.niomux_routes		= ARRAY_SIZE(rk3308_mux_route_data),
++		.ctrl_data_re_init	= rk3308b_ctrl_data_re_init,
++		.soc_data_init		= rk3308b_soc_data_init,
+ 		.pull_calc_reg		= rk3308_calc_pull_reg_and_bit,
+ 		.drv_calc_reg		= rk3308_calc_drv_reg_and_bit,
+ 		.schmitt_calc_reg	= rk3308_calc_schmitt_reg_and_bit,
+@@ -4414,6 +5090,8 @@ static const struct of_device_id rockchip_pinctrl_dt_match[] = {
+ 		.data = &px30_pin_ctrl },
+ 	{ .compatible = "rockchip,rv1108-pinctrl",
+ 		.data = &rv1108_pin_ctrl },
++	{ .compatible = "rockchip,rk1808-pinctrl",
++		.data = &rk1808_pin_ctrl },
+ 	{ .compatible = "rockchip,rk2928-pinctrl",
+ 		.data = &rk2928_pin_ctrl },
+ 	{ .compatible = "rockchip,rk3036-pinctrl",
+diff --git a/drivers/soc/rockchip/rockchip-cpuinfo.c b/drivers/soc/rockchip/rockchip-cpuinfo.c
+index a9ded8e..faea58a 100644
+--- a/drivers/soc/rockchip/rockchip-cpuinfo.c
++++ b/drivers/soc/rockchip/rockchip-cpuinfo.c
+@@ -88,7 +88,6 @@ static struct platform_driver rockchip_cpuinfo_driver = {
+ 	},
+ };
+ 
+-#ifdef CONFIG_ARM
+ static void rk3288_init(void)
+ {
+ 	void __iomem *base;
+@@ -124,6 +123,21 @@ static void rk3126_init(void)
+ 	}
+ }
+ 
++static void rk3308_init(void)
++{
++	void __iomem *base;
++
++	rockchip_soc_id = ROCKCHIP_SOC_RK3308;
++#define RK3308_GRF_PHYS		0xFF000000
++#define RK3308_GRF_CHIP_ID	0x800
++	base = ioremap(RK3308_GRF_PHYS, SZ_4K);
++	if (base) {
++		if (readl_relaxed(base + RK3308_GRF_CHIP_ID) == 0x3308)
++			rockchip_soc_id = ROCKCHIP_SOC_RK3308B;
++		iounmap(base);
++	}
++}
++
+ static int __init rockchip_soc_id_init(void)
+ {
+ 	if (cpu_is_rk3288()) {
+@@ -133,12 +147,13 @@ static int __init rockchip_soc_id_init(void)
+ 			rockchip_soc_id = ROCKCHIP_SOC_RK3128;
+ 		else
+ 			rk3126_init();
++	} else if (cpu_is_rk3308()) {
++		rk3308_init();
+ 	}
+ 
+ 	return 0;
+ }
+ pure_initcall(rockchip_soc_id_init);
+-#endif
+ 
+ static int __init rockchip_cpuinfo_init(void)
+ {
+diff --git a/include/dt-bindings/clock/rk3308-cru.h b/include/dt-bindings/clock/rk3308-cru.h
+index 7ba1b86..5088a0f6 100644
+--- a/include/dt-bindings/clock/rk3308-cru.h
++++ b/include/dt-bindings/clock/rk3308-cru.h
+@@ -36,7 +36,7 @@
+ #define SCLK_I2C1		23
+ #define SCLK_I2C2		24
+ #define SCLK_I2C3		25
+-#define SCLK_PWM		26
++#define SCLK_PWM0		26
+ #define SCLK_SPI0		27
+ #define SCLK_SPI1		28
+ #define SCLK_SPI2		29
+@@ -130,9 +130,12 @@
+ #define SCLK_I2S3_8CH_RX_SRC	117
+ #define SCLK_I2S0_2CH_SRC	118
+ #define SCLK_I2S1_2CH_SRC	119
++#define SCLK_PWM1		120
++#define SCLK_PWM2		121
++#define SCLK_OWIRE		122
+ 
+ /* dclk */
+-#define DCLK_VOP		120
++#define DCLK_VOP		125
+ 
+ /* aclk */
+ #define ACLK_BUS_SRC		130
+@@ -188,7 +191,7 @@
+ #define PCLK_I2C1		203
+ #define PCLK_I2C2		204
+ #define PCLK_I2C3		205
+-#define PCLK_PWM		206
++#define PCLK_PWM0		206
+ #define PCLK_SPI0		207
+ #define PCLK_SPI1		208
+ #define PCLK_SPI2		209
+@@ -213,8 +216,12 @@
+ #define PCLK_CRU		228
+ #define PCLK_OTP_PHY		229
+ #define PCLK_CPU_BOOST		230
++#define PCLK_PWM1		231
++#define PCLK_PWM2		232
++#define PCLK_CAN		233
++#define PCLK_OWIRE		234
+ 
+-#define CLK_NR_CLKS		(PCLK_CPU_BOOST + 1)
++#define CLK_NR_CLKS		(PCLK_OWIRE + 1)
+ 
+ /* soft-reset indices */
+ 
+@@ -284,8 +291,8 @@
+ #define SRST_I2C2		59
+ #define SRST_I2C3_P		60
+ #define SRST_I2C3		61
+-#define SRST_PWM_P		62
+-#define SRST_PWM		63
++#define SRST_PWM0_P		62
++#define SRST_PWM0		63
+ 
+ /* cru_softrst_con4 */
+ #define SRST_SPI0_P		64
+@@ -325,6 +332,10 @@
+ /* cru_softrst_con6 */
+ #define SRST_CPU_BOOST		96
+ #define SRST_CPU_BOOST_P	97
++#define SRST_PWM1_P		98
++#define SRST_PWM1		99
++#define SRST_PWM2_P		100
++#define SRST_PWM2		101
+ #define SRST_PERI_NIU_A		104
+ #define SRST_PERI_NIU_H		105
+ #define SRST_PERI_NIU_p		106
+@@ -349,6 +360,8 @@
+ #define SRST_NANDC_H		123
+ #define SRST_NANDC_N		124
+ #define SRST_MAC_A		125
++#define SRST_CAN_P		126
++#define SRST_OWIRE_P		127
+ 
+ /* cru_softrst_con8 */
+ #define SRST_AUDIO_NIU_H	128
+diff --git a/include/linux/rockchip/cpu.h b/include/linux/rockchip/cpu.h
+index 7eb0827..5542993 100644
+--- a/include/linux/rockchip/cpu.h
++++ b/include/linux/rockchip/cpu.h
+@@ -54,6 +54,7 @@ static inline void rockchip_set_cpu_version(unsigned long ver)
+ #define ROCKCHIP_CPU_MASK       0xffff0000
+ #define ROCKCHIP_CPU_RK312X     0x31260000
+ #define ROCKCHIP_CPU_RK3288     0x32880000
++#define ROCKCHIP_CPU_RK3308	0x33080000
+ 
+ #ifdef CONFIG_CPU_RK312X
+ static inline bool cpu_is_rk312x(void)
+@@ -81,6 +82,18 @@ static inline bool cpu_is_rk3288(void)
+ static inline bool cpu_is_rk3288(void) { return false; }
+ #endif
+ 
++#ifdef CONFIG_CPU_RK3308
++static inline bool cpu_is_rk3308(void)
++{
++	if (rockchip_soc_id)
++		return (rockchip_soc_id & ROCKCHIP_CPU_MASK) == ROCKCHIP_CPU_RK3308;
++
++	return of_machine_is_compatible("rockchip,rk3308");
++}
++#else
++static inline bool cpu_is_rk3308(void) { return false; }
++#endif
++
+ #define ROCKCHIP_SOC_MASK	(ROCKCHIP_CPU_MASK | 0xff)
+ #define ROCKCHIP_SOC_RK3126     (ROCKCHIP_CPU_RK312X | 0x00)
+ #define ROCKCHIP_SOC_RK3126B    (ROCKCHIP_CPU_RK312X | 0x10)
+@@ -88,6 +101,8 @@ static inline bool cpu_is_rk3288(void) { return false; }
+ #define ROCKCHIP_SOC_RK3128     (ROCKCHIP_CPU_RK312X | 0x01)
+ #define ROCKCHIP_SOC_RK3288     (ROCKCHIP_CPU_RK3288 | 0x00)
+ #define ROCKCHIP_SOC_RK3288W    (ROCKCHIP_CPU_RK3288 | 0x01)
++#define ROCKCHIP_SOC_RK3308	(ROCKCHIP_CPU_RK3308 | 0x00)
++#define ROCKCHIP_SOC_RK3308B	(ROCKCHIP_CPU_RK3308 | 0x01)
+ 
+ #define ROCKCHIP_SOC(id, ID) \
+ static inline bool soc_is_##id(void) \
+@@ -103,5 +118,7 @@ ROCKCHIP_SOC(rk3126c, RK3126C)
+ ROCKCHIP_SOC(rk3128, RK3128)
+ ROCKCHIP_SOC(rk3288, RK3288)
+ ROCKCHIP_SOC(rk3288w, RK3288W)
++ROCKCHIP_SOC(rk3308, RK3308)
++ROCKCHIP_SOC(rk3308b, RK3308B)
+ 
+ #endif
+diff --git a/sound/soc/codecs/rk3308_codec.c b/sound/soc/codecs/rk3308_codec.c
+index 7d73a1f..427fad3 100644
+--- a/sound/soc/codecs/rk3308_codec.c
++++ b/sound/soc/codecs/rk3308_codec.c
+@@ -54,16 +54,16 @@
+ #define CODEC_DRV_NAME			"rk3308-acodec"
+ 
+ #define ADC_GRP_SKIP_MAGIC		0x1001
+-#define ADC_GRP_SKIP_MAGIC2		0x1002
+ #define ADC_LR_GROUP_MAX		4
+-#define ADC_STABLE_MS			20
++#define ADC_STABLE_MS			200
+ #define DEBUG_POP_ALWAYS		0
+-#define ENABLE_AGC			0
+ #define HPDET_POLL_MS			2000
+ #define NOT_USED			255
+ #define LOOPBACK_HANDLE_MS		100
++#define PA_DRV_MS		        5
+ 
+ #define GRF_SOC_CON1			0x304
++#define GRF_CHIP_ID			0x800
+ #define GRF_I2S2_8CH_SDI_SFT		0
+ #define GRF_I2S3_4CH_SDI_SFT		8
+ #define GRF_I2S1_2CH_SDI_SFT		12
+@@ -81,6 +81,21 @@
+ #define GRF_I2S1_2CH_SDI(v)		(((v & 0x3) << GRF_I2S1_2CH_SDI_SFT) |\
+ 					 GRF_I2S1_2CH_SDI_W_MSK)
+ 
++#define DETECT_GRF_ACODEC_HPDET_COUNTER		0x0030
++#define DETECT_GRF_ACODEC_HPDET_CON		0x0034
++#define DETECT_GRF_ACODEC_HPDET_STATUS		0x0038
++#define DETECT_GRF_ACODEC_HPDET_STATUS_CLR	0x003c
++
++/* 200ms based on pclk is 100MHz */
++#define DEFAULT_HPDET_COUNT			20000000
++#define HPDET_NEG_IRQ_SFT			1
++#define HPDET_POS_IRQ_SFT			0
++#define HPDET_BOTH_NEG_POS			((1 << HPDET_NEG_IRQ_SFT) |\
++						 (1 << HPDET_POS_IRQ_SFT))
++
++#define ACODEC_VERSION_A			0xa
++#define ACODEC_VERSION_B			0xb
++
+ enum {
+ 	ACODEC_TO_I2S2_8CH = 0,
+ 	ACODEC_TO_I2S3_4CH,
+@@ -125,13 +140,17 @@ struct rk3308_codec_priv {
+ 	struct reset_control *reset;
+ 	struct regmap *regmap;
+ 	struct regmap *grf;
++	struct regmap *detect_grf;
+ 	struct clk *pclk;
+ 	struct clk *mclk_rx;
+ 	struct clk *mclk_tx;
+ 	struct gpio_desc *hp_ctl_gpio;
+ 	struct gpio_desc *spk_ctl_gpio;
++	struct gpio_desc *pa_drv_gpio;
+ 	struct snd_soc_codec *codec;
+ 	struct snd_soc_jack *hpdet_jack;
++	u32 codec_ver;
++
+ 	/*
+ 	 * To select ADCs for groups:
+ 	 *
+@@ -145,26 +164,47 @@ struct rk3308_codec_priv {
+ 	u32 loopback_grp;
+ 	u32 en_always_grps[ADC_LR_GROUP_MAX];
+ 	u32 en_always_grps_num;
+-	u32 enabled_grps[ADC_LR_GROUP_MAX];
++	u32 skip_grps[ADC_LR_GROUP_MAX];
+ 	u32 i2s_sdis[ADC_LR_GROUP_MAX];
+ 	u32 to_i2s_grps;
+ 	u32 delay_loopback_handle_ms;
++	u32 delay_start_play_ms;
++	u32 delay_pa_drv_ms;
++	u32 micbias_num;
++	u32 micbias_volt;
+ 	int which_i2s;
+ 	int irq;
+ 	int adc_grp0_using_linein;
+ 	int adc_zerocross;
+ 	/* 0: line out, 1: hp out, 11: lineout and hpout */
+ 	int dac_output;
+-	int adc_path_state;
+ 	int dac_path_state;
+ 
+ 	int pm_state;
+ 
++	/* AGC L/R Off/on */
++	unsigned int agc_l[ADC_LR_GROUP_MAX];
++	unsigned int agc_r[ADC_LR_GROUP_MAX];
++
++	/* AGC L/R Approximate Sample Rate */
++	unsigned int agc_asr_l[ADC_LR_GROUP_MAX];
++	unsigned int agc_asr_r[ADC_LR_GROUP_MAX];
++
++	/* ADC MIC Mute/Work */
++	unsigned int mic_mute_l[ADC_LR_GROUP_MAX];
++	unsigned int mic_mute_r[ADC_LR_GROUP_MAX];
++
++	/* For the high pass filter */
++	unsigned int hpf_cutoff[ADC_LR_GROUP_MAX];
++
+ 	/* Only hpout do fade-in and fade-out */
+ 	unsigned int hpout_l_dgain;
+ 	unsigned int hpout_r_dgain;
+ 
+ 	bool enable_all_adcs;
++	bool enable_micbias;
++	bool micbias1;
++	bool micbias2;
+ 	bool hp_plugged;
+ 	bool loopback_dacs_enabled;
+ 	bool no_deep_low_power;
+@@ -191,18 +231,26 @@ static const DECLARE_TLV_DB_SCALE(rk3308_codec_dac_hpout_gain_tlv,
+ 				  -3900, 150, 600);
+ static const DECLARE_TLV_DB_SCALE(rk3308_codec_dac_hpmix_gain_tlv,
+ 				  -600, 600, 0);
+-static const DECLARE_TLV_DB_RANGE(rk3308_codec_adc_1_2_mic_gain_tlv,
+-	0, 0, TLV_DB_MINMAX_ITEM(0, 0),
+-	3, 3, TLV_DB_MINMAX_ITEM(2000, 2000),
++
++static const DECLARE_TLV_DB_RANGE(rk3308_codec_adc_mic_gain_tlv_a,
++	0, 0, TLV_DB_SCALE_ITEM(0, 0, 0),
++	3, 3, TLV_DB_SCALE_ITEM(2000, 0, 0),
+ );
+-static const DECLARE_TLV_DB_RANGE(rk3308_codec_adc_3_8_mic_gain_tlv,
+-	0, 0, TLV_DB_MINMAX_ITEM(0, 0),
+-	1, 1, TLV_DB_MINMAX_ITEM(660, 660),
+-	2, 2, TLV_DB_MINMAX_ITEM(1300, 1300),
+-	3, 3, TLV_DB_MINMAX_ITEM(2000, 2000),
++
++static const DECLARE_TLV_DB_RANGE(rk3308_codec_adc_mic_gain_tlv_b,
++	0, 0, TLV_DB_SCALE_ITEM(0, 0, 0),
++	1, 1, TLV_DB_SCALE_ITEM(660, 0, 0),
++	2, 2, TLV_DB_SCALE_ITEM(1300, 0, 0),
++	3, 3, TLV_DB_SCALE_ITEM(2000, 0, 0),
+ );
+ 
+-static bool has_loopback(int loopback_grp);
++static bool handle_loopback(struct rk3308_codec_priv *rk3308);
++
++static int check_micbias(int micbias);
++
++static int rk3308_codec_micbias_enable(struct rk3308_codec_priv *rk3308,
++				       int micbias);
++static int rk3308_codec_micbias_disable(struct rk3308_codec_priv *rk3308);
+ 
+ static int rk3308_codec_hpout_l_get_tlv(struct snd_kcontrol *kcontrol,
+ 					struct snd_ctl_elem_value *ucontrol);
+@@ -212,6 +260,277 @@ static int rk3308_codec_hpout_r_get_tlv(struct snd_kcontrol *kcontrol,
+ 					struct snd_ctl_elem_value *ucontrol);
+ static int rk3308_codec_hpout_r_put_tlv(struct snd_kcontrol *kcontrol,
+ 					struct snd_ctl_elem_value *ucontrol);
++static int rk3308_codec_hpf_get(struct snd_kcontrol *kcontrol,
++				struct snd_ctl_elem_value *ucontrol);
++static int rk3308_codec_hpf_put(struct snd_kcontrol *kcontrol,
++				struct snd_ctl_elem_value *ucontrol);
++static int rk3308_codec_agc_get(struct snd_kcontrol *kcontrol,
++				struct snd_ctl_elem_value *ucontrol);
++static int rk3308_codec_agc_put(struct snd_kcontrol *kcontrol,
++				struct snd_ctl_elem_value *ucontrol);
++static int rk3308_codec_agc_asr_get(struct snd_kcontrol *kcontrol,
++				    struct snd_ctl_elem_value *ucontrol);
++static int rk3308_codec_agc_asr_put(struct snd_kcontrol *kcontrol,
++				    struct snd_ctl_elem_value *ucontrol);
++static int rk3308_codec_mic_mute_get(struct snd_kcontrol *kcontrol,
++				     struct snd_ctl_elem_value *ucontrol);
++static int rk3308_codec_mic_mute_put(struct snd_kcontrol *kcontrol,
++				     struct snd_ctl_elem_value *ucontrol);
++static int rk3308_codec_mic_gain_get(struct snd_kcontrol *kcontrol,
++				     struct snd_ctl_elem_value *ucontrol);
++static int rk3308_codec_mic_gain_put(struct snd_kcontrol *kcontrol,
++				     struct snd_ctl_elem_value *ucontrol);
++static int rk3308_codec_micbias_volts_get(struct snd_kcontrol *kcontrol,
++					  struct snd_ctl_elem_value *ucontrol);
++static int rk3308_codec_micbias_volts_put(struct snd_kcontrol *kcontrol,
++					  struct snd_ctl_elem_value *ucontrol);
++static int rk3308_codec_main_micbias_get(struct snd_kcontrol *kcontrol,
++					 struct snd_ctl_elem_value *ucontrol);
++static int rk3308_codec_main_micbias_put(struct snd_kcontrol *kcontrol,
++					 struct snd_ctl_elem_value *ucontrol);
++
++static const char *offon_text[2] = {
++	[0] = "Off",
++	[1] = "On",
++};
++
++static const char *mute_text[2] = {
++	[0] = "Work",
++	[1] = "Mute",
++};
++
++/* ADC MICBIAS Volt */
++#define MICBIAS_VOLT_NUM		8
++
++#define MICBIAS_VREFx0_5		0
++#define MICBIAS_VREFx0_55		1
++#define MICBIAS_VREFx0_6		2
++#define MICBIAS_VREFx0_65		3
++#define MICBIAS_VREFx0_7		4
++#define MICBIAS_VREFx0_75		5
++#define MICBIAS_VREFx0_8		6
++#define MICBIAS_VREFx0_85		7
++
++static const char *micbias_volts_enum_array[MICBIAS_VOLT_NUM] = {
++	[MICBIAS_VREFx0_5] = "VREFx0_5",
++	[MICBIAS_VREFx0_55] = "VREFx0_55",
++	[MICBIAS_VREFx0_6] = "VREFx0_6",
++	[MICBIAS_VREFx0_65] = "VREFx0_65",
++	[MICBIAS_VREFx0_7] = "VREFx0_7",
++	[MICBIAS_VREFx0_75] = "VREFx0_75",
++	[MICBIAS_VREFx0_8] = "VREFx0_8",
++	[MICBIAS_VREFx0_85] = "VREFx0_85",
++};
++
++static const struct soc_enum rk3308_micbias_volts_enum_array[] = {
++	SOC_ENUM_SINGLE(0, 0, ARRAY_SIZE(micbias_volts_enum_array), micbias_volts_enum_array),
++};
++
++/* ADC MICBIAS1 and MICBIAS2 Main Switch */
++static const struct soc_enum rk3308_main_micbias_enum_array[] = {
++	SOC_ENUM_SINGLE(0, 0, ARRAY_SIZE(offon_text), offon_text),
++};
++
++static const struct soc_enum rk3308_hpf_enum_array[] = {
++	SOC_ENUM_SINGLE(0, 0, ARRAY_SIZE(offon_text), offon_text),
++	SOC_ENUM_SINGLE(1, 0, ARRAY_SIZE(offon_text), offon_text),
++	SOC_ENUM_SINGLE(2, 0, ARRAY_SIZE(offon_text), offon_text),
++	SOC_ENUM_SINGLE(3, 0, ARRAY_SIZE(offon_text), offon_text),
++};
++
++/* ALC AGC Switch */
++static const struct soc_enum rk3308_agc_enum_array[] = {
++	SOC_ENUM_SINGLE(0, 0, ARRAY_SIZE(offon_text), offon_text),
++	SOC_ENUM_SINGLE(0, 1, ARRAY_SIZE(offon_text), offon_text),
++	SOC_ENUM_SINGLE(1, 0, ARRAY_SIZE(offon_text), offon_text),
++	SOC_ENUM_SINGLE(1, 1, ARRAY_SIZE(offon_text), offon_text),
++	SOC_ENUM_SINGLE(2, 0, ARRAY_SIZE(offon_text), offon_text),
++	SOC_ENUM_SINGLE(2, 1, ARRAY_SIZE(offon_text), offon_text),
++	SOC_ENUM_SINGLE(3, 0, ARRAY_SIZE(offon_text), offon_text),
++	SOC_ENUM_SINGLE(3, 1, ARRAY_SIZE(offon_text), offon_text),
++};
++
++/* ADC MIC Mute/Work Switch */
++static const struct soc_enum rk3308_mic_mute_enum_array[] = {
++	SOC_ENUM_SINGLE(0, 0, ARRAY_SIZE(mute_text), mute_text),
++	SOC_ENUM_SINGLE(0, 1, ARRAY_SIZE(mute_text), mute_text),
++	SOC_ENUM_SINGLE(1, 0, ARRAY_SIZE(mute_text), mute_text),
++	SOC_ENUM_SINGLE(1, 1, ARRAY_SIZE(mute_text), mute_text),
++	SOC_ENUM_SINGLE(2, 0, ARRAY_SIZE(mute_text), mute_text),
++	SOC_ENUM_SINGLE(2, 1, ARRAY_SIZE(mute_text), mute_text),
++	SOC_ENUM_SINGLE(3, 0, ARRAY_SIZE(mute_text), mute_text),
++	SOC_ENUM_SINGLE(3, 1, ARRAY_SIZE(mute_text), mute_text),
++};
++
++/* ALC AGC Approximate Sample Rate */
++#define AGC_ASR_NUM				8
++
++#define AGC_ASR_96KHZ				0
++#define AGC_ASR_48KHZ				1
++#define AGC_ASR_44_1KHZ				2
++#define AGC_ASR_32KHZ				3
++#define AGC_ASR_24KHZ				4
++#define AGC_ASR_16KHZ				5
++#define AGC_ASR_12KHZ				6
++#define AGC_ASR_8KHZ				7
++
++static const char *agc_asr_text[AGC_ASR_NUM] = {
++	[AGC_ASR_96KHZ] = "96KHz",
++	[AGC_ASR_48KHZ] = "48KHz",
++	[AGC_ASR_44_1KHZ] = "44.1KHz",
++	[AGC_ASR_32KHZ] = "32KHz",
++	[AGC_ASR_24KHZ] = "24KHz",
++	[AGC_ASR_16KHZ] = "16KHz",
++	[AGC_ASR_12KHZ] = "12KHz",
++	[AGC_ASR_8KHZ] = "8KHz",
++};
++
++static const struct soc_enum rk3308_agc_asr_enum_array[] = {
++	SOC_ENUM_SINGLE(0, 0, ARRAY_SIZE(agc_asr_text), agc_asr_text),
++	SOC_ENUM_SINGLE(0, 1, ARRAY_SIZE(agc_asr_text), agc_asr_text),
++	SOC_ENUM_SINGLE(1, 0, ARRAY_SIZE(agc_asr_text), agc_asr_text),
++	SOC_ENUM_SINGLE(1, 1, ARRAY_SIZE(agc_asr_text), agc_asr_text),
++	SOC_ENUM_SINGLE(2, 0, ARRAY_SIZE(agc_asr_text), agc_asr_text),
++	SOC_ENUM_SINGLE(2, 1, ARRAY_SIZE(agc_asr_text), agc_asr_text),
++	SOC_ENUM_SINGLE(3, 0, ARRAY_SIZE(agc_asr_text), agc_asr_text),
++	SOC_ENUM_SINGLE(3, 1, ARRAY_SIZE(agc_asr_text), agc_asr_text),
++};
++
++static const struct snd_kcontrol_new mic_gains_a[] = {
++	/* ADC MIC */
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 0 Left Volume",
++			   RK3308_ADC_ANA_CON01(0),
++			   RK3308_ADC_CH1_MIC_GAIN_SFT,
++			   RK3308_ADC_CH1_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_a),
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 0 Right Volume",
++			   RK3308_ADC_ANA_CON01(0),
++			   RK3308_ADC_CH2_MIC_GAIN_SFT,
++			   RK3308_ADC_CH2_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_a),
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 1 Left Volume",
++			   RK3308_ADC_ANA_CON01(1),
++			   RK3308_ADC_CH1_MIC_GAIN_SFT,
++			   RK3308_ADC_CH1_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_a),
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 1 Right Volume",
++			   RK3308_ADC_ANA_CON01(1),
++			   RK3308_ADC_CH2_MIC_GAIN_SFT,
++			   RK3308_ADC_CH2_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_a),
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 2 Left Volume",
++			   RK3308_ADC_ANA_CON01(2),
++			   RK3308_ADC_CH1_MIC_GAIN_SFT,
++			   RK3308_ADC_CH1_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_a),
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 2 Right Volume",
++			   RK3308_ADC_ANA_CON01(2),
++			   RK3308_ADC_CH2_MIC_GAIN_SFT,
++			   RK3308_ADC_CH2_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_a),
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 3 Left Volume",
++			   RK3308_ADC_ANA_CON01(3),
++			   RK3308_ADC_CH1_MIC_GAIN_SFT,
++			   RK3308_ADC_CH1_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_a),
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 3 Right Volume",
++			   RK3308_ADC_ANA_CON01(3),
++			   RK3308_ADC_CH2_MIC_GAIN_SFT,
++			   RK3308_ADC_CH2_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_a),
++};
++
++static const struct snd_kcontrol_new mic_gains_b[] = {
++	/* ADC MIC */
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 0 Left Volume",
++			   RK3308_ADC_ANA_CON01(0),
++			   RK3308_ADC_CH1_MIC_GAIN_SFT,
++			   RK3308_ADC_CH1_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_b),
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 0 Right Volume",
++			   RK3308_ADC_ANA_CON01(0),
++			   RK3308_ADC_CH2_MIC_GAIN_SFT,
++			   RK3308_ADC_CH2_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_b),
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 1 Left Volume",
++			   RK3308_ADC_ANA_CON01(1),
++			   RK3308_ADC_CH1_MIC_GAIN_SFT,
++			   RK3308_ADC_CH1_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_b),
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 1 Right Volume",
++			   RK3308_ADC_ANA_CON01(1),
++			   RK3308_ADC_CH2_MIC_GAIN_SFT,
++			   RK3308_ADC_CH2_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_b),
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 2 Left Volume",
++			   RK3308_ADC_ANA_CON01(2),
++			   RK3308_ADC_CH1_MIC_GAIN_SFT,
++			   RK3308_ADC_CH1_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_b),
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 2 Right Volume",
++			   RK3308_ADC_ANA_CON01(2),
++			   RK3308_ADC_CH2_MIC_GAIN_SFT,
++			   RK3308_ADC_CH2_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_b),
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 3 Left Volume",
++			   RK3308_ADC_ANA_CON01(3),
++			   RK3308_ADC_CH1_MIC_GAIN_SFT,
++			   RK3308_ADC_CH1_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_b),
++	SOC_SINGLE_EXT_TLV("ADC MIC Group 3 Right Volume",
++			   RK3308_ADC_ANA_CON01(3),
++			   RK3308_ADC_CH2_MIC_GAIN_SFT,
++			   RK3308_ADC_CH2_MIC_GAIN_MAX,
++			   0,
++			   rk3308_codec_mic_gain_get,
++			   rk3308_codec_mic_gain_put,
++			   rk3308_codec_adc_mic_gain_tlv_b),
++};
+ 
+ static const struct snd_kcontrol_new rk3308_codec_dapm_controls[] = {
+ 	/* ALC AGC Group */
+@@ -373,55 +692,73 @@ static const struct snd_kcontrol_new rk3308_codec_dapm_controls[] = {
+ 			     RK3308_AGC_MIN_GAIN_PGA_MAX,
+ 			     0, rk3308_codec_alc_agc_grp_min_gain_tlv),
+ 
+-	/* ADC MIC */
+-	SOC_SINGLE_RANGE_TLV("ADC MIC Group 0 Left Volume",
+-			     RK3308_ADC_ANA_CON01(0),
+-			     RK3308_ADC_CH1_MIC_GAIN_SFT,
+-			     RK3308_ADC_CH1_MIC_GAIN_MIN,
+-			     RK3308_ADC_CH1_MIC_GAIN_MAX,
+-			     0, rk3308_codec_adc_1_2_mic_gain_tlv),
+-	SOC_SINGLE_RANGE_TLV("ADC MIC Group 0 Right Volume",
+-			     RK3308_ADC_ANA_CON01(0),
+-			     RK3308_ADC_CH2_MIC_GAIN_SFT,
+-			     RK3308_ADC_CH2_MIC_GAIN_MIN,
+-			     RK3308_ADC_CH2_MIC_GAIN_MAX,
+-			     0, rk3308_codec_adc_1_2_mic_gain_tlv),
+-	SOC_SINGLE_RANGE_TLV("ADC MIC Group 1 Left Volume",
+-			     RK3308_ADC_ANA_CON01(1),
+-			     RK3308_ADC_CH1_MIC_GAIN_SFT,
+-			     RK3308_ADC_CH1_MIC_GAIN_MIN,
+-			     RK3308_ADC_CH1_MIC_GAIN_MAX,
+-			     0, rk3308_codec_adc_3_8_mic_gain_tlv),
+-	SOC_SINGLE_RANGE_TLV("ADC MIC Group 1 Right Volume",
+-			     RK3308_ADC_ANA_CON01(1),
+-			     RK3308_ADC_CH2_MIC_GAIN_SFT,
+-			     RK3308_ADC_CH2_MIC_GAIN_MIN,
+-			     RK3308_ADC_CH2_MIC_GAIN_MAX,
+-			     0, rk3308_codec_adc_3_8_mic_gain_tlv),
+-	SOC_SINGLE_RANGE_TLV("ADC MIC Group 2 Left Volume",
+-			     RK3308_ADC_ANA_CON01(2),
+-			     RK3308_ADC_CH1_MIC_GAIN_SFT,
+-			     RK3308_ADC_CH1_MIC_GAIN_MIN,
+-			     RK3308_ADC_CH1_MIC_GAIN_MAX,
+-			     0, rk3308_codec_adc_3_8_mic_gain_tlv),
+-	SOC_SINGLE_RANGE_TLV("ADC MIC Group 2 Right Volume",
+-			     RK3308_ADC_ANA_CON01(2),
+-			     RK3308_ADC_CH2_MIC_GAIN_SFT,
+-			     RK3308_ADC_CH2_MIC_GAIN_MIN,
+-			     RK3308_ADC_CH2_MIC_GAIN_MAX,
+-			     0, rk3308_codec_adc_3_8_mic_gain_tlv),
+-	SOC_SINGLE_RANGE_TLV("ADC MIC Group 3 Left Volume",
+-			     RK3308_ADC_ANA_CON01(3),
+-			     RK3308_ADC_CH1_MIC_GAIN_SFT,
+-			     RK3308_ADC_CH1_MIC_GAIN_MIN,
+-			     RK3308_ADC_CH1_MIC_GAIN_MAX,
+-			     0, rk3308_codec_adc_3_8_mic_gain_tlv),
+-	SOC_SINGLE_RANGE_TLV("ADC MIC Group 3 Right Volume",
+-			     RK3308_ADC_ANA_CON01(3),
+-			     RK3308_ADC_CH2_MIC_GAIN_SFT,
+-			     RK3308_ADC_CH2_MIC_GAIN_MIN,
+-			     RK3308_ADC_CH2_MIC_GAIN_MAX,
+-			     0, rk3308_codec_adc_3_8_mic_gain_tlv),
++	/* ALC AGC Switch */
++	SOC_ENUM_EXT("ALC AGC Group 0 Left Switch", rk3308_agc_enum_array[0],
++		     rk3308_codec_agc_get, rk3308_codec_agc_put),
++	SOC_ENUM_EXT("ALC AGC Group 0 Right Switch", rk3308_agc_enum_array[1],
++		     rk3308_codec_agc_get, rk3308_codec_agc_put),
++	SOC_ENUM_EXT("ALC AGC Group 1 Left Switch", rk3308_agc_enum_array[2],
++		     rk3308_codec_agc_get, rk3308_codec_agc_put),
++	SOC_ENUM_EXT("ALC AGC Group 1 Right Switch", rk3308_agc_enum_array[3],
++		     rk3308_codec_agc_get, rk3308_codec_agc_put),
++	SOC_ENUM_EXT("ALC AGC Group 2 Left Switch", rk3308_agc_enum_array[4],
++		     rk3308_codec_agc_get, rk3308_codec_agc_put),
++	SOC_ENUM_EXT("ALC AGC Group 2 Right Switch", rk3308_agc_enum_array[5],
++		     rk3308_codec_agc_get, rk3308_codec_agc_put),
++	SOC_ENUM_EXT("ALC AGC Group 3 Left Switch", rk3308_agc_enum_array[6],
++		     rk3308_codec_agc_get, rk3308_codec_agc_put),
++	SOC_ENUM_EXT("ALC AGC Group 3 Right Switch", rk3308_agc_enum_array[7],
++		     rk3308_codec_agc_get, rk3308_codec_agc_put),
++
++	/* ALC AGC Approximate Sample Rate */
++	SOC_ENUM_EXT("AGC Group 0 Left Approximate Sample Rate", rk3308_agc_asr_enum_array[0],
++		     rk3308_codec_agc_asr_get, rk3308_codec_agc_asr_put),
++	SOC_ENUM_EXT("AGC Group 0 Right Approximate Sample Rate", rk3308_agc_asr_enum_array[1],
++		     rk3308_codec_agc_asr_get, rk3308_codec_agc_asr_put),
++	SOC_ENUM_EXT("AGC Group 1 Left Approximate Sample Rate", rk3308_agc_asr_enum_array[2],
++		     rk3308_codec_agc_asr_get, rk3308_codec_agc_asr_put),
++	SOC_ENUM_EXT("AGC Group 1 Right Approximate Sample Rate", rk3308_agc_asr_enum_array[3],
++		     rk3308_codec_agc_asr_get, rk3308_codec_agc_asr_put),
++	SOC_ENUM_EXT("AGC Group 2 Left Approximate Sample Rate", rk3308_agc_asr_enum_array[4],
++		     rk3308_codec_agc_asr_get, rk3308_codec_agc_asr_put),
++	SOC_ENUM_EXT("AGC Group 2 Right Approximate Sample Rate", rk3308_agc_asr_enum_array[5],
++		     rk3308_codec_agc_asr_get, rk3308_codec_agc_asr_put),
++	SOC_ENUM_EXT("AGC Group 3 Left Approximate Sample Rate", rk3308_agc_asr_enum_array[6],
++		     rk3308_codec_agc_asr_get, rk3308_codec_agc_asr_put),
++	SOC_ENUM_EXT("AGC Group 3 Right Approximate Sample Rate", rk3308_agc_asr_enum_array[7],
++		     rk3308_codec_agc_asr_get, rk3308_codec_agc_asr_put),
++
++	/* ADC MICBIAS Voltage */
++	SOC_ENUM_EXT("ADC MICBIAS Voltage", rk3308_micbias_volts_enum_array[0],
++		     rk3308_codec_micbias_volts_get, rk3308_codec_micbias_volts_put),
++
++	/* ADC Main MICBIAS Switch */
++	SOC_ENUM_EXT("ADC Main MICBIAS", rk3308_main_micbias_enum_array[0],
++		     rk3308_codec_main_micbias_get, rk3308_codec_main_micbias_put),
++
++	/* ADC MICBIAS1 and MICBIAS2 Switch */
++	SOC_SINGLE("ADC MICBIAS1", RK3308_ADC_ANA_CON07(1),
++		   RK3308_ADC_MIC_BIAS_BUF_SFT, 1, 0),
++	SOC_SINGLE("ADC MICBIAS2", RK3308_ADC_ANA_CON07(2),
++		   RK3308_ADC_MIC_BIAS_BUF_SFT, 1, 0),
++
++	/* ADC MIC Mute/Work Switch */
++	SOC_ENUM_EXT("ADC MIC Group 0 Left Switch", rk3308_mic_mute_enum_array[0],
++		     rk3308_codec_mic_mute_get, rk3308_codec_mic_mute_put),
++	SOC_ENUM_EXT("ADC MIC Group 0 Right Switch", rk3308_mic_mute_enum_array[1],
++		     rk3308_codec_mic_mute_get, rk3308_codec_mic_mute_put),
++	SOC_ENUM_EXT("ADC MIC Group 1 Left Switch", rk3308_mic_mute_enum_array[2],
++		     rk3308_codec_mic_mute_get, rk3308_codec_mic_mute_put),
++	SOC_ENUM_EXT("ADC MIC Group 1 Right Switch", rk3308_mic_mute_enum_array[3],
++		     rk3308_codec_mic_mute_get, rk3308_codec_mic_mute_put),
++	SOC_ENUM_EXT("ADC MIC Group 2 Left Switch", rk3308_mic_mute_enum_array[4],
++		     rk3308_codec_mic_mute_get, rk3308_codec_mic_mute_put),
++	SOC_ENUM_EXT("ADC MIC Group 2 Right Switch", rk3308_mic_mute_enum_array[5],
++		     rk3308_codec_mic_mute_get, rk3308_codec_mic_mute_put),
++	SOC_ENUM_EXT("ADC MIC Group 3 Left Switch", rk3308_mic_mute_enum_array[6],
++		     rk3308_codec_mic_mute_get, rk3308_codec_mic_mute_put),
++	SOC_ENUM_EXT("ADC MIC Group 3 Right Switch", rk3308_mic_mute_enum_array[7],
++		     rk3308_codec_mic_mute_get, rk3308_codec_mic_mute_put),
+ 
+ 	/* ADC ALC */
+ 	SOC_SINGLE_RANGE_TLV("ADC ALC Group 0 Left Volume",
+@@ -473,6 +810,16 @@ static const struct snd_kcontrol_new rk3308_codec_dapm_controls[] = {
+ 			     RK3308_ADC_CH2_ALC_GAIN_MAX,
+ 			     0, rk3308_codec_adc_alc_gain_tlv),
+ 
++	/* ADC High Pass Filter */
++	SOC_ENUM_EXT("ADC Group 0 HPF Cut-off", rk3308_hpf_enum_array[0],
++		     rk3308_codec_hpf_get, rk3308_codec_hpf_put),
++	SOC_ENUM_EXT("ADC Group 1 HPF Cut-off", rk3308_hpf_enum_array[1],
++		     rk3308_codec_hpf_get, rk3308_codec_hpf_put),
++	SOC_ENUM_EXT("ADC Group 2 HPF Cut-off", rk3308_hpf_enum_array[2],
++		     rk3308_codec_hpf_get, rk3308_codec_hpf_put),
++	SOC_ENUM_EXT("ADC Group 3 HPF Cut-off", rk3308_hpf_enum_array[3],
++		     rk3308_codec_hpf_get, rk3308_codec_hpf_put),
++
+ 	/* DAC LINEOUT */
+ 	SOC_SINGLE_TLV("DAC LINEOUT Left Volume",
+ 		       RK3308_DAC_ANA_CON04,
+@@ -518,6 +865,380 @@ static const struct snd_kcontrol_new rk3308_codec_dapm_controls[] = {
+ 			     0, rk3308_codec_dac_hpmix_gain_tlv),
+ };
+ 
++static int rk3308_codec_agc_get(struct snd_kcontrol *kcontrol,
++				struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
++	struct rk3308_codec_priv *rk3308 = snd_soc_codec_get_drvdata(codec);
++	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
++
++	if (e->reg < 0 || e->reg > ADC_LR_GROUP_MAX - 1) {
++		dev_err(rk3308->plat_dev,
++			"%s: Invalid ADC grp: %d\n", __func__, e->reg);
++		return -EINVAL;
++	}
++
++	if (e->shift_l)
++		ucontrol->value.integer.value[0] = rk3308->agc_r[e->reg];
++	else
++		ucontrol->value.integer.value[0] = rk3308->agc_l[e->reg];
++
++	return 0;
++}
++
++static int rk3308_codec_agc_put(struct snd_kcontrol *kcontrol,
++				struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
++	struct rk3308_codec_priv *rk3308 = snd_soc_codec_get_drvdata(codec);
++	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
++	unsigned int value = ucontrol->value.integer.value[0];
++	int grp = e->reg;
++
++	if (e->reg < 0 || e->reg > ADC_LR_GROUP_MAX - 1) {
++		dev_err(rk3308->plat_dev,
++			"%s: Invalid ADC grp: %d\n", __func__, e->reg);
++		return -EINVAL;
++	}
++
++	if (value) {
++		/* ALC AGC On */
++		if (e->shift_l) {
++			/* ALC AGC Right On */
++			regmap_update_bits(rk3308->regmap, RK3308_ALC_R_DIG_CON09(grp),
++					   RK3308_AGC_FUNC_SEL_MSK,
++					   RK3308_AGC_FUNC_SEL_EN);
++			regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON11(grp),
++					   RK3308_ADC_ALCR_CON_GAIN_PGAR_MSK,
++					   RK3308_ADC_ALCR_CON_GAIN_PGAR_EN);
++
++			rk3308->agc_r[e->reg] = 1;
++		} else {
++			/* ALC AGC Left On */
++			regmap_update_bits(rk3308->regmap, RK3308_ALC_L_DIG_CON09(grp),
++					   RK3308_AGC_FUNC_SEL_MSK,
++					   RK3308_AGC_FUNC_SEL_EN);
++			regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON11(grp),
++					   RK3308_ADC_ALCL_CON_GAIN_PGAL_MSK,
++					   RK3308_ADC_ALCL_CON_GAIN_PGAL_EN);
++
++			rk3308->agc_l[e->reg] = 1;
++		}
++	} else {
++		/* ALC AGC Off */
++		if (e->shift_l) {
++			/* ALC AGC Right Off */
++			regmap_update_bits(rk3308->regmap, RK3308_ALC_R_DIG_CON09(grp),
++					   RK3308_AGC_FUNC_SEL_MSK,
++					   RK3308_AGC_FUNC_SEL_DIS);
++			regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON11(grp),
++					   RK3308_ADC_ALCR_CON_GAIN_PGAR_MSK,
++					   RK3308_ADC_ALCR_CON_GAIN_PGAR_DIS);
++
++			rk3308->agc_r[e->reg] = 0;
++		} else {
++			/* ALC AGC Left Off */
++			regmap_update_bits(rk3308->regmap, RK3308_ALC_L_DIG_CON09(grp),
++					   RK3308_AGC_FUNC_SEL_MSK,
++					   RK3308_AGC_FUNC_SEL_DIS);
++			regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON11(grp),
++					   RK3308_ADC_ALCL_CON_GAIN_PGAL_MSK,
++					   RK3308_ADC_ALCL_CON_GAIN_PGAL_DIS);
++
++			rk3308->agc_l[e->reg] = 0;
++		}
++	}
++
++	return 0;
++}
++
++static int rk3308_codec_agc_asr_get(struct snd_kcontrol *kcontrol,
++				    struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
++	struct rk3308_codec_priv *rk3308 = snd_soc_codec_get_drvdata(codec);
++	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
++	unsigned int value;
++	int grp = e->reg;
++
++	if (e->reg < 0 || e->reg > ADC_LR_GROUP_MAX - 1) {
++		dev_err(rk3308->plat_dev,
++			"%s: Invalid ADC grp: %d\n", __func__, e->reg);
++		return -EINVAL;
++	}
++
++	if (e->shift_l) {
++		regmap_read(rk3308->regmap, RK3308_ALC_R_DIG_CON04(grp), &value);
++		rk3308->agc_asr_r[e->reg] = value >> RK3308_AGC_APPROX_RATE_SFT;
++		ucontrol->value.integer.value[0] = rk3308->agc_asr_r[e->reg];
++	} else {
++		regmap_read(rk3308->regmap, RK3308_ALC_L_DIG_CON04(grp), &value);
++		rk3308->agc_asr_l[e->reg] = value >> RK3308_AGC_APPROX_RATE_SFT;
++		ucontrol->value.integer.value[0] = rk3308->agc_asr_l[e->reg];
++	}
++
++	return 0;
++}
++
++static int rk3308_codec_agc_asr_put(struct snd_kcontrol *kcontrol,
++				    struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
++	struct rk3308_codec_priv *rk3308 = snd_soc_codec_get_drvdata(codec);
++	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
++	unsigned int value;
++	int grp = e->reg;
++
++	if (e->reg < 0 || e->reg > ADC_LR_GROUP_MAX - 1) {
++		dev_err(rk3308->plat_dev,
++			"%s: Invalid ADC grp: %d\n", __func__, e->reg);
++		return -EINVAL;
++	}
++
++	value = ucontrol->value.integer.value[0] << RK3308_AGC_APPROX_RATE_SFT;
++
++	if (e->shift_l) {
++		/* ALC AGC Right Approximate Sample Rate */
++		regmap_update_bits(rk3308->regmap, RK3308_ALC_R_DIG_CON04(grp),
++				   RK3308_AGC_APPROX_RATE_MSK,
++				   value);
++		rk3308->agc_asr_r[e->reg] = ucontrol->value.integer.value[0];
++	} else {
++		/* ALC AGC Left Approximate Sample Rate */
++		regmap_update_bits(rk3308->regmap, RK3308_ALC_L_DIG_CON04(grp),
++				   RK3308_AGC_APPROX_RATE_MSK,
++				   value);
++		rk3308->agc_asr_l[e->reg] = ucontrol->value.integer.value[0];
++	}
++
++	return 0;
++}
++
++static int rk3308_codec_mic_mute_get(struct snd_kcontrol *kcontrol,
++				     struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
++	struct rk3308_codec_priv *rk3308 = snd_soc_codec_get_drvdata(codec);
++	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
++	unsigned int value;
++	int grp = e->reg;
++
++	if (e->reg < 0 || e->reg > ADC_LR_GROUP_MAX - 1) {
++		dev_err(rk3308->plat_dev,
++			"%s: Invalid ADC grp: %d\n", __func__, e->reg);
++		return -EINVAL;
++	}
++
++	if (e->shift_l) {
++		/* ADC MIC Right Mute/Work Infos */
++		regmap_read(rk3308->regmap, RK3308_ADC_DIG_CON03(grp), &value);
++		rk3308->mic_mute_r[e->reg] = (value & RK3308_ADC_R_CH_BIST_SINE) >>
++					     RK3308_ADC_R_CH_BIST_SFT;
++		ucontrol->value.integer.value[0] = rk3308->mic_mute_r[e->reg];
++	} else {
++		/* ADC MIC Left Mute/Work Infos */
++		regmap_read(rk3308->regmap, RK3308_ADC_DIG_CON03(grp), &value);
++		rk3308->mic_mute_l[e->reg] = (value & RK3308_ADC_L_CH_BIST_SINE) >>
++					     RK3308_ADC_L_CH_BIST_SFT;
++		ucontrol->value.integer.value[0] = rk3308->mic_mute_l[e->reg];
++	}
++
++	return 0;
++}
++
++static int rk3308_codec_mic_mute_put(struct snd_kcontrol *kcontrol,
++				     struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
++	struct rk3308_codec_priv *rk3308 = snd_soc_codec_get_drvdata(codec);
++	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
++	unsigned int value;
++	int grp = e->reg;
++
++	if (e->reg < 0 || e->reg > ADC_LR_GROUP_MAX - 1) {
++		dev_err(rk3308->plat_dev,
++			"%s: Invalid ADC grp: %d\n", __func__, e->reg);
++		return -EINVAL;
++	}
++
++	if (e->shift_l) {
++		/* ADC MIC Right Mute/Work Configuration */
++		value = ucontrol->value.integer.value[0] << RK3308_ADC_R_CH_BIST_SFT;
++		regmap_update_bits(rk3308->regmap, RK3308_ADC_DIG_CON03(grp),
++				   RK3308_ADC_R_CH_BIST_SINE,
++				   value);
++		rk3308->mic_mute_r[e->reg] = ucontrol->value.integer.value[0];
++	} else {
++		/* ADC MIC Left Mute/Work Configuration */
++		value = ucontrol->value.integer.value[0] << RK3308_ADC_L_CH_BIST_SFT;
++		regmap_update_bits(rk3308->regmap, RK3308_ADC_DIG_CON03(grp),
++				   RK3308_ADC_L_CH_BIST_SINE,
++				   value);
++		rk3308->mic_mute_l[e->reg] = ucontrol->value.integer.value[0];
++	}
++
++	return 0;
++}
++
++static int rk3308_codec_micbias_volts_get(struct snd_kcontrol *kcontrol,
++					  struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
++	struct rk3308_codec_priv *rk3308 = snd_soc_codec_get_drvdata(codec);
++
++	ucontrol->value.integer.value[0] = rk3308->micbias_volt;
++
++	return 0;
++}
++
++static int rk3308_codec_micbias_volts_put(struct snd_kcontrol *kcontrol,
++					  struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
++	struct rk3308_codec_priv *rk3308 = snd_soc_codec_get_drvdata(codec);
++	unsigned int volt = ucontrol->value.integer.value[0];
++	int ret;
++
++	ret = check_micbias(volt);
++	if (ret < 0) {
++		dev_err(rk3308->plat_dev, "The invalid micbias volt: %d\n",
++			volt);
++		return ret;
++	}
++
++	regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON07(0),
++			   RK3308_ADC_LEVEL_RANGE_MICBIAS_MSK,
++			   volt);
++
++	rk3308->micbias_volt = volt;
++
++	return 0;
++}
++
++static int rk3308_codec_main_micbias_get(struct snd_kcontrol *kcontrol,
++					 struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
++	struct rk3308_codec_priv *rk3308 = snd_soc_codec_get_drvdata(codec);
++
++	ucontrol->value.integer.value[0] = rk3308->enable_micbias;
++
++	return 0;
++}
++
++static int rk3308_codec_main_micbias_put(struct snd_kcontrol *kcontrol,
++					 struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
++	struct rk3308_codec_priv *rk3308 = snd_soc_codec_get_drvdata(codec);
++	unsigned int on = ucontrol->value.integer.value[0];
++
++	if (on) {
++		if (!rk3308->enable_micbias)
++			rk3308_codec_micbias_enable(rk3308, rk3308->micbias_volt);
++	} else {
++		if (rk3308->enable_micbias)
++			rk3308_codec_micbias_disable(rk3308);
++	}
++
++	return 0;
++}
++
++static int rk3308_codec_mic_gain_get(struct snd_kcontrol *kcontrol,
++				     struct snd_ctl_elem_value *ucontrol)
++{
++	return snd_soc_get_volsw_range(kcontrol, ucontrol);
++}
++
++static int rk3308_codec_mic_gain_put(struct snd_kcontrol *kcontrol,
++				     struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
++	struct rk3308_codec_priv *rk3308 = snd_soc_codec_get_drvdata(codec);
++	unsigned int gain = ucontrol->value.integer.value[0];
++	int ret = 0;
++
++	if (gain > RK3308_ADC_CH1_MIC_GAIN_MAX) {
++		dev_err(rk3308->plat_dev, "%s: invalid mic gain: %d\n",
++			__func__, gain);
++		return -EINVAL;
++	}
++
++	if (rk3308->codec_ver == ACODEC_VERSION_A) {
++		/*
++		 * From the TRM, there are only suupport 0dB(gain==0) and
++		 * 20dB(gain==3) on the codec version A.
++		 */
++		if (!(gain == 0 || gain == RK3308_ADC_CH1_MIC_GAIN_MAX)) {
++			dev_err(rk3308->plat_dev,
++				"version A doesn't supported: %d, expect: 0,%d\n",
++				gain, RK3308_ADC_CH1_MIC_GAIN_MAX);
++			goto exit;
++		}
++	}
++
++	ret = snd_soc_put_volsw_range(kcontrol, ucontrol);
++
++exit:
++	return ret;
++}
++
++static int rk3308_codec_hpf_get(struct snd_kcontrol *kcontrol,
++				struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
++	struct rk3308_codec_priv *rk3308 = snd_soc_codec_get_drvdata(codec);
++	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
++	unsigned int value;
++
++	if (e->reg < 0 || e->reg > ADC_LR_GROUP_MAX - 1) {
++		dev_err(rk3308->plat_dev,
++			"%s: Invalid ADC grp: %d\n", __func__, e->reg);
++		return -EINVAL;
++	}
++
++	regmap_read(rk3308->regmap, RK3308_ADC_DIG_CON04(e->reg), &value);
++	if (value & RK3308_ADC_HPF_PATH_MSK)
++		rk3308->hpf_cutoff[e->reg] = 0;
++	else
++		rk3308->hpf_cutoff[e->reg] = 1;
++
++	ucontrol->value.integer.value[0] = rk3308->hpf_cutoff[e->reg];
++
++	return 0;
++}
++
++static int rk3308_codec_hpf_put(struct snd_kcontrol *kcontrol,
++				struct snd_ctl_elem_value *ucontrol)
++{
++	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
++	struct rk3308_codec_priv *rk3308 = snd_soc_codec_get_drvdata(codec);
++	struct soc_enum *e = (struct soc_enum *)kcontrol->private_value;
++	unsigned int value = ucontrol->value.integer.value[0];
++
++	if (e->reg < 0 || e->reg > ADC_LR_GROUP_MAX - 1) {
++		dev_err(rk3308->plat_dev,
++			"%s: Invalid ADC grp: %d\n", __func__, e->reg);
++		return -EINVAL;
++	}
++
++	if (value) {
++		/* Enable high pass filter for ADCs */
++		regmap_update_bits(rk3308->regmap, RK3308_ADC_DIG_CON04(e->reg),
++				   RK3308_ADC_HPF_PATH_MSK,
++				   RK3308_ADC_HPF_PATH_EN);
++	} else {
++		/* Disable high pass filter for ADCs. */
++		regmap_update_bits(rk3308->regmap, RK3308_ADC_DIG_CON04(e->reg),
++				   RK3308_ADC_HPF_PATH_MSK,
++				   RK3308_ADC_HPF_PATH_DIS);
++	}
++
++	rk3308->hpf_cutoff[e->reg] = value;
++
++	return 0;
++}
++
+ static int rk3308_codec_hpout_l_get_tlv(struct snd_kcontrol *kcontrol,
+ 					struct snd_ctl_elem_value *ucontrol)
+ {
+@@ -587,23 +1308,24 @@ static bool adc_for_each_grp(struct rk3308_codec_priv *rk3308,
+ 			return false;
+ 
+ 		if ((!rk3308->loopback_dacs_enabled) &&
+-		    has_loopback(rk3308->loopback_grp) &&
++		    handle_loopback(rk3308) &&
+ 		    rk3308->loopback_grp == mapped_grp) {
+ 			/*
+ 			 * Ths loopback DACs are closed, and specify the
+ 			 * loopback ADCs.
+ 			 */
+ 			*grp = ADC_GRP_SKIP_MAGIC;
+-		} else if (rk3308->enabled_grps[mapped_grp]) {
++		} else if (rk3308->en_always_grps_num &&
++			   rk3308->skip_grps[mapped_grp]) {
+ 			/* To set the skip flag if the ADC GRP is enabled. */
+-			*grp = ADC_GRP_SKIP_MAGIC2;
++			*grp = ADC_GRP_SKIP_MAGIC;
+ 		} else {
+ 			*grp = mapped_grp;
+ 		}
+ 
+ 		dev_dbg(rk3308->plat_dev,
+-			"ADC_TYPE_NORMAL, idx: %d, get grp: %d\n",
+-			idx, *grp);
++			"ADC_TYPE_NORMAL, idx: %d, mapped_grp: %d, get grp: %d,\n",
++			idx, mapped_grp, *grp);
+ 	} else if (type == ADC_TYPE_ALL) {
+ 		if (idx >= ADC_LR_GROUP_MAX)
+ 			return false;
+@@ -625,10 +1347,6 @@ static bool adc_for_each_grp(struct rk3308_codec_priv *rk3308,
+ 	return true;
+ }
+ 
+-/*
+- * Maybe there are rk3308_codec_get_adc_path_state() and
+- * rk3308_codec_set_adc_path_state() in future.
+- */
+ static int rk3308_codec_get_dac_path_state(struct rk3308_codec_priv *rk3308)
+ {
+ 	return rk3308->dac_path_state;
+@@ -648,8 +1366,23 @@ static void rk3308_headphone_ctl(struct rk3308_codec_priv *rk3308, int on)
+ 
+ static void rk3308_speaker_ctl(struct rk3308_codec_priv *rk3308, int on)
+ {
+-	if (rk3308->spk_ctl_gpio)
+-		gpiod_direction_output(rk3308->spk_ctl_gpio, on);
++	if (on) {
++		if (rk3308->pa_drv_gpio) {
++			gpiod_direction_output(rk3308->pa_drv_gpio, on);
++			msleep(rk3308->delay_pa_drv_ms);
++		}
++
++		if (rk3308->spk_ctl_gpio)
++			gpiod_direction_output(rk3308->spk_ctl_gpio, on);
++	} else {
++		if (rk3308->spk_ctl_gpio)
++			gpiod_direction_output(rk3308->spk_ctl_gpio, on);
++
++		if (rk3308->pa_drv_gpio) {
++			msleep(rk3308->delay_pa_drv_ms);
++			gpiod_direction_output(rk3308->pa_drv_gpio, on);
++		}
++	}
+ }
+ 
+ static int rk3308_codec_reset(struct snd_soc_codec *codec)
+@@ -724,7 +1457,7 @@ static int rk3308_set_dai_fmt(struct snd_soc_dai *codec_dai,
+ 	struct rk3308_codec_priv *rk3308 = snd_soc_codec_get_drvdata(codec);
+ 	unsigned int adc_aif1 = 0, adc_aif2 = 0, dac_aif1 = 0, dac_aif2 = 0;
+ 	int idx, grp, is_master;
+-	int type = ADC_TYPE_NORMAL;
++	int type = ADC_TYPE_ALL;
+ 
+ 	switch (fmt & SND_SOC_DAIFMT_MASTER_MASK) {
+ 	case SND_SOC_DAIFMT_CBS_CFS:
+@@ -808,6 +1541,9 @@ static int rk3308_set_dai_fmt(struct snd_soc_dai *codec_dai,
+ 				   RK3308_ADC_DIG_RESET);
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
++			continue;
++
+ 		regmap_update_bits(rk3308->regmap, RK3308_ADC_DIG_CON01(grp),
+ 				   RK3308_ADC_I2S_LRC_POL_MSK |
+ 				   RK3308_ADC_I2S_MODE_MSK,
+@@ -825,17 +1561,6 @@ static int rk3308_set_dai_fmt(struct snd_soc_dai *codec_dai,
+ 				   RK3308_ADC_DIG_WORK,
+ 				   RK3308_ADC_DIG_WORK);
+ 
+-	/* Enable high pass filter and cut-off 20Hz for ADCs */
+-	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		regmap_update_bits(rk3308->regmap, RK3308_ADC_DIG_CON04(grp),
+-				   RK3308_ADC_HPF_PATH_MSK,
+-				   RK3308_ADC_HPF_PATH_EN);
+-		udelay(10);
+-		regmap_update_bits(rk3308->regmap, RK3308_ADC_DIG_CON04(grp),
+-				   RK3308_ADC_HPF_CUTOFF_MSK,
+-				   RK3308_ADC_HPF_CUTOFF_20HZ);
+-	}
+-
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_DIG_CON01,
+ 			   RK3308_DAC_I2S_LRC_POL_MSK |
+ 			   RK3308_DAC_I2S_MODE_MSK,
+@@ -933,6 +1658,9 @@ static int rk3308_codec_adc_dig_config(struct rk3308_codec_priv *rk3308,
+ 	adc_aif2 |= RK3308_ADC_I2S_WORK;
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
++			continue;
++
+ 		regmap_update_bits(rk3308->regmap, RK3308_ADC_DIG_CON01(grp),
+ 				   RK3308_ADC_I2S_VALID_LEN_MSK |
+ 				   RK3308_ADC_I2S_LR_MSK |
+@@ -1001,6 +1729,9 @@ static int rk3308_mute_stream(struct snd_soc_dai *dai, int mute, int stream)
+ 				rk3308_speaker_ctl(rk3308, 1);
+ 			else if (rk3308->dac_output == DAC_HPOUT)
+ 				rk3308_headphone_ctl(rk3308, 1);
++
++			if (rk3308->delay_start_play_ms)
++				msleep(rk3308->delay_start_play_ms);
+ #endif
+ 			for (dgain = 0x7; dgain >= 0x2; dgain--) {
+ 				/*
+@@ -1101,7 +1832,16 @@ static int rk3308_codec_digital_fadeout(struct rk3308_codec_priv *rk3308)
+ 
+ static int rk3308_codec_dac_lineout_enable(struct rk3308_codec_priv *rk3308)
+ {
+-	/* Step 06 */
++	if (rk3308->codec_ver == ACODEC_VERSION_B) {
++		/* Step 04 */
++		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON15,
++				   RK3308_DAC_LINEOUT_POP_SOUND_L_MSK |
++				   RK3308_DAC_LINEOUT_POP_SOUND_R_MSK,
++				   RK3308_DAC_L_SEL_DC_FROM_INTERNAL |
++				   RK3308_DAC_R_SEL_DC_FROM_INTERNAL);
++	}
++
++	/* Step 07 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON04,
+ 			   RK3308_DAC_L_LINEOUT_EN |
+ 			   RK3308_DAC_R_LINEOUT_EN,
+@@ -1110,7 +1850,18 @@ static int rk3308_codec_dac_lineout_enable(struct rk3308_codec_priv *rk3308)
+ 
+ 	udelay(20);
+ 
+-	/* Step 17 */
++	if (rk3308->codec_ver == ACODEC_VERSION_B) {
++		/* Step 10 */
++		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON15,
++				   RK3308_DAC_LINEOUT_POP_SOUND_L_MSK |
++				   RK3308_DAC_LINEOUT_POP_SOUND_R_MSK,
++				   RK3308_DAC_L_SEL_LINEOUT_FROM_INTERNAL |
++				   RK3308_DAC_R_SEL_LINEOUT_FROM_INTERNAL);
++
++		udelay(20);
++	}
++
++	/* Step 19 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON04,
+ 			   RK3308_DAC_L_LINEOUT_UNMUTE |
+ 			   RK3308_DAC_R_LINEOUT_UNMUTE,
+@@ -1123,20 +1874,20 @@ static int rk3308_codec_dac_lineout_enable(struct rk3308_codec_priv *rk3308)
+ 
+ static int rk3308_codec_dac_lineout_disable(struct rk3308_codec_priv *rk3308)
+ {
+-	/* Step 06 */
+-	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON04,
+-			   RK3308_DAC_L_LINEOUT_EN |
+-			   RK3308_DAC_R_LINEOUT_EN,
+-			   RK3308_DAC_L_LINEOUT_DIS |
+-			   RK3308_DAC_R_LINEOUT_DIS);
+-
+-	/* Step 17 */
++	/* Step 08 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON04,
+ 			   RK3308_DAC_L_LINEOUT_UNMUTE |
+ 			   RK3308_DAC_R_LINEOUT_UNMUTE,
+ 			   RK3308_DAC_L_LINEOUT_MUTE |
+ 			   RK3308_DAC_R_LINEOUT_MUTE);
+ 
++	/* Step 09 */
++	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON04,
++			   RK3308_DAC_L_LINEOUT_EN |
++			   RK3308_DAC_R_LINEOUT_EN,
++			   RK3308_DAC_L_LINEOUT_DIS |
++			   RK3308_DAC_R_LINEOUT_DIS);
++
+ 	return 0;
+ }
+ 
+@@ -1144,10 +1895,10 @@ static int rk3308_codec_dac_hpout_enable(struct rk3308_codec_priv *rk3308)
+ {
+ 	/* Step 03 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON01,
+-			   RK3308_DAC_POP_SOUND_L_MSK |
+-			   RK3308_DAC_POP_SOUND_R_MSK,
+-			   RK3308_DAC_POP_SOUND_L_WORK |
+-			   RK3308_DAC_POP_SOUND_R_WORK);
++			   RK3308_DAC_HPOUT_POP_SOUND_L_MSK |
++			   RK3308_DAC_HPOUT_POP_SOUND_R_MSK,
++			   RK3308_DAC_HPOUT_POP_SOUND_L_WORK |
++			   RK3308_DAC_HPOUT_POP_SOUND_R_WORK);
+ 
+ 	udelay(20);
+ 
+@@ -1185,10 +1936,10 @@ static int rk3308_codec_dac_hpout_disable(struct rk3308_codec_priv *rk3308)
+ {
+ 	/* Step 03 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON01,
+-			   RK3308_DAC_POP_SOUND_L_MSK |
+-			   RK3308_DAC_POP_SOUND_R_MSK,
+-			   RK3308_DAC_POP_SOUND_L_INIT |
+-			   RK3308_DAC_POP_SOUND_R_INIT);
++			   RK3308_DAC_HPOUT_POP_SOUND_L_MSK |
++			   RK3308_DAC_HPOUT_POP_SOUND_R_MSK,
++			   RK3308_DAC_HPOUT_POP_SOUND_L_INIT |
++			   RK3308_DAC_HPOUT_POP_SOUND_R_INIT);
+ 
+ 	/* Step 07 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON03,
+@@ -1329,15 +2080,28 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 	    rk3308->dac_output == DAC_LINEOUT_HPOUT) {
+ 		/* Step 03 */
+ 		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON01,
+-				   RK3308_DAC_POP_SOUND_L_MSK |
+-				   RK3308_DAC_POP_SOUND_R_MSK,
+-				   RK3308_DAC_POP_SOUND_L_WORK |
+-				   RK3308_DAC_POP_SOUND_R_WORK);
++				   RK3308_DAC_HPOUT_POP_SOUND_L_MSK |
++				   RK3308_DAC_HPOUT_POP_SOUND_R_MSK,
++				   RK3308_DAC_HPOUT_POP_SOUND_L_WORK |
++				   RK3308_DAC_HPOUT_POP_SOUND_R_WORK);
+ 
+ 		udelay(20);
+ 	}
+ 
+-	/* Step 04 */
++	if (rk3308->codec_ver == ACODEC_VERSION_B &&
++	    (rk3308->dac_output == DAC_LINEOUT ||
++	     rk3308->dac_output == DAC_LINEOUT_HPOUT)) {
++		/* Step 04 */
++		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON15,
++				   RK3308_DAC_LINEOUT_POP_SOUND_L_MSK |
++				   RK3308_DAC_LINEOUT_POP_SOUND_R_MSK,
++				   RK3308_DAC_L_SEL_DC_FROM_INTERNAL |
++				   RK3308_DAC_R_SEL_DC_FROM_INTERNAL);
++
++		udelay(20);
++	}
++
++	/* Step 05 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON13,
+ 			   RK3308_DAC_L_HPMIX_EN |
+ 			   RK3308_DAC_R_HPMIX_EN,
+@@ -1347,7 +2111,13 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 	/* Waiting the stable HPMIX */
+ 	udelay(50);
+ 
+-	/* Step 05 */
++	/* Step 06. Reset HPMIX and recover HPMIX gains */
++	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON13,
++			   RK3308_DAC_L_HPMIX_WORK |
++			   RK3308_DAC_R_HPMIX_WORK,
++			   RK3308_DAC_L_HPMIX_INIT |
++			   RK3308_DAC_R_HPMIX_INIT);
++	udelay(50);
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON13,
+ 			   RK3308_DAC_L_HPMIX_WORK |
+ 			   RK3308_DAC_R_HPMIX_WORK,
+@@ -1358,7 +2128,7 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 
+ 	if (rk3308->dac_output == DAC_LINEOUT ||
+ 	    rk3308->dac_output == DAC_LINEOUT_HPOUT) {
+-		/* Step 06 */
++		/* Step 07 */
+ 		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON04,
+ 				   RK3308_DAC_L_LINEOUT_EN |
+ 				   RK3308_DAC_R_LINEOUT_EN,
+@@ -1370,7 +2140,7 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 
+ 	if (rk3308->dac_output == DAC_HPOUT ||
+ 	    rk3308->dac_output == DAC_LINEOUT_HPOUT) {
+-		/* Step 07 */
++		/* Step 08 */
+ 		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON03,
+ 				   RK3308_DAC_L_HPOUT_EN |
+ 				   RK3308_DAC_R_HPOUT_EN,
+@@ -1379,7 +2149,7 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 
+ 		udelay(20);
+ 
+-		/* Step 08 */
++		/* Step 09 */
+ 		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON03,
+ 				   RK3308_DAC_L_HPOUT_WORK |
+ 				   RK3308_DAC_R_HPOUT_WORK,
+@@ -1389,7 +2159,18 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 		udelay(20);
+ 	}
+ 
+-	/* Step 09 */
++	if (rk3308->codec_ver == ACODEC_VERSION_B) {
++		/* Step 10 */
++		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON15,
++				   RK3308_DAC_LINEOUT_POP_SOUND_L_MSK |
++				   RK3308_DAC_LINEOUT_POP_SOUND_R_MSK,
++				   RK3308_DAC_L_SEL_LINEOUT_FROM_INTERNAL |
++				   RK3308_DAC_R_SEL_LINEOUT_FROM_INTERNAL);
++
++		udelay(20);
++	}
++
++	/* Step 11 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON02,
+ 			   RK3308_DAC_L_REF_EN |
+ 			   RK3308_DAC_R_REF_EN,
+@@ -1398,7 +2179,7 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 
+ 	udelay(20);
+ 
+-	/* Step 10 */
++	/* Step 12 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON02,
+ 			   RK3308_DAC_L_CLK_EN |
+ 			   RK3308_DAC_R_CLK_EN,
+@@ -1407,7 +2188,7 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 
+ 	udelay(20);
+ 
+-	/* Step 11 */
++	/* Step 13 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON02,
+ 			   RK3308_DAC_L_DAC_EN |
+ 			   RK3308_DAC_R_DAC_EN,
+@@ -1416,7 +2197,7 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 
+ 	udelay(20);
+ 
+-	/* Step 12 */
++	/* Step 14 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON02,
+ 			   RK3308_DAC_L_DAC_WORK |
+ 			   RK3308_DAC_R_DAC_WORK,
+@@ -1425,7 +2206,7 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 
+ 	udelay(20);
+ 
+-	/* Step 13 */
++	/* Step 15 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON12,
+ 			   RK3308_DAC_L_HPMIX_SEL_MSK |
+ 			   RK3308_DAC_R_HPMIX_SEL_MSK,
+@@ -1434,7 +2215,7 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 
+ 	udelay(20);
+ 
+-	/* Step 14 */
++	/* Step 16 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON13,
+ 			   RK3308_DAC_L_HPMIX_UNMUTE |
+ 			   RK3308_DAC_R_HPMIX_UNMUTE,
+@@ -1443,9 +2224,11 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 
+ 	udelay(20);
+ 
++	/* Step 17: Put configuration HPMIX Gain to DAPM */
++
+ 	if (rk3308->dac_output == DAC_HPOUT ||
+ 	    rk3308->dac_output == DAC_LINEOUT_HPOUT) {
+-		/* Step 16 */
++		/* Step 18 */
+ 		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON03,
+ 				   RK3308_DAC_L_HPOUT_UNMUTE |
+ 				   RK3308_DAC_R_HPOUT_UNMUTE,
+@@ -1457,7 +2240,7 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 
+ 	if (rk3308->dac_output == DAC_LINEOUT ||
+ 	    rk3308->dac_output == DAC_LINEOUT_HPOUT) {
+-		/* Step 17 */
++		/* Step 19 */
+ 		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON04,
+ 				   RK3308_DAC_L_LINEOUT_UNMUTE |
+ 				   RK3308_DAC_R_LINEOUT_UNMUTE,
+@@ -1466,10 +2249,12 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 		udelay(20);
+ 	}
+ 
++	/* Step 20, put configuration HPOUT gain to DAPM control */
++	/* Step 21, put configuration LINEOUT gain to DAPM control */
++
+ 	if (rk3308->dac_output == DAC_HPOUT ||
+ 	    rk3308->dac_output == DAC_LINEOUT_HPOUT) {
+-		/* Step 18 */
+-		/* Step 19 */
++		/* Just for HPOUT */
+ 		rk3308_codec_digital_fadein(rk3308);
+ 	}
+ 
+@@ -1480,19 +2265,26 @@ static int rk3308_codec_dac_enable(struct rk3308_codec_priv *rk3308)
+ 
+ static int rk3308_codec_dac_disable(struct rk3308_codec_priv *rk3308)
+ {
+-	/* Step 00, the min digital gain for mute */
++	/*
++	 * Step 00 skipped. Keep the DAC channel work and input the mute signal.
++	 */
++
++	/* Step 01 skipped. May set the min gain for LINEOUT. */
+ 
+-	/* Step 01 */
++	/* Step 02 skipped. May set the min gain for HPOUT. */
+ 
+-	/* Step 02 */
+-	rk3308_codec_digital_fadeout(rk3308);
++	if (rk3308->dac_output == DAC_HPOUT ||
++	    rk3308->dac_output == DAC_LINEOUT_HPOUT) {
++		/* Just for HPOUT */
++		rk3308_codec_digital_fadeout(rk3308);
++	}
+ 
+ 	/* Step 03 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON13,
+ 			   RK3308_DAC_L_HPMIX_UNMUTE |
+ 			   RK3308_DAC_R_HPMIX_UNMUTE,
+-			   RK3308_DAC_L_HPMIX_MUTE |
+-			   RK3308_DAC_R_HPMIX_MUTE);
++			   RK3308_DAC_L_HPMIX_UNMUTE |
++			   RK3308_DAC_R_HPMIX_UNMUTE);
+ 
+ 	/* Step 04 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON12,
+@@ -1565,36 +2357,49 @@ static int rk3308_codec_dac_disable(struct rk3308_codec_priv *rk3308)
+ 
+ 	/* Step 14 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON01,
+-			   RK3308_DAC_POP_SOUND_L_MSK |
+-			   RK3308_DAC_POP_SOUND_R_MSK,
+-			   RK3308_DAC_POP_SOUND_L_INIT |
+-			   RK3308_DAC_POP_SOUND_R_INIT);
++			   RK3308_DAC_HPOUT_POP_SOUND_L_MSK |
++			   RK3308_DAC_HPOUT_POP_SOUND_R_MSK,
++			   RK3308_DAC_HPOUT_POP_SOUND_L_INIT |
++			   RK3308_DAC_HPOUT_POP_SOUND_R_INIT);
+ 
+ 	/* Step 15 */
++	if (rk3308->codec_ver == ACODEC_VERSION_B &&
++	    (rk3308->dac_output == DAC_LINEOUT ||
++	     rk3308->dac_output == DAC_LINEOUT_HPOUT)) {
++		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON15,
++				   RK3308_DAC_LINEOUT_POP_SOUND_L_MSK |
++				   RK3308_DAC_LINEOUT_POP_SOUND_R_MSK,
++				   RK3308_DAC_L_SEL_DC_FROM_VCM |
++				   RK3308_DAC_R_SEL_DC_FROM_VCM);
++	}
++
++	/* Step 16 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON01,
+ 			   RK3308_DAC_BUF_REF_L_EN |
+ 			   RK3308_DAC_BUF_REF_R_EN,
+ 			   RK3308_DAC_BUF_REF_L_DIS |
+ 			   RK3308_DAC_BUF_REF_R_DIS);
+ 
+-	/* Step 16 */
++	/* Step 17 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON00,
+ 			   RK3308_DAC_CURRENT_EN,
+ 			   RK3308_DAC_CURRENT_DIS);
+ 
+-	/* Step 17 */
++	/* Step 18 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON03,
+ 			   RK3308_DAC_L_HPOUT_WORK |
+ 			   RK3308_DAC_R_HPOUT_WORK,
+ 			   RK3308_DAC_L_HPOUT_INIT |
+ 			   RK3308_DAC_R_HPOUT_INIT);
+ 
+-	/* Step 18 */
++	/* Step 19 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON13,
+ 			   RK3308_DAC_L_HPMIX_WORK |
+ 			   RK3308_DAC_R_HPMIX_WORK,
+-			   RK3308_DAC_L_HPMIX_INIT |
+-			   RK3308_DAC_R_HPMIX_INIT);
++			   RK3308_DAC_L_HPMIX_WORK |
++			   RK3308_DAC_R_HPMIX_WORK);
++
++	/* Step 20 skipped, may set the min gain for HPOUT. */
+ 
+ 	/*
+ 	 * Note2. If the ACODEC_DAC_ANA_CON12[7] or ACODEC_DAC_ANA_CON12[3]
+@@ -1612,66 +2417,116 @@ static int rk3308_codec_power_on(struct rk3308_codec_priv *rk3308)
+ {
+ 	unsigned int v;
+ 
+-	/* 1. Supply the power of digital part and reset the Audio Codec */
++	/* 0. Supply the power of digital part and reset the Audio Codec */
+ 	/* Do nothing */
+ 
+ 	/*
+-	 * 2. Configure ACODEC_DAC_ANA_CON1[1:0] and ACODEC_DAC_ANA_CON1[5:4]
+-	 *    to 0x1, to setup dc voltage of the DAC channel output
++	 * 1. Configure ACODEC_DAC_ANA_CON1[1:0] and ACODEC_DAC_ANA_CON1[5:4]
++	 *    to 0x1, to setup dc voltage of the DAC channel output.
+ 	 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON01,
+-			   RK3308_DAC_POP_SOUND_L_MSK,
+-			   RK3308_DAC_POP_SOUND_L_INIT);
++			   RK3308_DAC_HPOUT_POP_SOUND_L_MSK,
++			   RK3308_DAC_HPOUT_POP_SOUND_L_INIT);
+ 	regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON01,
+-			   RK3308_DAC_POP_SOUND_R_MSK,
+-			   RK3308_DAC_POP_SOUND_R_INIT);
++			   RK3308_DAC_HPOUT_POP_SOUND_R_MSK,
++			   RK3308_DAC_HPOUT_POP_SOUND_R_INIT);
++
++	if (rk3308->codec_ver == ACODEC_VERSION_B) {
++		/*
++		 * 2. Configure ACODEC_DAC_ANA_CON15[1:0] and
++		 *    ACODEC_DAC_ANA_CON15[5:4] to 0x1, to setup dc voltage of
++		 *    the DAC channel output.
++		 */
++		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON15,
++				   RK3308_DAC_LINEOUT_POP_SOUND_L_MSK,
++				   RK3308_DAC_L_SEL_DC_FROM_VCM);
++		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON15,
++				   RK3308_DAC_LINEOUT_POP_SOUND_R_MSK,
++				   RK3308_DAC_R_SEL_DC_FROM_VCM);
++	}
+ 
+ 	/*
+-	 * 3. Configure the register ACODEC_ADC_ANA_CON10[6:0] to 0x1
+-	 *
+-	 * Note: Only the reg (ADC_ANA_CON10+0x0)[6:0] represent the control
+-	 * signal to select current to pre-charge/dis_charge
++	 * 3. Configure the register ACODEC_ADC_ANA_CON10[3:0] to 7’b000_0001.
+ 	 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON10(0),
+ 			   RK3308_ADC_CURRENT_CHARGE_MSK,
+-			   RK3308_ADC_SEL_I_64(1));
++			   RK3308_ADC_SEL_I(0x1));
+ 
+-	/* 4. Supply the power of the analog part(AVDD,AVDDRV) */
++	if (rk3308->codec_ver == ACODEC_VERSION_B) {
++		/*
++		 * 4. Configure the register ACODEC_ADC_ANA_CON14[3:0] to
++		 *    4’b0001.
++		 */
++		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON14,
++				   RK3308_DAC_CURRENT_CHARGE_MSK,
++				   RK3308_DAC_SEL_I(0x1));
++	}
++
++	/* 5. Supply the power of the analog part(AVDD,AVDDRV) */
+ 
+ 	/*
+-	 * 5. Configure the register ACODEC_ADC_ANA_CON10[7] to 0x1 to setup
++	 * 6. Configure the register ACODEC_ADC_ANA_CON10[7] to 0x1 to setup
+ 	 *    reference voltage
+-	 *
+-	 * Note: Only the reg (ADC_ANA_CON10+0x0)[7] represent the enable
+-	 * signal of reference voltage module
+ 	 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON10(0),
+ 			   RK3308_ADC_REF_EN, RK3308_ADC_REF_EN);
+ 
++	if (rk3308->codec_ver == ACODEC_VERSION_B) {
++		/*
++		 * 7. Configure the register ACODEC_ADC_ANA_CON14[4] to 0x1 to
++		 *    setup reference voltage
++		 */
++		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON14,
++				   RK3308_DAC_VCM_LINEOUT_EN,
++				   RK3308_DAC_VCM_LINEOUT_EN);
++	}
++
+ 	/*
+-	 * 6. Change the register ACODEC_ADC_ANA_CON10[6:0] from the 0x1 to
++	 * 8. Change the register ACODEC_ADC_ANA_CON10[6:0] from the 0x1 to
+ 	 *    0x7f step by step or configure the ACODEC_ADC_ANA_CON10[6:0] to
+-	 *    0x7f directly. The suggestion slot time of the step is 20ms.
++	 *    0x7f directly. Here the slot time of the step is 200us.
+ 	 */
+ 	for (v = 0x1; v <= 0x7f; v++) {
+ 		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON10(0),
+ 				   RK3308_ADC_CURRENT_CHARGE_MSK,
+ 				   v);
+-		udelay(50);
++		udelay(200);
++	}
++
++	if (rk3308->codec_ver == ACODEC_VERSION_B) {
++		/*
++		 * 9. Change the register ACODEC_ADC_ANA_CON14[3:0] from the 0x1
++		 *    to 0xf step by step or configure the
++		 *    ACODEC_ADC_ANA_CON14[3:0] to 0xf directly. Here the slot
++		 *    time of the step is 200us.
++		 */
++		for (v = 0x1; v <= 0xf; v++) {
++			regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON14,
++					   RK3308_DAC_CURRENT_CHARGE_MSK,
++					   v);
++			udelay(200);
++		}
+ 	}
+ 
+-	/* 7. Wait until the voltage of VCM keeps stable at the AVDD/2 */
++	/* 10. Wait until the voltage of VCM keeps stable at the AVDD/2 */
+ 	msleep(20);	/* estimated value */
+ 
+ 	/*
+-	 * 8. Configure the register ACODEC_ADC_ANA_CON10[6:0] to the
+-	 *    appropriate value(expect 0x0) for reducing power.
++	 * 11. Configure the register ACODEC_ADC_ANA_CON10[6:0] to the
++	 *     appropriate value(expect 0x0) for reducing power.
+ 	 */
+-
+-	 /* VENDOR: choose an appropriate charge value */
+ 	regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON10(0),
+ 			   RK3308_ADC_CURRENT_CHARGE_MSK, 0x7c);
+ 
++	if (rk3308->codec_ver == ACODEC_VERSION_B) {
++		/*
++		 * 12. Configure the register ACODEC_DAC_ANA_CON14[6:0] to the
++		 *     appropriate value(expect 0x0) for reducing power.
++		 */
++		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON14,
++				   RK3308_DAC_CURRENT_CHARGE_MSK, 0xf);
++	}
++
+ 	return 0;
+ }
+ 
+@@ -1680,37 +2535,72 @@ static int rk3308_codec_power_off(struct rk3308_codec_priv *rk3308)
+ 	unsigned int v;
+ 
+ 	/*
+-	 * 1. Keep the power on and disable the DAC and ADC path according to
++	 * 0. Keep the power on and disable the DAC and ADC path according to
+ 	 *    the section power on configuration standard usage flow.
+ 	 */
+ 
+-	/* 2. Configure the register ACODEC_ADC_ANA_CON10[6:0] to 0x1 */
++	/*
++	 * 1. Configure the register ACODEC_ADC_ANA_CON10[6:0] to 7’b000_0001.
++	 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON10(0),
+ 			   RK3308_ADC_CURRENT_CHARGE_MSK,
+-			   RK3308_ADC_SEL_I_64(1));
++			   RK3308_ADC_SEL_I(0x1));
++
++	if (rk3308->codec_ver == ACODEC_VERSION_B) {
++		/*
++		 * 2. Configure the register ACODEC_DAC_ANA_CON14[3:0] to
++		 *    4’b0001.
++		 */
++		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON14,
++				   RK3308_DAC_CURRENT_CHARGE_MSK,
++				   RK3308_DAC_SEL_I(0x1));
++	}
+ 
+ 	/* 3. Configure the register ACODEC_ADC_ANA_CON10[7] to 0x0 */
+ 	regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON10(0),
+ 			   RK3308_ADC_REF_EN,
+ 			   RK3308_ADC_REF_DIS);
+ 
++	if (rk3308->codec_ver == ACODEC_VERSION_B) {
++		/* 4. Configure the register ACODEC_DAC_ANA_CON14[7] to 0x0 */
++		regmap_update_bits(rk3308->regmap, RK3308_DAC_ANA_CON14,
++				   RK3308_DAC_VCM_LINEOUT_EN,
++				   RK3308_DAC_VCM_LINEOUT_DIS);
++	}
++
+ 	/*
+-	 * 4.Change the register ACODEC_ADC_ANA_CON10[6:0] from the 0x1 to 0x7f
+-	 *   step by step or configure the ACODEC_ADC_ANA_CON10[6:0] to 0x7f
+-	 *   directly. The suggestion slot time of the step is 20ms
++	 * 5. Change the register ACODEC_ADC_ANA_CON10[6:0] from the 0x1 to 0x7f
++	 *    step by step or configure the ACODEC_ADC_ANA_CON10[6:0] to 0x7f
++	 *    directly. Here the slot time of the step is 200us.
+ 	 */
+ 	for (v = 0x1; v <= 0x7f; v++) {
+ 		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON10(0),
+ 				   RK3308_ADC_CURRENT_CHARGE_MSK,
+ 				   v);
+-		udelay(50);
++		udelay(200);
++	}
++
++	if (rk3308->codec_ver == ACODEC_VERSION_B) {
++		/*
++		 * 6. Change the register ACODEC_DAC_ANA_CON14[3:0] from the 0x1
++		 *    to 0xf step by step or configure the
++		 *    ACODEC_DAC_ANA_CON14[3:0] to 0xf directly. Here the slot
++		 *    time of the step is 200us.
++		 */
++		for (v = 0x1; v <= 0x7f; v++) {
++			regmap_update_bits(rk3308->regmap,
++					   RK3308_ADC_ANA_CON10(0),
++					   RK3308_ADC_CURRENT_CHARGE_MSK,
++					   v);
++			udelay(200);
++		}
+ 	}
+ 
+-	/* 5. Wait until the voltage of VCM keeps stable at the AGND */
++	/* 7. Wait until the voltage of VCM keeps stable at the AGND */
+ 	msleep(20);	/* estimated value */
+ 
+-	/* 6. Power off the analog power supply */
+-	/* 7. Power off the digital power supply */
++	/* 8. Power off the analog power supply */
++	/* 9. Power off the digital power supply */
+ 
+ 	/* Do something via hardware */
+ 
+@@ -1820,17 +2710,29 @@ static int rk3308_codec_adc_grps_route_config(struct rk3308_codec_priv *rk3308)
+ /* Put default one-to-one mapping */
+ static int rk3308_codec_adc_grps_route_default(struct rk3308_codec_priv *rk3308)
+ {
+-	unsigned int v, idx;
++	unsigned int idx;
+ 
+-	rk3308->which_i2s = ACODEC_TO_I2S2_8CH;
+-	rk3308->to_i2s_grps = ADC_LR_GROUP_MAX;
+ 	/*
+ 	 * The GRF values may be kept the previous status after hot reboot,
+-	 * we need to update them.
++	 * if the property 'rockchip,adc-grps-route' is not set, we need to
++	 * recover default the order of sdi/sdo for i2s2_8ch/i2s3_8ch/i2s1_2ch.
+ 	 */
+-	for (idx = 0; idx < rk3308->to_i2s_grps; idx++) {
+-		regmap_read(rk3308->grf, GRF_SOC_CON1, &v);
+-		rk3308->i2s_sdis[idx] = GRF_I2S2_8CH_SDI_R_MSK(idx, v);
++	regmap_write(rk3308->grf, GRF_SOC_CON1,
++		     GRF_I2S1_2CH_SDI(0));
++
++	for (idx = 0; idx < 2; idx++) {
++		regmap_write(rk3308->grf, GRF_SOC_CON1,
++			     GRF_I2S3_4CH_SDI(idx, idx));
++	}
++
++	/* Using i2s2_8ch by default. */
++	rk3308->which_i2s = ACODEC_TO_I2S2_8CH;
++	rk3308->to_i2s_grps = ADC_LR_GROUP_MAX;
++
++	for (idx = 0; idx < ADC_LR_GROUP_MAX; idx++) {
++		rk3308->i2s_sdis[idx] = idx;
++		regmap_write(rk3308->grf, GRF_SOC_CON1,
++			     GRF_I2S2_8CH_SDI(idx, idx));
+ 	}
+ 
+ 	return 0;
+@@ -1841,12 +2743,6 @@ static int rk3308_codec_adc_grps_route(struct rk3308_codec_priv *rk3308,
+ {
+ 	int num, ret;
+ 
+-	rk3308->grf = syscon_regmap_lookup_by_phandle(np, "rockchip,grf");
+-	if (IS_ERR(rk3308->grf)) {
+-		dev_err(rk3308->plat_dev, "Missing rockchip,grf property\n");
+-		return PTR_ERR(rk3308->grf);
+-	}
+-
+ 	num = of_count_phandle_with_args(np, "rockchip,adc-grps-route", NULL);
+ 	if (num < 0) {
+ 		if (num == -ENOENT) {
+@@ -1902,9 +2798,13 @@ static int check_micbias(int micbias)
+ 	return -EINVAL;
+ }
+ 
+-static bool has_loopback(int loopback_grp)
++static bool handle_loopback(struct rk3308_codec_priv *rk3308)
+ {
+-	switch (loopback_grp) {
++	/* The version B doesn't need to handle loopback. */
++	if (rk3308->codec_ver == ACODEC_VERSION_B)
++		return false;
++
++	switch (rk3308->loopback_grp) {
+ 	case 0:
+ 	case 1:
+ 	case 2:
+@@ -1919,10 +2819,12 @@ static bool has_en_always_grps(struct rk3308_codec_priv *rk3308)
+ {
+ 	int idx;
+ 
+-	for (idx = 0; idx < ADC_LR_GROUP_MAX; idx++) {
+-		if (rk3308->en_always_grps[idx] >= 0 &&
+-		    rk3308->en_always_grps[idx] <= ADC_LR_GROUP_MAX - 1)
+-			return true;
++	if (rk3308->en_always_grps_num) {
++		for (idx = 0; idx < ADC_LR_GROUP_MAX; idx++) {
++			if (rk3308->en_always_grps[idx] >= 0 &&
++			    rk3308->en_always_grps[idx] <= ADC_LR_GROUP_MAX - 1)
++				return true;
++		}
+ 	}
+ 
+ 	return false;
+@@ -1971,12 +2873,17 @@ static int rk3308_codec_micbias_enable(struct rk3308_codec_priv *rk3308,
+ 	 * (ADC_ANA_CON7+0x40)[3] used to control the MICBIAS1, and
+ 	 * (ADC_ANA_CON7+0x80)[3] used to control the MICBIAS2
+ 	 */
+-	regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON07(1),
+-			   RK3308_ADC_MIC_BIAS_BUF_EN,
+-			   RK3308_ADC_MIC_BIAS_BUF_EN);
+-	regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON07(2),
+-			   RK3308_ADC_MIC_BIAS_BUF_EN,
+-			   RK3308_ADC_MIC_BIAS_BUF_EN);
++	if (rk3308->micbias1)
++		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON07(1),
++				   RK3308_ADC_MIC_BIAS_BUF_EN,
++				   RK3308_ADC_MIC_BIAS_BUF_EN);
++
++	if (rk3308->micbias2)
++		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON07(2),
++				   RK3308_ADC_MIC_BIAS_BUF_EN,
++				   RK3308_ADC_MIC_BIAS_BUF_EN);
++
++	rk3308->enable_micbias = true;
+ 
+ 	return 0;
+ }
+@@ -2007,147 +2914,7 @@ static int rk3308_codec_micbias_disable(struct rk3308_codec_priv *rk3308)
+ 			   RK3308_ADC_MICBIAS_CURRENT_MSK,
+ 			   RK3308_ADC_MICBIAS_CURRENT_DIS);
+ 
+-	return 0;
+-}
+-
+-static int rk3308_codec_alc_enable(struct rk3308_codec_priv *rk3308, int type)
+-{
+-	int idx, grp;
+-
+-	/*
+-	 * 1. Set he max level and min level of the ALC need to control.
+-	 *
+-	 * These values are estimated
+-	 */
+-	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
+-			continue;
+-
+-		regmap_update_bits(rk3308->regmap, RK3308_ALC_L_DIG_CON05(grp),
+-				   RK3308_AGC_LO_8BITS_AGC_MAX_MSK,
+-				   0x26);
+-		regmap_update_bits(rk3308->regmap, RK3308_ALC_R_DIG_CON05(grp),
+-				   RK3308_AGC_LO_8BITS_AGC_MAX_MSK,
+-				   0x26);
+-
+-		regmap_update_bits(rk3308->regmap, RK3308_ALC_L_DIG_CON06(grp),
+-				   RK3308_AGC_HI_8BITS_AGC_MAX_MSK,
+-				   0x40);
+-		regmap_update_bits(rk3308->regmap, RK3308_ALC_R_DIG_CON06(grp),
+-				   RK3308_AGC_HI_8BITS_AGC_MAX_MSK,
+-				   0x40);
+-
+-		regmap_update_bits(rk3308->regmap, RK3308_ALC_L_DIG_CON07(grp),
+-				   RK3308_AGC_LO_8BITS_AGC_MIN_MSK,
+-				   0x36);
+-		regmap_update_bits(rk3308->regmap, RK3308_ALC_R_DIG_CON07(grp),
+-				   RK3308_AGC_LO_8BITS_AGC_MIN_MSK,
+-				   0x36);
+-
+-		regmap_update_bits(rk3308->regmap, RK3308_ALC_L_DIG_CON08(grp),
+-				   RK3308_AGC_LO_8BITS_AGC_MIN_MSK,
+-				   0x20);
+-		regmap_update_bits(rk3308->regmap, RK3308_ALC_R_DIG_CON08(grp),
+-				   RK3308_AGC_LO_8BITS_AGC_MIN_MSK,
+-				   0x20);
+-	}
+-
+-	/*
+-	 * 2. Set ACODEC_ALC_DIG_CON4[2:0] according to the sample rate
+-	 *
+-	 * By default is 44.1KHz for sample.
+-	 */
+-	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
+-			continue;
+-
+-		regmap_update_bits(rk3308->regmap, RK3308_ALC_L_DIG_CON04(grp),
+-				   RK3308_AGC_APPROX_RATE_MSK,
+-				   RK3308_AGC_APPROX_RATE_44_1K);
+-
+-		regmap_update_bits(rk3308->regmap, RK3308_ALC_R_DIG_CON04(grp),
+-				   RK3308_AGC_APPROX_RATE_MSK,
+-				   RK3308_AGC_APPROX_RATE_44_1K);
+-	}
+-
+-#if ENABLE_AGC
+-	/* 3. Set ACODEC_ALC_DIG_CON9[6] to 0x1, to enable the ALC module */
+-	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
+-			continue;
+-
+-		regmap_update_bits(rk3308->regmap, RK3308_ALC_L_DIG_CON09(grp),
+-				   RK3308_AGC_FUNC_SEL_MSK,
+-				   RK3308_AGC_FUNC_SEL_EN);
+-
+-		regmap_update_bits(rk3308->regmap, RK3308_ALC_R_DIG_CON09(grp),
+-				   RK3308_AGC_FUNC_SEL_MSK,
+-				   RK3308_AGC_FUNC_SEL_EN);
+-	}
+-
+-	/*
+-	 * 4. Set ACODEC_ADC_ANA_CON11[1:0], (ACODEC_ADC_ANA_CON11+0x40)[1:0],
+-	 * (ACODEC_ADC_ANA_CON11+0x80)[1:0] and (ACODEC_ADC_ANA_CON11+0xc0)[1:0]
+-	 * to 0x3, to enable the ALC module to control the gain of PGA.
+-	 */
+-	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
+-			continue;
+-
+-		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON11(grp),
+-				   RK3308_ADC_ALCL_CON_GAIN_PGAL_MSK |
+-				   RK3308_ADC_ALCR_CON_GAIN_PGAR_MSK,
+-				   RK3308_ADC_ALCL_CON_GAIN_PGAL_EN |
+-				   RK3308_ADC_ALCR_CON_GAIN_PGAR_EN);
+-	}
+-#endif
+-	/*
+-	 * 5.Observe the current ALC output gain by reading
+-	 * ACODEC_ALC_DIG_CON12[4:0]
+-	 */
+-
+-	/* Do nothing if we don't use AGC */
+-
+-	return 0;
+-}
+-
+-static int rk3308_codec_alc_disable(struct rk3308_codec_priv *rk3308,
+-				    int type)
+-{
+-	int idx, grp;
+-
+-	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC2)
+-			continue;
+-
+-		/*
+-		 * 1. Set ACODEC_ALC_DIG_CON9[6] to 0x0, to disable the ALC
+-		 * module, then the ALC output gain will keep to the last value
+-		 */
+-		regmap_update_bits(rk3308->regmap, RK3308_ALC_L_DIG_CON09(grp),
+-				   RK3308_AGC_FUNC_SEL_MSK,
+-				   RK3308_AGC_FUNC_SEL_DIS);
+-		regmap_update_bits(rk3308->regmap, RK3308_ALC_R_DIG_CON09(grp),
+-				   RK3308_AGC_FUNC_SEL_MSK,
+-				   RK3308_AGC_FUNC_SEL_DIS);
+-	}
+-
+-	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC2)
+-			continue;
+-
+-		/*
+-		 * 2. Set ACODEC_ADC_ANA_CON11[1:0], (ACODEC_ADC_ANA_CON11+0x40)
+-		 * [1:0], (ACODEC_ADC_ANA_CON11+0x80)[1:0] and
+-		 * (ACODEC_ADC_ANA_CON11+0xc0)[1:0] to 0x0, to disable the ALC
+-		 * module to control the gain of PGA.
+-		 */
+-		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON11(grp),
+-				   RK3308_ADC_ALCL_CON_GAIN_PGAL_MSK |
+-				   RK3308_ADC_ALCR_CON_GAIN_PGAR_MSK,
+-				   RK3308_ADC_ALCL_CON_GAIN_PGAL_DIS |
+-				   RK3308_ADC_ALCR_CON_GAIN_PGAR_DIS);
+-	}
++	rk3308->enable_micbias = false;
+ 
+ 	return 0;
+ }
+@@ -2158,7 +2925,7 @@ static int rk3308_codec_adc_reinit_mics(struct rk3308_codec_priv *rk3308,
+ 	int idx, grp;
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 1 */
+@@ -2170,7 +2937,7 @@ static int rk3308_codec_adc_reinit_mics(struct rk3308_codec_priv *rk3308,
+ 	}
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 2 */
+@@ -2182,7 +2949,7 @@ static int rk3308_codec_adc_reinit_mics(struct rk3308_codec_priv *rk3308,
+ 	}
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 3 */
+@@ -2196,7 +2963,7 @@ static int rk3308_codec_adc_reinit_mics(struct rk3308_codec_priv *rk3308,
+ 	usleep_range(200, 250);	/* estimated value */
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 1 */
+@@ -2208,7 +2975,7 @@ static int rk3308_codec_adc_reinit_mics(struct rk3308_codec_priv *rk3308,
+ 	}
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 2 */
+@@ -2220,7 +2987,7 @@ static int rk3308_codec_adc_reinit_mics(struct rk3308_codec_priv *rk3308,
+ 	}
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 3 */
+@@ -2257,7 +3024,7 @@ static int rk3308_codec_adc_ana_enable(struct rk3308_codec_priv *rk3308,
+ 		/* Keep other ADCs as MIC-IN */
+ 		for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+ 			/* The groups without line-in are >= 1 */
+-			if (grp < 1 || grp == ADC_GRP_SKIP_MAGIC)
++			if (grp < 1 || grp > ADC_LR_GROUP_MAX - 1)
+ 				continue;
+ 
+ 			regmap_update_bits(rk3308->regmap,
+@@ -2269,7 +3036,7 @@ static int rk3308_codec_adc_ana_enable(struct rk3308_codec_priv *rk3308,
+ 		}
+ 	} else {
+ 		for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-			if (grp == ADC_GRP_SKIP_MAGIC)
++			if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 				continue;
+ 
+ 			regmap_update_bits(rk3308->regmap,
+@@ -2287,7 +3054,7 @@ static int rk3308_codec_adc_ana_enable(struct rk3308_codec_priv *rk3308,
+ 	 * buffer, and to end the initialization of MIC
+ 	 */
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON00(grp),
+@@ -2302,7 +3069,7 @@ static int rk3308_codec_adc_ana_enable(struct rk3308_codec_priv *rk3308,
+ 	 * of audio
+ 	 */
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON06(grp),
+@@ -2310,9 +3077,17 @@ static int rk3308_codec_adc_ana_enable(struct rk3308_codec_priv *rk3308,
+ 				   RK3308_ADC_CURRENT_EN);
+ 	}
+ 
++	/*
++	 * This is mainly used for BIST mode that wait ADCs are stable.
++	 *
++	 * By tested results, the type delay is >40us, but we need to leave
++	 * enough delay margin.
++	 */
++	usleep_range(400, 500);
++
+ 	/* vendor step 4*/
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON00(grp),
+@@ -2324,7 +3099,7 @@ static int rk3308_codec_adc_ana_enable(struct rk3308_codec_priv *rk3308,
+ 
+ 	/* vendor step 5 */
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON00(grp),
+@@ -2336,7 +3111,7 @@ static int rk3308_codec_adc_ana_enable(struct rk3308_codec_priv *rk3308,
+ 
+ 	/* vendor step 6 */
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON02(grp),
+@@ -2348,7 +3123,7 @@ static int rk3308_codec_adc_ana_enable(struct rk3308_codec_priv *rk3308,
+ 
+ 	/* vendor step 7 */
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON05(grp),
+@@ -2360,7 +3135,7 @@ static int rk3308_codec_adc_ana_enable(struct rk3308_codec_priv *rk3308,
+ 
+ 	/* vendor step 8 */
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON05(grp),
+@@ -2372,7 +3147,7 @@ static int rk3308_codec_adc_ana_enable(struct rk3308_codec_priv *rk3308,
+ 
+ 	/* vendor step 9 */
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON05(grp),
+@@ -2384,7 +3159,7 @@ static int rk3308_codec_adc_ana_enable(struct rk3308_codec_priv *rk3308,
+ 
+ 	/* vendor step 10 */
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON02(grp),
+@@ -2396,7 +3171,7 @@ static int rk3308_codec_adc_ana_enable(struct rk3308_codec_priv *rk3308,
+ 
+ 	/* vendor step 11 */
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		regmap_update_bits(rk3308->regmap, RK3308_ADC_ANA_CON00(grp),
+@@ -2412,7 +3187,7 @@ static int rk3308_codec_adc_ana_enable(struct rk3308_codec_priv *rk3308,
+ 
+ 	/* vendor step 14 */
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		regmap_read(rk3308->regmap, RK3308_ALC_L_DIG_CON09(grp),
+@@ -2444,7 +3219,7 @@ static int rk3308_codec_adc_ana_disable(struct rk3308_codec_priv *rk3308,
+ 	int idx, grp;
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC2)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 1 */
+@@ -2456,7 +3231,7 @@ static int rk3308_codec_adc_ana_disable(struct rk3308_codec_priv *rk3308,
+ 	}
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC2)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 2 */
+@@ -2468,7 +3243,7 @@ static int rk3308_codec_adc_ana_disable(struct rk3308_codec_priv *rk3308,
+ 	}
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC2)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 3 */
+@@ -2480,7 +3255,7 @@ static int rk3308_codec_adc_ana_disable(struct rk3308_codec_priv *rk3308,
+ 	}
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC2)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 4 */
+@@ -2492,7 +3267,7 @@ static int rk3308_codec_adc_ana_disable(struct rk3308_codec_priv *rk3308,
+ 	}
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC2)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 5 */
+@@ -2504,7 +3279,7 @@ static int rk3308_codec_adc_ana_disable(struct rk3308_codec_priv *rk3308,
+ 	}
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC2)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 6 */
+@@ -2516,7 +3291,7 @@ static int rk3308_codec_adc_ana_disable(struct rk3308_codec_priv *rk3308,
+ 	}
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC2)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 7 */
+@@ -2526,7 +3301,7 @@ static int rk3308_codec_adc_ana_disable(struct rk3308_codec_priv *rk3308,
+ 	}
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC2)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 8 */
+@@ -2538,7 +3313,7 @@ static int rk3308_codec_adc_ana_disable(struct rk3308_codec_priv *rk3308,
+ 	}
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC2)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 9 */
+@@ -2550,7 +3325,7 @@ static int rk3308_codec_adc_ana_disable(struct rk3308_codec_priv *rk3308,
+ 	}
+ 
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-		if (grp == ADC_GRP_SKIP_MAGIC2)
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
+ 			continue;
+ 
+ 		/* vendor step 10 */
+@@ -2569,7 +3344,6 @@ static int rk3308_codec_open_capture(struct rk3308_codec_priv *rk3308)
+ 	int idx, grp = 0;
+ 	int type = ADC_TYPE_NORMAL;
+ 
+-	rk3308_codec_alc_enable(rk3308, type);
+ 	rk3308_codec_adc_ana_enable(rk3308, type);
+ 	rk3308_codec_adc_reinit_mics(rk3308, type);
+ 
+@@ -2582,7 +3356,8 @@ static int rk3308_codec_open_capture(struct rk3308_codec_priv *rk3308)
+ 				   RK3308_ADC_R_CH_NORMAL_LEFT);
+ 	} else {
+ 		for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-			if (has_loopback(rk3308->loopback_grp) &&
++			if (handle_loopback(rk3308) &&
++			    idx == rk3308->loopback_grp &&
+ 			    grp == ADC_GRP_SKIP_MAGIC) {
+ 				/*
+ 				 * Switch to dummy BIST mode (BIST keep reset
+@@ -2602,6 +3377,9 @@ static int rk3308_codec_open_capture(struct rk3308_codec_priv *rk3308)
+ 						   RK3308_ADC_R_CH_BIST_MSK,
+ 						   RK3308_ADC_R_CH_BIST_SINE);
+ 			} else {
++				if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
++					continue;
++
+ 				regmap_update_bits(rk3308->regmap,
+ 						   RK3308_ADC_DIG_CON03(grp),
+ 						   RK3308_ADC_L_CH_BIST_MSK,
+@@ -2649,7 +3427,6 @@ static void rk3308_codec_dac_mclk_enable(struct rk3308_codec_priv *rk3308)
+ 
+ static int rk3308_codec_close_all_capture(struct rk3308_codec_priv *rk3308)
+ {
+-	rk3308_codec_alc_disable(rk3308, ADC_TYPE_ALL);
+ 	rk3308_codec_adc_ana_disable(rk3308, ADC_TYPE_ALL);
+ 
+ 	return 0;
+@@ -2657,7 +3434,6 @@ static int rk3308_codec_close_all_capture(struct rk3308_codec_priv *rk3308)
+ 
+ static int rk3308_codec_close_capture(struct rk3308_codec_priv *rk3308)
+ {
+-	rk3308_codec_alc_disable(rk3308, ADC_TYPE_NORMAL);
+ 	rk3308_codec_adc_ana_disable(rk3308, ADC_TYPE_NORMAL);
+ 
+ 	return 0;
+@@ -2704,7 +3480,7 @@ static int rk3308_codec_dlp_down(struct rk3308_codec_priv *rk3308)
+ static int rk3308_codec_dlp_up(struct rk3308_codec_priv *rk3308)
+ {
+ 	rk3308_codec_power_on(rk3308);
+-	rk3308_codec_micbias_enable(rk3308, RK3308_ADC_MICBIAS_VOLT_0_85);
++	rk3308_codec_micbias_enable(rk3308, rk3308->micbias_volt);
+ 
+ 	return 0;
+ }
+@@ -2769,25 +3545,19 @@ static void rk3308_codec_set_pm_state(struct rk3308_codec_priv *rk3308,
+ static void rk3308_codec_update_adcs_status(struct rk3308_codec_priv *rk3308,
+ 					    int state)
+ {
+-	int idx;
++	int idx, grp;
+ 
++	/* Update skip_grps flags if the ADCs need to be enabled always. */
+ 	if (state == PATH_BUSY) {
+-		/*
+-		 * The used_adc_grps points out the current max ADC grps
+-		 * dynamically during enable ADCs.
+-		 */
+-		for (idx = 0; idx < rk3308->en_always_grps_num; idx++) {
++		for (idx = 0; idx < rk3308->used_adc_grps; idx++) {
+ 			u32 mapped_grp = to_mapped_grp(rk3308, idx);
+ 
+-			rk3308->enabled_grps[mapped_grp] = 1;
+-		}
+-	} else {
+-		/* Clear all of enabled_grps flags if en_always_grps is 0 */
+-		for (idx = 0; idx < ADC_LR_GROUP_MAX; idx++) {
+-			if (rk3308->en_always_grps[idx])
+-				continue;
++			for (grp = 0; grp < rk3308->en_always_grps_num; grp++) {
++				u32 en_always_grp = rk3308->en_always_grps[grp];
+ 
+-			rk3308->enabled_grps[idx] = 0;
++				if (mapped_grp == en_always_grp)
++					rk3308->skip_grps[en_always_grp] = 1;
++			}
+ 		}
+ 	}
+ }
+@@ -2811,35 +3581,52 @@ static int rk3308_hw_params(struct snd_pcm_substream *substream,
+ 		rk3308_codec_dac_dig_config(rk3308, params);
+ 		rk3308_codec_set_dac_path_state(rk3308, PATH_BUSY);
+ 	} else {
++		if (rk3308->micbias_num &&
++		    !rk3308->enable_micbias)
++			rk3308_codec_micbias_enable(rk3308, rk3308->micbias_volt);
++
+ 		rk3308_codec_adc_mclk_enable(rk3308);
+ 		ret = rk3308_codec_update_adc_grps(rk3308, params);
+ 		if (ret < 0)
+ 			return ret;
+ 
+-		/* Check the DACs are opened */
+-		if (playback_str->substream_opened) {
+-			rk3308->loopback_dacs_enabled = true;
+-			for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-				regmap_update_bits(rk3308->regmap,
+-						   RK3308_ADC_DIG_CON03(grp),
+-						   RK3308_ADC_L_CH_BIST_MSK,
+-						   RK3308_ADC_L_CH_NORMAL_LEFT);
+-				regmap_update_bits(rk3308->regmap,
+-						   RK3308_ADC_DIG_CON03(grp),
+-						   RK3308_ADC_R_CH_BIST_MSK,
+-						   RK3308_ADC_R_CH_NORMAL_RIGHT);
+-			}
+-		} else {
+-			rk3308->loopback_dacs_enabled = false;
+-			for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
+-				regmap_update_bits(rk3308->regmap,
+-						   RK3308_ADC_DIG_CON03(grp),
+-						   RK3308_ADC_L_CH_BIST_MSK,
+-						   RK3308_ADC_L_CH_BIST_SINE);
+-				regmap_update_bits(rk3308->regmap,
+-						   RK3308_ADC_DIG_CON03(grp),
+-						   RK3308_ADC_R_CH_BIST_MSK,
+-						   RK3308_ADC_R_CH_BIST_SINE);
++		if (handle_loopback(rk3308)) {
++			if (rk3308->micbias_num &&
++			    (params_channels(params) == 2) &&
++			    to_mapped_grp(rk3308, 0) == rk3308->loopback_grp)
++				rk3308_codec_micbias_disable(rk3308);
++
++			/* Check the DACs are opened */
++			if (playback_str->substream_opened) {
++				rk3308->loopback_dacs_enabled = true;
++				for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
++					if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
++						continue;
++
++					regmap_update_bits(rk3308->regmap,
++							   RK3308_ADC_DIG_CON03(grp),
++							   RK3308_ADC_L_CH_BIST_MSK,
++							   RK3308_ADC_L_CH_NORMAL_LEFT);
++					regmap_update_bits(rk3308->regmap,
++							   RK3308_ADC_DIG_CON03(grp),
++							   RK3308_ADC_R_CH_BIST_MSK,
++							   RK3308_ADC_R_CH_NORMAL_RIGHT);
++				}
++			} else {
++				rk3308->loopback_dacs_enabled = false;
++				for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
++					if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
++						continue;
++
++					regmap_update_bits(rk3308->regmap,
++							   RK3308_ADC_DIG_CON03(grp),
++							   RK3308_ADC_L_CH_BIST_MSK,
++							   RK3308_ADC_L_CH_BIST_SINE);
++					regmap_update_bits(rk3308->regmap,
++							   RK3308_ADC_DIG_CON03(grp),
++							   RK3308_ADC_R_CH_BIST_MSK,
++							   RK3308_ADC_R_CH_BIST_SINE);
++				}
+ 			}
+ 		}
+ 
+@@ -2859,7 +3646,7 @@ static int rk3308_pcm_trigger(struct snd_pcm_substream *substream,
+ 	int type = ADC_TYPE_LOOPBACK;
+ 	int idx, grp;
+ 
+-	if (has_loopback(rk3308->loopback_grp) &&
++	if (handle_loopback(rk3308) &&
+ 	    rk3308->dac_output == DAC_LINEOUT &&
+ 	    substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+ 		if (cmd == SNDRV_PCM_TRIGGER_START) {
+@@ -2876,6 +3663,9 @@ static int rk3308_pcm_trigger(struct snd_pcm_substream *substream,
+ 			 * ADCs and keep zero input data
+ 			 */
+ 			for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
++				if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
++					continue;
++
+ 				regmap_update_bits(rk3308->regmap,
+ 						   RK3308_ADC_DIG_CON03(grp),
+ 						   RK3308_ADC_L_CH_BIST_MSK,
+@@ -2885,7 +3675,6 @@ static int rk3308_pcm_trigger(struct snd_pcm_substream *substream,
+ 						   RK3308_ADC_R_CH_BIST_MSK,
+ 						   RK3308_ADC_R_CH_BIST_SINE);
+ 			}
+-			rk3308_codec_alc_disable(rk3308, ADC_TYPE_LOOPBACK);
+ 			rk3308_codec_adc_ana_disable(rk3308, ADC_TYPE_LOOPBACK);
+ 		}
+ 	}
+@@ -2907,12 +3696,16 @@ static void rk3308_pcm_shutdown(struct snd_pcm_substream *substream,
+ 		rk3308_codec_set_dac_path_state(rk3308, PATH_IDLE);
+ 	} else {
+ 		rk3308_codec_close_capture(rk3308);
+-		if (!has_en_always_grps(rk3308))
++		if (!has_en_always_grps(rk3308)) {
+ 			rk3308_codec_adc_mclk_disable(rk3308);
++			rk3308_codec_update_adcs_status(rk3308, PATH_IDLE);
++			if (rk3308->micbias_num &&
++			    rk3308->enable_micbias)
++				rk3308_codec_micbias_disable(rk3308);
++		}
+ 
+ 		regcache_cache_only(rk3308->regmap, false);
+ 		regcache_sync(rk3308->regmap);
+-		rk3308_codec_update_adcs_status(rk3308, PATH_IDLE);
+ 	}
+ }
+ 
+@@ -3092,6 +3885,88 @@ static int rk3308_codec_setup_en_always_adcs(struct rk3308_codec_priv *rk3308,
+ 		return ret;
+ 	}
+ 
++	/* Clear all of skip_grps flags. */
++	for (num = 0; num < ADC_LR_GROUP_MAX; num++)
++		rk3308->skip_grps[num] = 0;
++
++	/* The loopback grp should not be enabled always. */
++	for (num = 0; num < rk3308->en_always_grps_num; num++) {
++		if (rk3308->en_always_grps[num] == rk3308->loopback_grp) {
++			dev_err(rk3308->plat_dev,
++				"loopback_grp: %d should not be enabled always!\n",
++				rk3308->loopback_grp);
++			ret = -EINVAL;
++			return ret;
++		}
++	}
++
++	return 0;
++}
++
++static int rk3308_codec_dapm_mic_gains(struct rk3308_codec_priv *rk3308)
++{
++	int ret;
++
++	if (rk3308->codec_ver == ACODEC_VERSION_B) {
++		ret = snd_soc_add_codec_controls(rk3308->codec,
++						 mic_gains_b,
++						 ARRAY_SIZE(mic_gains_b));
++		if (ret) {
++			dev_err(rk3308->plat_dev,
++				"%s: add mic_gains_b failed: %d\n",
++				__func__, ret);
++			return ret;
++		}
++	} else {
++		ret = snd_soc_add_codec_controls(rk3308->codec,
++						 mic_gains_a,
++						 ARRAY_SIZE(mic_gains_a));
++		if (ret) {
++			dev_err(rk3308->plat_dev,
++				"%s: add mic_gains_a failed: %d\n",
++				__func__, ret);
++			return ret;
++		}
++	}
++
++	return 0;
++}
++
++static int rk3308_codec_check_micbias(struct rk3308_codec_priv *rk3308,
++				      struct device_node *np)
++{
++	int num = 0;
++
++	rk3308->micbias1 =
++		of_property_read_bool(np, "rockchip,micbias1");
++	if (rk3308->micbias1)
++		num++;
++
++	rk3308->micbias2 =
++		of_property_read_bool(np, "rockchip,micbias2");
++	if (rk3308->micbias2)
++		num++;
++
++	rk3308->micbias_volt = RK3308_ADC_MICBIAS_VOLT_0_85; /* by default */
++	rk3308->micbias_num = num;
++
++	return 0;
++}
++
++static int rk3308_codec_dapm_controls_prepare(struct rk3308_codec_priv *rk3308)
++{
++	int grp;
++
++	for (grp = 0; grp < ADC_LR_GROUP_MAX; grp++) {
++		rk3308->hpf_cutoff[grp] = 0;
++		rk3308->agc_l[grp] = 0;
++		rk3308->agc_r[grp] = 0;
++		rk3308->agc_asr_l[grp] = AGC_ASR_96KHZ;
++		rk3308->agc_asr_r[grp] = AGC_ASR_96KHZ;
++	}
++
++	rk3308_codec_dapm_mic_gains(rk3308);
++
+ 	return 0;
+ }
+ 
+@@ -3102,6 +3977,7 @@ static int rk3308_codec_prepare(struct rk3308_codec_priv *rk3308)
+ 	rk3308_codec_close_all_capture(rk3308);
+ 	rk3308_codec_default_gains(rk3308);
+ 	rk3308_codec_llp_down(rk3308);
++	rk3308_codec_dapm_controls_prepare(rk3308);
+ 
+ 	return 0;
+ }
+@@ -3117,7 +3993,7 @@ static int rk3308_probe(struct snd_soc_codec *codec)
+ 	rk3308_codec_power_on(rk3308);
+ 
+ 	/* From vendor recommend */
+-	rk3308_codec_micbias_enable(rk3308, RK3308_ADC_MICBIAS_VOLT_0_85);
++	rk3308_codec_micbias_disable(rk3308);
+ 
+ 	rk3308_codec_prepare(rk3308);
+ 	if (!rk3308->no_hp_det)
+@@ -3155,8 +4031,8 @@ static struct snd_soc_codec_driver soc_codec_dev_rk3308 = {
+ 	.resume = rk3308_resume,
+ 	.set_bias_level = rk3308_set_bias_level,
+ 	.component_driver = {
+-		.controls		= rk3308_codec_dapm_controls,
+-		.num_controls		= ARRAY_SIZE(rk3308_codec_dapm_controls),
++		.controls = rk3308_codec_dapm_controls,
++		.num_controls = ARRAY_SIZE(rk3308_codec_dapm_controls),
+ 	}
+ };
+ 
+@@ -3184,6 +4060,34 @@ static void rk3308_codec_hpdetect_work(struct work_struct *work)
+ 	int need_report = 0, report_type = 0;
+ 	int dac_output = DAC_LINEOUT;
+ 
++	if (rk3308->codec_ver == ACODEC_VERSION_B) {
++		/* Check headphone plugged/unplugged directly. */
++		regmap_read(rk3308->detect_grf,
++			    DETECT_GRF_ACODEC_HPDET_STATUS, &val);
++		regmap_write(rk3308->detect_grf,
++			     DETECT_GRF_ACODEC_HPDET_STATUS_CLR, val);
++
++		switch (val) {
++		case 0x1:
++			dac_output = DAC_HPOUT;
++			report_type = SND_JACK_HEADPHONE;
++			break;
++		default:
++			break;
++		}
++
++		rk3308_codec_dac_switch(rk3308, dac_output);
++		if (rk3308->hpdet_jack)
++			snd_soc_jack_report(rk3308->hpdet_jack,
++					    report_type,
++					    SND_JACK_HEADPHONE);
++
++		enable_irq(rk3308->irq);
++
++		return;
++	}
++
++	/* Check headphone unplugged via poll. */
+ 	regmap_read(rk3308->regmap, RK3308_DAC_DIG_CON14, &val);
+ 	if (!val) {
+ 		rk3308->hp_plugged = false;
+@@ -3228,7 +4132,6 @@ static void rk3308_codec_loopback_work(struct work_struct *work)
+ 	int idx, grp;
+ 
+ 	/* Prepare loopback ADCs */
+-	rk3308_codec_alc_enable(rk3308, type);
+ 	rk3308_codec_adc_ana_enable(rk3308, type);
+ 
+ 	/* Waiting ADCs are stable */
+@@ -3236,6 +4139,9 @@ static void rk3308_codec_loopback_work(struct work_struct *work)
+ 
+ 	/* Recover normal mode after enable ADCs */
+ 	for (idx = 0; adc_for_each_grp(rk3308, type, idx, &grp); idx++) {
++		if (grp < 0 || grp > ADC_LR_GROUP_MAX - 1)
++			continue;
++
+ 		regmap_update_bits(rk3308->regmap,
+ 				   RK3308_ADC_DIG_CON03(grp),
+ 				   RK3308_ADC_L_CH_BIST_MSK,
+@@ -3275,7 +4181,7 @@ static const struct regmap_config rk3308_codec_regmap_config = {
+ 	.reg_bits = 32,
+ 	.reg_stride = 4,
+ 	.val_bits = 32,
+-	.max_register = RK3308_DAC_ANA_CON13,
++	.max_register = RK3308_DAC_ANA_CON15,
+ 	.writeable_reg = rk3308_codec_write_read_reg,
+ 	.readable_reg = rk3308_codec_write_read_reg,
+ 	.volatile_reg = rk3308_codec_volatile_reg,
+@@ -3705,26 +4611,46 @@ static const struct file_operations rk3308_codec_reg_debugfs_fops = {
+ };
+ #endif /* CONFIG_DEBUG_FS */
+ 
++static int rk3308_codec_get_version(struct rk3308_codec_priv *rk3308)
++{
++	unsigned int chip_id;
++
++	regmap_read(rk3308->grf, GRF_CHIP_ID, &chip_id);
++	switch (chip_id) {
++	case 3306:
++		rk3308->codec_ver = ACODEC_VERSION_A;
++		break;
++	case 0x3308:
++		rk3308->codec_ver = ACODEC_VERSION_B;
++		break;
++	default:
++		pr_err("Unknown chip_id: %d / 0x%x\n", chip_id, chip_id);
++		return -EFAULT;
++	}
++
++	pr_info("The acodec version is: %x\n", rk3308->codec_ver);
++	return 0;
++}
++
+ static int rk3308_platform_probe(struct platform_device *pdev)
+ {
+ 	struct device_node *np = pdev->dev.of_node;
+ 	struct rk3308_codec_priv *rk3308;
+ 	struct resource *res;
+-	struct regmap *grf;
+ 	void __iomem *base;
+ 	int ret;
+ 
+-	grf = syscon_regmap_lookup_by_phandle(np, "rockchip,grf");
+-	if (IS_ERR(grf)) {
+-		dev_err(&pdev->dev,
+-			"Missing 'rockchip,grf' property\n");
+-		return PTR_ERR(grf);
+-	}
+-
+ 	rk3308 = devm_kzalloc(&pdev->dev, sizeof(*rk3308), GFP_KERNEL);
+ 	if (!rk3308)
+ 		return -ENOMEM;
+ 
++	rk3308->grf = syscon_regmap_lookup_by_phandle(np, "rockchip,grf");
++	if (IS_ERR(rk3308->grf)) {
++		dev_err(&pdev->dev,
++			"Missing 'rockchip,grf' property\n");
++		return PTR_ERR(rk3308->grf);
++	}
++
+ 	ret = rk3308_codec_sysfs_init(pdev, rk3308);
+ 	if (ret < 0) {
+ 		dev_err(&pdev->dev, "Sysfs init failed\n");
+@@ -3773,6 +4699,23 @@ static int rk3308_platform_probe(struct platform_device *pdev)
+ 		return ret;
+ 	}
+ 
++	rk3308->pa_drv_gpio = devm_gpiod_get_optional(&pdev->dev, "pa-drv",
++						       GPIOD_OUT_LOW);
++
++	if (!rk3308->pa_drv_gpio) {
++		dev_info(&pdev->dev, "Don't need pa-drv gpio\n");
++	} else if (IS_ERR(rk3308->pa_drv_gpio)) {
++		ret = PTR_ERR(rk3308->pa_drv_gpio);
++		dev_err(&pdev->dev, "Unable to claim gpio pa-drv\n");
++		return ret;
++	}
++
++	if (rk3308->pa_drv_gpio) {
++		rk3308->delay_pa_drv_ms = PA_DRV_MS;
++		ret = of_property_read_u32(np, "rockchip,delay-pa-drv-ms",
++					   &rk3308->delay_pa_drv_ms);
++	}
++
+ #if DEBUG_POP_ALWAYS
+ 	dev_info(&pdev->dev, "Enable all ctl gpios always for debugging pop\n");
+ 	rk3308_headphone_ctl(rk3308, 1);
+@@ -3819,6 +4762,8 @@ static int rk3308_platform_probe(struct platform_device *pdev)
+ 		return ret;
+ 	}
+ 
++	rk3308_codec_check_micbias(rk3308, np);
++
+ 	rk3308->enable_all_adcs =
+ 		of_property_read_bool(np, "rockchip,enable-all-adcs");
+ 
+@@ -3832,6 +4777,10 @@ static int rk3308_platform_probe(struct platform_device *pdev)
+ 	ret = of_property_read_u32(np, "rockchip,delay-loopback-handle-ms",
+ 				   &rk3308->delay_loopback_handle_ms);
+ 
++	rk3308->delay_start_play_ms = 0;
++	ret = of_property_read_u32(np, "rockchip,delay-start-play-ms",
++				   &rk3308->delay_start_play_ms);
++
+ 	rk3308->loopback_grp = NOT_USED;
+ 	ret = of_property_read_u32(np, "rockchip,loopback-grp",
+ 				   &rk3308->loopback_grp);
+@@ -3859,6 +4808,13 @@ static int rk3308_platform_probe(struct platform_device *pdev)
+ 		return ret;
+ 	}
+ 
++	ret = rk3308_codec_get_version(rk3308);
++	if (ret < 0) {
++		dev_err(&pdev->dev, "Failed to get acodec version: %d\n",
++			ret);
++		return ret;
++	}
++
+ 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+ 	base = devm_ioremap_resource(&pdev->dev, res);
+ 	if (IS_ERR(base)) {
+@@ -3876,7 +4832,12 @@ static int rk3308_platform_probe(struct platform_device *pdev)
+ 	}
+ 
+ 	if (!rk3308->no_hp_det) {
+-		rk3308->irq = platform_get_irq(pdev, 0);
++		int index = 0;
++
++		if (rk3308->codec_ver == ACODEC_VERSION_B)
++			index = 1;
++
++		rk3308->irq = platform_get_irq(pdev, index);
+ 		if (rk3308->irq < 0) {
+ 			dev_err(&pdev->dev, "Can not get codec irq\n");
+ 			goto failed;
+@@ -3893,9 +4854,30 @@ static int rk3308_platform_probe(struct platform_device *pdev)
+ 			dev_err(&pdev->dev, "Failed to request IRQ: %d\n", ret);
+ 			goto failed;
+ 		}
++
++		if (rk3308->codec_ver == ACODEC_VERSION_B) {
++			rk3308->detect_grf =
++				syscon_regmap_lookup_by_phandle(np, "rockchip,detect-grf");
++			if (IS_ERR(rk3308->detect_grf)) {
++				dev_err(&pdev->dev,
++					"Missing 'rockchip,detect-grf' property\n");
++				return PTR_ERR(rk3308->detect_grf);
++			}
++
++			/* Configure filter count and enable hpdet irq. */
++			regmap_write(rk3308->detect_grf,
++				     DETECT_GRF_ACODEC_HPDET_COUNTER,
++				     DEFAULT_HPDET_COUNT);
++			regmap_write(rk3308->detect_grf,
++				     DETECT_GRF_ACODEC_HPDET_CON,
++				     (HPDET_BOTH_NEG_POS << 16) |
++				      HPDET_BOTH_NEG_POS);
++		}
+ 	}
+ 
+-	INIT_DELAYED_WORK(&rk3308->loopback_work, rk3308_codec_loopback_work);
++	if (rk3308->codec_ver == ACODEC_VERSION_A)
++		INIT_DELAYED_WORK(&rk3308->loopback_work,
++				  rk3308_codec_loopback_work);
+ 
+ 	rk3308->adc_grp0_using_linein = ADC_GRP0_MICIN;
+ 	rk3308->dac_output = DAC_LINEOUT;
+diff --git a/sound/soc/codecs/rk3308_codec.h b/sound/soc/codecs/rk3308_codec.h
+index 914c073..d5557a7 100644
+--- a/sound/soc/codecs/rk3308_codec.h
++++ b/sound/soc/codecs/rk3308_codec.h
+@@ -101,7 +101,8 @@
+ /* Resevred REG 0x07 ~ 0x0b */
+ #define ACODEC_DAC_ANA_HPMIX_CTL0		0x30 /* REG 0x0c */
+ #define ACODEC_DAC_ANA_HPMIX_CTL1		0x34 /* REG 0x0d */
+-/* Resevred REG 0x0e ~ 0x0f */
++#define ACODEC_DAC_ANA_LINEOUT_CTL0		0x38 /* REG 0x0e */
++#define ACODEC_DAC_ANA_LINEOUT_CTL1		0x3c /* REG 0x0f */
+ 
+ /*
+  * These registers are referenced by codec driver
+@@ -200,6 +201,8 @@
+ #define RK3308_DAC_ANA_CON08			(RK3308_DAC_ANA_OFFSET + ACODEC_DAC_ANA_DRV_LINEOUT)
+ #define RK3308_DAC_ANA_CON12			(RK3308_DAC_ANA_OFFSET + ACODEC_DAC_ANA_HPMIX_CTL0)
+ #define RK3308_DAC_ANA_CON13			(RK3308_DAC_ANA_OFFSET + ACODEC_DAC_ANA_HPMIX_CTL1)
++#define RK3308_DAC_ANA_CON14			(RK3308_DAC_ANA_OFFSET + ACODEC_DAC_ANA_LINEOUT_CTL0)
++#define RK3308_DAC_ANA_CON15			(RK3308_DAC_ANA_OFFSET + ACODEC_DAC_ANA_LINEOUT_CTL1)
+ 
+ /*
+  * These are the bits for registers
+@@ -271,14 +274,14 @@
+ #define RK3308_ADC_L_CH_BIST_SFT		2
+ #define RK3308_ADC_L_CH_BIST_MSK		(0x3 << RK3308_ADC_L_CH_BIST_SFT)
+ #define RK3308_ADC_L_CH_NORMAL_RIGHT		(0x3 << RK3308_ADC_L_CH_BIST_SFT) /* normal mode */
+-#define RK3308_ADC_L_CH_BIST_SINE		(0x2 << RK3308_ADC_L_CH_BIST_SFT)
+-#define RK3308_ADC_L_CH_BIST_CUBE		(0x1 << RK3308_ADC_L_CH_BIST_SFT)
++#define RK3308_ADC_L_CH_BIST_CUBE		(0x2 << RK3308_ADC_L_CH_BIST_SFT)
++#define RK3308_ADC_L_CH_BIST_SINE		(0x1 << RK3308_ADC_L_CH_BIST_SFT)
+ #define RK3308_ADC_L_CH_NORMAL_LEFT		(0x0 << RK3308_ADC_L_CH_BIST_SFT) /* normal mode */
+ #define RK3308_ADC_R_CH_BIST_SFT		0
+ #define RK3308_ADC_R_CH_BIST_MSK		(0x3 << RK3308_ADC_R_CH_BIST_SFT)
+ #define RK3308_ADC_R_CH_NORMAL_LEFT		(0x3 << RK3308_ADC_R_CH_BIST_SFT) /* normal mode */
+-#define RK3308_ADC_R_CH_BIST_SINE		(0x2 << RK3308_ADC_R_CH_BIST_SFT)
+-#define RK3308_ADC_R_CH_BIST_CUBE		(0x1 << RK3308_ADC_R_CH_BIST_SFT)
++#define RK3308_ADC_R_CH_BIST_CUBE		(0x2 << RK3308_ADC_R_CH_BIST_SFT)
++#define RK3308_ADC_R_CH_BIST_SINE		(0x1 << RK3308_ADC_R_CH_BIST_SFT)
+ #define RK3308_ADC_R_CH_NORMAL_RIGHT		(0x0 << RK3308_ADC_R_CH_BIST_SFT) /* normal mode */
+ 
+ /* RK3308_ADC_DIG_CON04 - REG: 0x0010 */
+@@ -637,8 +640,8 @@
+  *
+  * The PGA of MIC-INs:
+  * 0x0 - MIC1~MIC8 0dB
+- * 0x1 - MIC1~MIC2 are invalid, MIC3~MIC8 6.6dB
+- * 0x2 - MIC1~MIC2 are invalid, MIC3~MIC8 13dB
++ * 0x1 - MIC1~MIC8 6.6dB
++ * 0x2 - MIC1~MIC8 13dB
+  * 0x3 - MIC1~MIC8 20dB
+  */
+ #define RK3308_ADC_CH2_MIC_GAIN_MAX		0x3
+@@ -646,8 +649,8 @@
+ #define RK3308_ADC_CH2_MIC_GAIN_SFT		4
+ #define RK3308_ADC_CH2_MIC_GAIN_MSK		(0x3 << RK3308_ADC_CH2_MIC_GAIN_SFT)
+ #define RK3308_ADC_CH2_MIC_GAIN_20DB		(0x3 << RK3308_ADC_CH2_MIC_GAIN_SFT)
+-#define RK3308_ADC_3_8_CH2_MIC_GAIN_13DB	(0x2 << RK3308_ADC_CH2_MIC_GAIN_SFT)
+-#define RK3308_ADC_3_8_CH2_MIC_GAIN_6_6DB	(0x1 << RK3308_ADC_CH2_MIC_GAIN_SFT)
++#define RK3308_ADC_CH2_MIC_GAIN_13DB		(0x2 << RK3308_ADC_CH2_MIC_GAIN_SFT) /* TRM: only used for verion B  */
++#define RK3308_ADC_CH2_MIC_GAIN_6_6DB		(0x1 << RK3308_ADC_CH2_MIC_GAIN_SFT) /* TRM: only used for verion B  */
+ #define RK3308_ADC_CH2_MIC_GAIN_0DB		(0x0 << RK3308_ADC_CH2_MIC_GAIN_SFT)
+ 
+ #define RK3308_ADC_CH1_MIC_GAIN_MAX		0x3
+@@ -655,8 +658,8 @@
+ #define RK3308_ADC_CH1_MIC_GAIN_SFT		0
+ #define RK3308_ADC_CH1_MIC_GAIN_MSK		(0x3 << RK3308_ADC_CH1_MIC_GAIN_SFT)
+ #define RK3308_ADC_CH1_MIC_GAIN_20DB		(0x3 << RK3308_ADC_CH1_MIC_GAIN_SFT)
+-#define RK3308_ADC_3_8_CH1_MIC_GAIN_13DB	(0x2 << RK3308_ADC_CH1_MIC_GAIN_SFT)
+-#define RK3308_ADC_3_8_CH1_MIC_GAIN_6_6DB	(0x1 << RK3308_ADC_CH1_MIC_GAIN_SFT)
++#define RK3308_ADC_CH1_MIC_GAIN_13DB		(0x2 << RK3308_ADC_CH1_MIC_GAIN_SFT) /* TRM: only used for verion B  */
++#define RK3308_ADC_CH1_MIC_GAIN_6_6DB		(0x1 << RK3308_ADC_CH1_MIC_GAIN_SFT) /* TRM: only used for verion B  */
+ #define RK3308_ADC_CH1_MIC_GAIN_0DB		(0x0 << RK3308_ADC_CH1_MIC_GAIN_SFT)
+ 
+ /* RK3308_ADC_ANA_CON02 - REG: 0x0348 */
+@@ -790,10 +793,16 @@
+ #define RK3308_ADC_CH1_IN_MIC			(0x1 << RK3308_ADC_CH1_IN_SEL_SFT)
+ #define RK3308_ADC_CH1_IN_NONE			(0x0 << RK3308_ADC_CH1_IN_SEL_SFT)
+ 
+-#define RK3308_ADC_MIC_BIAS_BUF_EN		(0x1 << 3)
+-#define RK3308_ADC_MIC_BIAS_BUF_DIS		(0x0 << 3)
++#define RK3308_ADC_MIC_BIAS_BUF_SFT		3
++#define RK3308_ADC_MIC_BIAS_BUF_EN		(0x1 << RK3308_ADC_MIC_BIAS_BUF_SFT)
++#define RK3308_ADC_MIC_BIAS_BUF_DIS		(0x0 << RK3308_ADC_MIC_BIAS_BUF_SFT)
+ #define RK3308_ADC_LEVEL_RANGE_MICBIAS_SFT	0
+ #define RK3308_ADC_LEVEL_RANGE_MICBIAS_MSK	(0x7 << RK3308_ADC_LEVEL_RANGE_MICBIAS_SFT)
++/*
++ * The follow MICBIAS_VOLTs are based on the external reference voltage(Vref).
++ * For example, the Vref == 3.3V, the MICBIAS_VOLT_0_85 is equal:
++ * 3.3V * 0.85 = 2.805V.
++ */
+ #define RK3308_ADC_MICBIAS_VOLT_0_85		(0x7 << RK3308_ADC_LEVEL_RANGE_MICBIAS_SFT)
+ #define RK3308_ADC_MICBIAS_VOLT_0_8		(0x6 << RK3308_ADC_LEVEL_RANGE_MICBIAS_SFT)
+ #define RK3308_ADC_MICBIAS_VOLT_0_75		(0x5 << RK3308_ADC_LEVEL_RANGE_MICBIAS_SFT)
+@@ -813,18 +822,11 @@
+ #define RK3308_ADC_REF_DIS			(0x0 << 7)
+ #define RK3308_ADC_CURRENT_CHARGE_SFT		0
+ #define RK3308_ADC_CURRENT_CHARGE_MSK		(0x7f << RK3308_ADC_CURRENT_CHARGE_SFT)
+-#define RK3308_ADC_DONT_SEL_ALL			(0x7f << RK3308_ADC_CURRENT_CHARGE_SFT)
+ /*
+- * 0: Choose the current I
+- * 1: Don't choose the current I
++ * 1: Choose the current I
++ * 0: Don't choose the current I
+  */
+-#define RK3308_ADC_SEL_I_1(x)			((x & 0x1) << 6)
+-#define RK3308_ADC_SEL_I_2(x)			((x & 0x1) << 5)
+-#define RK3308_ADC_SEL_I_4(x)			((x & 0x1) << 4)
+-#define RK3308_ADC_SEL_I_8(x)			((x & 0x1) << 3)
+-#define RK3308_ADC_SEL_I_16(x)			((x & 0x1) << 2)
+-#define RK3308_ADC_SEL_I_32(x)			((x & 0x1) << 1)
+-#define RK3308_ADC_SEL_I_64(x)			((x & 0x1) << 0)
++#define RK3308_ADC_SEL_I(x)			(x & 0x7f)
+ 
+ /* RK3308_ADC_ANA_CON11 - REG: 0x036c */
+ #define RK3308_ADC_ALCR_CON_GAIN_PGAR_MSK	(0x1 << 1)
+@@ -846,17 +848,17 @@
+ #define RK3308_DAC_BUF_REF_R_MSK		(0x1 << 6)
+ #define RK3308_DAC_BUF_REF_R_EN			(0x1 << 6)
+ #define RK3308_DAC_BUF_REF_R_DIS		(0x0 << 6)
+-#define RK3308_DAC_POP_SOUND_R_SFT		4
+-#define RK3308_DAC_POP_SOUND_R_MSK		(0x3 << RK3308_DAC_POP_SOUND_R_SFT)
+-#define RK3308_DAC_POP_SOUND_R_WORK		(0x2 << RK3308_DAC_POP_SOUND_R_SFT)
+-#define RK3308_DAC_POP_SOUND_R_INIT		(0x1 << RK3308_DAC_POP_SOUND_R_SFT)
++#define RK3308_DAC_HPOUT_POP_SOUND_R_SFT	4
++#define RK3308_DAC_HPOUT_POP_SOUND_R_MSK	(0x3 << RK3308_DAC_HPOUT_POP_SOUND_R_SFT)
++#define RK3308_DAC_HPOUT_POP_SOUND_R_WORK	(0x2 << RK3308_DAC_HPOUT_POP_SOUND_R_SFT)
++#define RK3308_DAC_HPOUT_POP_SOUND_R_INIT	(0x1 << RK3308_DAC_HPOUT_POP_SOUND_R_SFT)
+ #define RK3308_DAC_BUF_REF_L_MSK		(0x1 << 2)
+ #define RK3308_DAC_BUF_REF_L_EN			(0x1 << 2)
+ #define RK3308_DAC_BUF_REF_L_DIS		(0x0 << 2)
+-#define RK3308_DAC_POP_SOUND_L_SFT		0
+-#define RK3308_DAC_POP_SOUND_L_MSK		(0x3 << RK3308_DAC_POP_SOUND_L_SFT)
+-#define RK3308_DAC_POP_SOUND_L_WORK		(0x2 << RK3308_DAC_POP_SOUND_L_SFT)
+-#define RK3308_DAC_POP_SOUND_L_INIT		(0x1 << RK3308_DAC_POP_SOUND_L_SFT)
++#define RK3308_DAC_HPOUT_POP_SOUND_L_SFT	0
++#define RK3308_DAC_HPOUT_POP_SOUND_L_MSK	(0x3 << RK3308_DAC_HPOUT_POP_SOUND_L_SFT)
++#define RK3308_DAC_HPOUT_POP_SOUND_L_WORK	(0x2 << RK3308_DAC_HPOUT_POP_SOUND_L_SFT)
++#define RK3308_DAC_HPOUT_POP_SOUND_L_INIT	(0x1 << RK3308_DAC_HPOUT_POP_SOUND_L_SFT)
+ 
+ /* RK3308_DAC_ANA_CON02 - REG: 0x0448 */
+ #define RK3308_DAC_R_DAC_WORK			(0x1 << 7)
+@@ -1038,6 +1040,30 @@
+ #define RK3308_DAC_L_HPMIX_EN			(0x1 << 0)
+ #define RK3308_DAC_L_HPMIX_DIS			(0x0 << 0)
+ 
++/* RK3308_DAC_ANA_CON14 - REG: 0x0478 */
++#define RK3308_DAC_VCM_LINEOUT_EN		(0x1 << 4)
++#define RK3308_DAC_VCM_LINEOUT_DIS		(0x0 << 4)
++#define RK3308_DAC_CURRENT_CHARGE_SFT		0
++#define RK3308_DAC_CURRENT_CHARGE_MSK		(0xf << RK3308_DAC_CURRENT_CHARGE_SFT)
++
++/*
++ * 1: Choose the current I
++ * 0: Don't choose the current I
++ */
++#define RK3308_DAC_SEL_I(x)			(x & 0xf)
++
++/* RK3308_DAC_ANA_CON15 - REG: 0x047C */
++#define RK3308_DAC_LINEOUT_POP_SOUND_R_SFT	4
++#define RK3308_DAC_LINEOUT_POP_SOUND_R_MSK	(0x3 << RK3308_DAC_LINEOUT_POP_SOUND_R_SFT)
++#define RK3308_DAC_R_SEL_DC_FROM_INTERNAL	(0x2 << RK3308_DAC_LINEOUT_POP_SOUND_R_SFT)
++#define RK3308_DAC_R_SEL_DC_FROM_VCM		(0x1 << RK3308_DAC_LINEOUT_POP_SOUND_R_SFT)
++#define RK3308_DAC_R_SEL_LINEOUT_FROM_INTERNAL	(0x0 << RK3308_DAC_LINEOUT_POP_SOUND_R_SFT)
++#define RK3308_DAC_LINEOUT_POP_SOUND_L_SFT	0
++#define RK3308_DAC_LINEOUT_POP_SOUND_L_MSK	(0x3 << RK3308_DAC_LINEOUT_POP_SOUND_L_SFT)
++#define RK3308_DAC_L_SEL_DC_FROM_INTERNAL	(0x2 << RK3308_DAC_LINEOUT_POP_SOUND_L_SFT)
++#define RK3308_DAC_L_SEL_DC_FROM_VCM		(0x1 << RK3308_DAC_LINEOUT_POP_SOUND_L_SFT)
++#define RK3308_DAC_L_SEL_LINEOUT_FROM_INTERNAL	(0x0 << RK3308_DAC_LINEOUT_POP_SOUND_L_SFT)
++
+ #define RK3308_HIFI				0x0
+ 
+ #endif /* __RK3308_CODEC_H__ */
+-- 
+2.7.4
+

@@ -1,0 +1,33 @@
+From 45a247a42400d7d27d552020bf29e9800bb912dd Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Sun, 15 Jul 2018 22:51:23 +0800
+Subject: [PATCH 30/73] rk3308-aarch32: Enable panic reboot and soft watchdog
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ arch/arm/configs/rk3308_linux_aarch32_defconfig | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/arch/arm/configs/rk3308_linux_aarch32_defconfig b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+index 2db4b9ddd138..e79837373f03 100644
+--- a/arch/arm/configs/rk3308_linux_aarch32_defconfig
++++ b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+@@ -120,6 +120,7 @@ CONFIG_CPU_THERMAL=y
+ CONFIG_DEVFREQ_THERMAL=y
+ CONFIG_ROCKCHIP_THERMAL=y
+ CONFIG_WATCHDOG=y
++CONFIG_SOFT_WATCHDOG=y
+ CONFIG_DW_WATCHDOG=y
+ CONFIG_REGULATOR_FIXED_VOLTAGE=y
+ CONFIG_REGULATOR_GPIO=y
+@@ -216,6 +217,7 @@ CONFIG_LOCKUP_DETECTOR=y
+ CONFIG_BOOTPARAM_SOFTLOCKUP_PANIC=y
+ CONFIG_BOOTPARAM_HUNG_TASK_PANIC=y
+ CONFIG_PANIC_ON_OOPS=y
++CONFIG_PANIC_TIMEOUT=1
+ # CONFIG_SCHED_DEBUG is not set
+ # CONFIG_DEBUG_PREEMPT is not set
+ CONFIG_RCU_CPU_STALL_TIMEOUT=60
+-- 
+2.11.0
+

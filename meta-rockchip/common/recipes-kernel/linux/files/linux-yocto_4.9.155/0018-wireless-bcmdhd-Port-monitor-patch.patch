@@ -1,0 +1,242 @@
+From 1d985fe7d98cff4202f700a5b9549d0b75eaa2f8 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 25 Jun 2018 15:16:48 +0800
+Subject: [PATCH 18/73] wireless: bcmdhd: Port monitor patch
+
+Port bcmdhd monitor patch from:
+https://raw.githubusercontent.com/ruleh/misc/master/monitor/bcmdhd_enable_monitor.patch
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ drivers/net/wireless/bcmdhd/Makefile      |  2 +-
+ drivers/net/wireless/bcmdhd/wl_cfg80211.c | 84 +++++++++++++++++++++++++------
+ drivers/net/wireless/bcmdhd/wl_cfg80211.h |  3 +-
+ 3 files changed, 73 insertions(+), 16 deletions(-)
+
+diff --git a/drivers/net/wireless/bcmdhd/Makefile b/drivers/net/wireless/bcmdhd/Makefile
+index 4c9902e262bf..acee843521a0 100644
+--- a/drivers/net/wireless/bcmdhd/Makefile
++++ b/drivers/net/wireless/bcmdhd/Makefile
+@@ -18,7 +18,7 @@ DHDCFLAGS = -Wall -Wstrict-prototypes -Dlinux -DBCMDRIVER -DSDTEST       \
+ 	-DWIFI_ACT_FRAME -DARP_OFFLOAD_SUPPORT -DSUPPORT_PM2_ONLY             \
+ 	-DKEEP_ALIVE -DPKT_FILTER_SUPPORT -DPNO_SUPPORT -DDHDTCPACK_SUPPRESS  \
+ 	-DDHD_DONOT_FORWARD_BCMEVENT_AS_NETWORK_PKT -DRXFRAME_THREAD          \
+-	-DTSQ_MULTIPLIER -DMFP -DWL_EXT_IAPSTA                                \
++	-DTSQ_MULTIPLIER -DWL_EXT_IAPSTA                                \
+ 	-DDHD_UNSUPPORT_IF_CNTS                    \
+ 	-Idrivers/net/wireless/bcmdhd \
+ 	-Idrivers/net/wireless/bcmdhd/include
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfg80211.c b/drivers/net/wireless/bcmdhd/wl_cfg80211.c
+index c935304d9e91..03a6a8949d27 100644
+--- a/drivers/net/wireless/bcmdhd/wl_cfg80211.c
++++ b/drivers/net/wireless/bcmdhd/wl_cfg80211.c
+@@ -1364,6 +1364,10 @@ wl_cfg80211_default_mgmt_stypes[NUM_NL80211_IFTYPES] = {
+ 		BIT(IEEE80211_STYPE_PROBE_REQ >> 4)
+ 	},
+ #endif /* WL_CFG80211_P2P_DEV_IF */
++	[NL80211_IFTYPE_MONITOR] = {
++		.tx = 0xffff,
++		.rx = 0xffff
++	},
+ };
+ 
+ static void swap_key_from_BE(struct wl_wsec_key *key)
+@@ -1589,7 +1593,7 @@ static chanspec_t wl_cfg80211_get_shared_freq(struct wiphy *wiphy)
+ static bcm_struct_cfgdev *
+ wl_cfg80211_add_monitor_if(const char *name)
+ {
+-#if defined(WL_ENABLE_P2P_IF) || defined(WL_CFG80211_P2P_DEV_IF)
++#if 0// defined(WL_ENABLE_P2P_IF) || defined(WL_CFG80211_P2P_DEV_IF)
+ 	WL_INFORM(("wl_cfg80211_add_monitor_if: No more support monitor interface\n"));
+ 	return ERR_PTR(-EOPNOTSUPP);
+ #else
+@@ -2189,9 +2193,12 @@ wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
+ 	struct vif_params *params)
+ {
+ 	s32 ap = 0;
+-	s32 infra_ibss = 1;
++	s32 infra = 0;
++	s32 ibss = 1;
+ 	s32 wlif_type;
+ 	s32 mode = 0;
++	s32 mon = 0;
++	s32 promisc = 0;
+ 	s32 err = BCME_OK;
+ 	s32 index;
+ 	s32 conn_idx = -1;
+@@ -2203,6 +2210,10 @@ wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
+ 	WL_DBG(("Enter type %d\n", type));
+ 	switch (type) {
+ 	case NL80211_IFTYPE_MONITOR:
++		mon = 2;
++		promisc = 1;
++		mode = WL_MODE_MONITOR;
++			break;
+ 	case NL80211_IFTYPE_WDS:
+ 	case NL80211_IFTYPE_MESH_POINT:
+ 		ap = 1;
+@@ -2211,7 +2222,7 @@ wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
+ 		break;
+ 	case NL80211_IFTYPE_ADHOC:
+ 		mode = WL_MODE_IBSS;
+-		infra_ibss = 0;
++		ibss = 1;
+ 		break;
+ 	case NL80211_IFTYPE_STATION:
+ 	case NL80211_IFTYPE_P2P_CLIENT:
+@@ -2233,6 +2244,7 @@ wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
+ 			}
+ 		}
+ 		mode = WL_MODE_BSS;
++		infra = 1;
+ 		break;
+ 	case NL80211_IFTYPE_AP:
+ 		dhd->op_mode |= DHD_FLAG_HOSTAP_MODE;
+@@ -2285,8 +2297,8 @@ wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
+ 			}
+ 
+ 			wlif_type = WL_P2P_IF_GO;
+-			printf("%s: %s  ap (%d), infra_ibss (%d), iftype (%d) conn_idx (%d)\n",
+-				__FUNCTION__, ndev->name, ap, infra_ibss, type, conn_idx);
++			printf("%s: %s  ap (%d), infra (%d) ibss (%d), iftype (%d) conn_idx (%d)\n",
++				__FUNCTION__, ndev->name, ap, infra, ibss, type, conn_idx);
+ 			wl_set_p2p_status(cfg, IF_CHANGING);
+ 			wl_clr_p2p_status(cfg, IF_CHANGED);
+ 			wl_cfgp2p_ifchange(cfg, wl_to_p2p_bss_macaddr(cfg, conn_idx),
+@@ -2332,13 +2344,17 @@ wl_cfg80211_change_virtual_iface(struct wiphy *wiphy, struct net_device *ndev,
+ #endif /* SUPPORT_AP_POWERSAVE */
+ 	}
+ 
+-	if (!infra_ibss) {
+-		err = wldev_ioctl_set(ndev, WLC_SET_INFRA, &infra_ibss, sizeof(s32));
+-		if (err < 0) {
+-			WL_ERR(("SET INFRA/IBSS  error %d\n", err));
+-			err = -EINVAL;
+-			goto error;
+-		}
++	if (mon) {
++		ndev->type = ARPHRD_IEEE80211_RADIOTAP;
++	} else {
++		ndev->type = ARPHRD_ETHER;
++	}
++
++	if (!ap) {
++		wldev_ioctl(ndev, WLC_SET_INFRA, &infra, sizeof(s32), true);
++		wldev_ioctl(ndev, WLC_SET_PROMISC, &promisc, sizeof(s32), true);
++		wldev_ioctl(ndev, WLC_SET_MONITOR, &mon, sizeof(s32), true);
++		wl_set_mode_by_netdev(cfg, ndev, mode);
+ 	}
+ 
+ 	WL_DBG(("Setting iftype to %d \n", type));
+@@ -7913,6 +7929,17 @@ wl_cfg80211_set_channel(struct wiphy *wiphy, struct net_device *dev,
+ 	return err;
+ }
+ 
++static s32
++wl_cfg80211_set_monitor_channel(struct wiphy *wiphy, struct cfg80211_chan_def *chandef)
++{
++
++	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
++	struct net_device *dev = bcmcfg_to_prmry_ndev(cfg);
++	enum nl80211_channel_type channel_type = cfg80211_get_chandef_type(chandef);
++
++	return(wl_cfg80211_set_channel(wiphy, dev, chandef->chan, channel_type));
++}
++
+ #ifdef WL_CFG80211_VSDB_PRIORITIZE_SCAN_REQUEST
+ struct net_device *
+ wl_cfg80211_get_remain_on_channel_ndev(struct bcm_cfg80211 *cfg)
+@@ -10390,6 +10417,7 @@ static struct cfg80211_ops wl_cfg80211_ops = {
+ 	.mgmt_tx = wl_cfg80211_mgmt_tx,
+ 	.mgmt_frame_register = wl_cfg80211_mgmt_frame_register,
+ 	.change_bss = wl_cfg80211_change_bss,
++	.set_monitor_channel = wl_cfg80211_set_monitor_channel,
+ #if (LINUX_VERSION_CODE < KERNEL_VERSION(3, 6, 0))
+ 	.set_channel = wl_cfg80211_set_channel,
+ #endif 
+@@ -10440,6 +10468,8 @@ s32 wl_mode_to_nl80211_iftype(s32 mode)
+ 		return NL80211_IFTYPE_ADHOC;
+ 	case WL_MODE_AP:
+ 		return NL80211_IFTYPE_AP;
++	case WL_MODE_MONITOR:
++		return NL80211_IFTYPE_MONITOR;
+ 	default:
+ 		return NL80211_IFTYPE_UNSPECIFIED;
+ 	}
+@@ -10557,9 +10587,9 @@ static s32 wl_setup_wiphy(struct wireless_dev *wdev, struct device *sdiofunc_dev
+ 	wdev->wiphy->interface_modes =
+ 		BIT(NL80211_IFTYPE_STATION)
+ 		| BIT(NL80211_IFTYPE_ADHOC)
+-#if !defined(WL_ENABLE_P2P_IF) && !defined(WL_CFG80211_P2P_DEV_IF)
++//#if !defined(WL_ENABLE_P2P_IF) && !defined(WL_CFG80211_P2P_DEV_IF)
+ 		| BIT(NL80211_IFTYPE_MONITOR)
+-#endif /* !WL_ENABLE_P2P_IF && !WL_CFG80211_P2P_DEV_IF */
++//#endif /* !WL_ENABLE_P2P_IF && !WL_CFG80211_P2P_DEV_IF */
+ #if defined(WL_IFACE_COMB_NUM_CHANNELS) || defined(WL_CFG80211_P2P_DEV_IF)
+ 		| BIT(NL80211_IFTYPE_P2P_CLIENT)
+ 		| BIT(NL80211_IFTYPE_P2P_GO)
+@@ -15744,8 +15774,14 @@ static s32 wl_config_ifmode(struct bcm_cfg80211 *cfg, struct net_device *ndev, s
+ 	s32 infra = 0;
+ 	s32 err = 0;
+ 	s32 mode = 0;
++	s32 mon = 0;
++	s32 promisc = 0;
+ 	switch (iftype) {
+ 	case NL80211_IFTYPE_MONITOR:
++		mode = WL_MODE_MONITOR;
++		mon = 2;
++		promisc = 1;
++		break;
+ 	case NL80211_IFTYPE_WDS:
+ 		WL_ERR(("type (%d) : currently we do not support this mode\n",
+ 			iftype));
+@@ -15770,12 +15806,32 @@ static s32 wl_config_ifmode(struct bcm_cfg80211 *cfg, struct net_device *ndev, s
+ 		return err;
+ 	}
+ 	infra = htod32(infra);
++	mon = htod32(mon);
++	promisc = htod32(promisc);
++
+ 	err = wldev_ioctl_set(ndev, WLC_SET_INFRA, &infra, sizeof(infra));
+ 	if (unlikely(err)) {
+ 		WL_ERR(("WLC_SET_INFRA error (%d)\n", err));
+ 		return err;
+ 	}
+ 
++	err = wldev_ioctl(ndev, WLC_SET_PROMISC, &promisc, sizeof(s32), true);
++	if (unlikely(err)) {
++		WL_ERR(("WLC_SET_PROMISC error (%d)\n", err));
++		return err;
++	}
++	err = wldev_ioctl(ndev, WLC_SET_MONITOR, &mon, sizeof(mon), true);
++	if (unlikely(err)) {
++		WL_ERR(("WLC_SET_MONITOR error (%d)\n", err));
++		return err;
++	}
++
++	if (mon) {
++		ndev->type = ARPHRD_IEEE80211_RADIOTAP;
++	} else {
++		ndev->type = ARPHRD_ETHER;
++	}
++
+ 	wl_set_mode_by_netdev(cfg, ndev, mode);
+ 
+ 	return 0;
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfg80211.h b/drivers/net/wireless/bcmdhd/wl_cfg80211.h
+index 9d06534db7cd..b90994be8dac 100755
+--- a/drivers/net/wireless/bcmdhd/wl_cfg80211.h
++++ b/drivers/net/wireless/bcmdhd/wl_cfg80211.h
+@@ -339,7 +339,8 @@ enum wl_status {
+ enum wl_mode {
+ 	WL_MODE_BSS,
+ 	WL_MODE_IBSS,
+-	WL_MODE_AP
++	WL_MODE_AP,
++	WL_MODE_MONITOR
+ };
+ 
+ /* driver profile list */
+-- 
+2.11.0
+

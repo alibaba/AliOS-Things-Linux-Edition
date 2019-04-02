@@ -1,0 +1,77 @@
+From f073760210665c5f19a84aa9cb49956230f7752b Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Fri, 3 Aug 2018 10:35:51 +0800
+Subject: [PATCH 6/6] env: blk: Add fallback blk devs
+
+Change-Id: Ia346dafa18c09e4c2c7581baee0f05765ee4f56b
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ env/blk.c | 38 ++++++++++++++++++++++++++++++++++----
+ 1 file changed, 34 insertions(+), 4 deletions(-)
+
+diff --git a/env/blk.c b/env/blk.c
+index ed247c55b2..6148e3d2c9 100644
+--- a/env/blk.c
++++ b/env/blk.c
+@@ -27,6 +27,38 @@ DECLARE_GLOBAL_DATA_PTR;
+ #define CONFIG_ENV_OFFSET 0
+ #endif
+ 
++static inline struct blk_desc *env_blk_get_dev(void)
++{
++	struct blk_desc *desc = NULL;
++	int i;
++
++	struct env_blk_dev {
++		const char *if_name;
++		int dev;
++	} devs[] = {
++		{CONFIG_SYS_BLK_ENV_IF, CONFIG_SYS_BLK_ENV_DEV},
++		{"mmc", 0},
++		{"rknand", 0},
++		{"spinand", 0},
++		{"spinor", 1},
++	};
++
++	for (i = 0; i < ARRAY_SIZE(devs); i++) {
++		printf("Checking %s %d for env\n", devs[i].if_name,
++		       devs[i].dev);
++
++		desc = blk_get_devnum_by_typename(devs[i].if_name,
++						  devs[i].dev);
++		if (desc) {
++			printf("Using %s %d for env\n",
++			       devs[i].if_name, devs[i].dev);
++			break;
++		}
++	}
++
++	return desc;
++}
++
+ #if defined(CONFIG_CMD_SAVEENV) && !defined(CONFIG_SPL_BUILD)
+ static inline int write_env(struct blk_desc *desc, unsigned long size,
+ 			    unsigned long offset, const void *buffer)
+@@ -47,8 +79,7 @@ static int env_blk_save(void)
+ 	struct blk_desc *desc = NULL;
+ 	int ret, copy = 0;
+ 
+-	desc = blk_get_devnum_by_typename(CONFIG_SYS_BLK_ENV_IF,
+-					  CONFIG_SYS_BLK_ENV_DEV);
++	desc = env_blk_get_dev();
+ 	if (desc == NULL) {
+ 		printf("Unknown blk(%s %d) device for environment!\n",
+ 		       CONFIG_SYS_BLK_ENV_IF, CONFIG_SYS_BLK_ENV_DEV);
+@@ -106,8 +137,7 @@ static int env_blk_load(void)
+ 	struct blk_desc *desc = NULL;
+ 	int ret;
+ 
+-	desc = blk_get_devnum_by_typename(CONFIG_SYS_BLK_ENV_IF,
+-					  CONFIG_SYS_BLK_ENV_DEV);
++	desc = env_blk_get_dev();
+ 	if (desc == NULL) {
+ 		printf("Unknown desc(%s %d) device for environment!\n",
+ 		       CONFIG_SYS_BLK_ENV_IF, CONFIG_SYS_BLK_ENV_DEV);
+-- 
+2.11.0
+

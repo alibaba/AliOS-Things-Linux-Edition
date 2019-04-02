@@ -1,0 +1,80 @@
+From 0a4519271d06978b058047e48bc1e8181ef32696 Mon Sep 17 00:00:00 2001
+From: Bruce Lee <lr437200361@126.com>
+Date: Mon, 29 Oct 2018 19:19:42 +0800
+Subject: [PATCH] The default volume is adjusted to normal AMP_GAIN_PCM
+ adjusted to 17.5 dB
+
+---
+ sound/soc/codecs/cs35l41-tables.c | 4 ++--
+ sound/soc/codecs/cs35l41.c        | 4 ++--
+ sound/soc/codecs/cs35l41.h        | 5 +++--
+ 3 files changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/sound/soc/codecs/cs35l41-tables.c b/sound/soc/codecs/cs35l41-tables.c
+index 617bab8..a812096 100755
+--- a/sound/soc/codecs/cs35l41-tables.c
++++ b/sound/soc/codecs/cs35l41-tables.c
+@@ -84,7 +84,7 @@ const struct reg_default cs35l41_reg[CS35L41_MAX_CACHE_REG] = {
+ 	{CS35L41_DSP1_RX8_SRC,			0x00000001},
+ 	{CS35L41_NGATE1_SRC,			0x00000008},
+ 	{CS35L41_NGATE2_SRC,			0x00000009},
+-	{CS35L41_AMP_DIG_VOL_CTRL,		0x00008000},
++	{CS35L41_AMP_DIG_VOL_CTRL,		0x000095D0},
+ 	{CS35L41_VPBR_CFG,			0x02AA1905},
+ 	{CS35L41_VBBR_CFG,			0x02AA1905},
+ 	{CS35L41_VPBR_STATUS,			0x00000000},
+@@ -95,7 +95,7 @@ const struct reg_default cs35l41_reg[CS35L41_MAX_CACHE_REG] = {
+ 	{CS35L41_CLASSH_CFG,			0x000B0405},
+ 	{CS35L41_WKFET_CFG,			0x00000111},
+ 	{CS35L41_NG_CFG,			0x00000033},
+-	{CS35L41_AMP_GAIN_CTRL,			0x00000273},
++	{CS35L41_AMP_GAIN_CTRL,			0x00000233},
+ 	{CS35L41_DAC_MSM_CFG,			0x00580000},
+ 	{CS35L41_GPIO1_CTRL1,			0xE1000001},
+ 	{CS35L41_GPIO2_CTRL1,			0xE1000001},
+diff --git a/sound/soc/codecs/cs35l41.c b/sound/soc/codecs/cs35l41.c
+index 5e77636..cb5988a 100755
+--- a/sound/soc/codecs/cs35l41.c
++++ b/sound/soc/codecs/cs35l41.c
+@@ -709,7 +709,7 @@ static int cs35l41_main_amp_event(struct snd_soc_dapm_widget *w,
+ 		regmap_update_bits(cs35l41->regmap, CS35L41_AMP_DIG_VOL_CTRL,
+                                         CS35L41_AMP_VOL_RAMP_MASK <<
+                                         CS35L41_AMP_VOL_RAMP_SHIFT,
+-                                        CS35L41_AMP_VOL_RAMP_30MS_ON <<
++                                        CS35L41_AMP_VOL_RAMP_DEFAULT <<
+                                         CS35L41_AMP_VOL_RAMP_SHIFT);
+ 		regmap_update_bits(cs35l41->regmap, CS35L41_AMP_DIG_VOL_CTRL,
+ 					CS35L41_AMP_VOL_PCM_MASK <<
+@@ -951,7 +951,7 @@ static int cs35l41_pcm_mute(struct snd_soc_dai *dai, int mute, int stream)
+ 		 regmap_update_bits(cs35l41->regmap, CS35L41_AMP_DIG_VOL_CTRL,
+                                         CS35L41_AMP_VOL_RAMP_MASK <<
+                                         CS35L41_AMP_VOL_RAMP_SHIFT,
+-                                        CS35L41_AMP_VOL_RAMP_1MS_OFF <<
++                                        CS35L41_AMP_VOL_RAMP_DEFAULT <<
+                                         CS35L41_AMP_VOL_RAMP_SHIFT);
+ 		regmap_update_bits(cs35l41->regmap, CS35L41_AMP_DIG_VOL_CTRL,
+ 					CS35L41_AMP_VOL_PCM_MASK <<
+diff --git a/sound/soc/codecs/cs35l41.h b/sound/soc/codecs/cs35l41.h
+index 3f650c3..14fe368 100755
+--- a/sound/soc/codecs/cs35l41.h
++++ b/sound/soc/codecs/cs35l41.h
+@@ -558,13 +558,14 @@
+ 
+ #define CS35L41_AMP_VOL_PCM_SHIFT	0x03
+ #define CS35L41_AMP_VOL_PCM_MASK	0x7FF
+-#define CS35L41_AMP_VOL_PCM_DEFAULT	0x0331
++#define CS35L41_AMP_VOL_PCM_DEFAULT	0x02ba
+ #define CS35L41_AMP_VOL_PCM_MUTE	0x04CF
+ 
+ #define CS35L41_AMP_VOL_RAMP_MASK       0x7
+ #define CS35L41_AMP_VOL_RAMP_SHIFT      0x0
++#define CS35L41_AMP_VOL_RAMP_DEFAULT    0x0
+ #define CS35L41_AMP_VOL_RAMP_1MS_OFF    0x2
+-#define CS35L41_AMP_VOL_RAMP_30MS_ON     0x5
++#define CS35L41_AMP_VOL_RAMP_30MS_ON    0x5
+ 
+ #define CS35L41_BST_CTL_MASK		0xFF
+ #define CS35L41_BST_CTL_SEL_MASK	0x03
+-- 
+2.7.4
+

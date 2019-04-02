@@ -1,0 +1,105 @@
+From 6db0a051c6767537b3c2e5517d4d70d8425678fa Mon Sep 17 00:00:00 2001
+From: Bruce Lee <lr437200361@126.com>
+Date: Tue, 23 Oct 2018 20:24:49 +0800
+Subject: [PATCH] Fixed errors that Bluetooth can't enable Add 3196A Led Driver
+
+---
+ arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi  | 19 ++++++++++---------
+ drivers/leds/leds-sn3106b.c                           | 10 +++++-----
+ 4 files changed, 28 insertions(+), 19 deletions(-)
+
+diff --git a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+index b79be1f..6a45b57 100644
+--- a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
++++ b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+@@ -64,7 +64,7 @@
+ 		};
+ 
+ 		vol-down-key {
+-			gpios = <&gpio0 RK_PA6 GPIO_ACTIVE_LOW>;
++			gpios = <&gpio0 RK_PB4 GPIO_ACTIVE_LOW>;
+ 			linux,code = <KEY_VOLUMEDOWN>;
+ 			label = "GPIO volume down";
+ 			wakeup-source;
+@@ -72,7 +72,7 @@
+ 		};
+ 
+ 		vol-up-key {
+-			gpios = <&gpio0 RK_PA7 GPIO_ACTIVE_LOW>;
++			gpios = <&gpio0 RK_PB3 GPIO_ACTIVE_LOW>;
+ 			linux,code = <KEY_VOLUMEUP>;
+ 			label = "GPIO volume up";
+ 			wakeup-source;
+@@ -283,11 +283,11 @@
+ 		};
+ 
+ 		vol_down_key: vol-down-key {
+-			rockchip,pins = <0 RK_PA6 RK_FUNC_GPIO &pcfg_pull_up>;
++			rockchip,pins = <0 RK_PB4 RK_FUNC_GPIO &pcfg_pull_up>;
+ 		};
+ 
+ 		vol_up_key: vol-up-key {
+-			rockchip,pins = <0 RK_PA7 RK_FUNC_GPIO &pcfg_pull_up>;
++			rockchip,pins = <0 RK_PB3 RK_FUNC_GPIO &pcfg_pull_up>;
+ 		};
+ 	};
+ 
+@@ -439,13 +439,14 @@
+ 	};
+ };
+ 
+-&i2c1 {
++&i2c3 {
+ 	status = "okay";
++    clock-frequency = <400000>;
+ 
+-	sn3106drv:sn3236drv@54 {
++	sn3106drv:sn3236drv@64 {
+ 		status = "okay";
+ 		compatible = "rockchip,sn3106b";
+-		reg = <0x54>;
+-		gpios = <&gpio0 RK_PB0 GPIO_ACTIVE_HIGH>;
++		reg = <0x64>;
++		gpios = <&gpio0 RK_PB6 GPIO_ACTIVE_HIGH>;
+ 	};
+ };
+diff --git a/drivers/leds/leds-sn3106b.c b/drivers/leds/leds-sn3106b.c
+index 3cc701d..d1e0f03 100755
+--- a/drivers/leds/leds-sn3106b.c
++++ b/drivers/leds/leds-sn3106b.c
+@@ -27,11 +27,11 @@
+ #define SN3106B_REG_PWM_OUT5 	0x0B
+ #define SN3106B_REG_PWM_OUT6 	0x0C
+ 
+-#define SN3106B_REG_CTRL_OUT 	0x14 //led control reg
++#define SN3106B_REG_CTRL_OUT 	0x01 //led control reg
+ 
+-#define SN3106B_REG_DATA_UPDATE	0x16 //pwm and led control update reg
++#define SN3106B_REG_DATA_UPDATE	0x10 //pwm and led control update reg
+ 
+-#define SN3106B_REG_RST 	0x17 	//reset reg
++#define SN3106B_REG_RST 	0xFF 	//reset reg
+  
+ 
+ #define uchar unsigned char
+@@ -136,7 +136,7 @@ void SN3106B_Init(struct i2c_client *client,unsigned char pwmdata)
+ 	//while(1)
+ 	{	
+ 	i2c_SN3106B_writes(client,SN3106B_REG_PWM_OUT1,pwmdata,6);
+- 	i2c_SN3106B_write(client,SN3106B_REG_CTRL_OUT,0x07);//blue
++ 	i2c_SN3106B_write(client,SN3106B_REG_CTRL_OUT,0x77);//blue
+ 
+ 	SN3106B_DataUpdate(client);
+ 	//printk("----------%s----\n",__func__);
+@@ -257,7 +257,7 @@ static int SN3106B_i2c_probe(struct i2c_client *client, const struct i2c_device_
+   	pr_err("1111no memory for device\n");
+     	return -ENOMEM;
+   }
+-   //printk("----------%s----\n",__func__);
++   printk("----------%s----\n",__func__);
+ 	SN3106B->client = client;
+     i2c_set_clientdata(client, SN3106B);
+ 
+-- 
+2.7.4
+

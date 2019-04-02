@@ -1,0 +1,314 @@
+From fa2dcfbe4bc1715affcb44d617669901255387f3 Mon Sep 17 00:00:00 2001
+From: jichi <jichi.lr@alibaba-inc.com>
+Date: Thu, 2 Aug 2018 17:58:34 +0800
+Subject: [PATCH 3/5] TLV320DAC3100 Work Normal
+
+Change-Id: Ie2056fdf1c65116c24d9b97ea842db90c7d199ef
+---
+ .../boot/dts/rk3308-ali-module-v10-aarch32.dtsi    |  8 ++-
+ arch/arm64/boot/dts/rockchip/rk3308.dtsi           |  0
+ sound/soc/codecs/tlv320dac3100.c                   | 35 ++++++++++--
+ sound/soc/rockchip/rockchip_tlv320dac3100.c        | 63 ++--------------------
+ 4 files changed, 43 insertions(+), 63 deletions(-)
+ mode change 100644 => 100755 arch/arm64/boot/dts/rockchip/rk3308.dtsi
+ mode change 100644 => 100755 sound/soc/codecs/tlv320dac3100.c
+ mode change 100644 => 100755 sound/soc/rockchip/rockchip_tlv320dac3100.c
+
+diff --git a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+index aec4e0382e11..0040769dfc85 100644
+--- a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
++++ b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+@@ -24,6 +24,11 @@
+ 		status = "okay";
+ 	};
+ 
++	grf1: grf1@ff500000 {
++		compatible = "rockchip,rk3308-grf", "syscon", "simple-mfd";
++		reg = <0x0 0xff500000 0x0 0x10000>;
++	};
++
+ 	adc-keys {
+ 		compatible = "adc-keys";
+ 		io-channels = <&saradc 1>;
+@@ -231,7 +236,7 @@
+ 	status = "okay";
+ 
+ 	vccio0-supply = <&vcc_io>;
+-	vccio1-supply = <&vcc_io>;
++	vccio1-supply = <&vcc_1v8>;
+ 	vccio2-supply = <&vcc_1v8>;
+ 	vccio3-supply = <&vcc_io>;
+ 	vccio4-supply = <&vccio_sdio>;
+@@ -411,6 +416,7 @@
+ 		compatible = "ti,tlv320dac3100";
+ 		reset-gpios = <&gpio1 RK_PC6 GPIO_ACTIVE_LOW>;
+ 		reg = <0x18>;
++		rockchip,grf = <&grf1>;
+ 	};
+ };
+ 
+diff --git a/arch/arm64/boot/dts/rockchip/rk3308.dtsi b/arch/arm64/boot/dts/rockchip/rk3308.dtsi
+old mode 100644
+new mode 100755
+diff --git a/sound/soc/codecs/tlv320dac3100.c b/sound/soc/codecs/tlv320dac3100.c
+old mode 100644
+new mode 100755
+index 1124bb8284c8..803c1fdbaf0f
+--- a/sound/soc/codecs/tlv320dac3100.c
++++ b/sound/soc/codecs/tlv320dac3100.c
+@@ -22,6 +22,8 @@
+ #include <sound/soc.h>
+ #include <sound/tlv.h>
+ #include <sound/pcm_params.h>
++#include <linux/clk.h>
++#include <linux/mfd/syscon.h>
+ 
+ #define DAC3100_PAGE_SIZE 128
+ #define DAC3100_MAX_PAGES 13
+@@ -90,6 +92,8 @@
+ #define DAC3100_DAC_MOD_CLK_MIN	2800000
+ #define DAC3100_DAC_MOD_CLK_MAX	6200000
+ 
++#define GRF_SOC_CON2 0x32c
++
+ struct dac3100 {
+ 	struct device *dev;
+ 	struct snd_soc_codec *codec;
+@@ -98,6 +102,7 @@ struct dac3100 {
+ 
+ 	unsigned clkin_rate;
+ 	unsigned clkin_src;
++    struct regmap *grf;
+ };
+ 
+ struct dac_filter {
+@@ -380,7 +385,8 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 	int clkmux;
+ 	int clkin;
+ 	int err;
+-
++    regmap_write(dac->grf, GRF_SOC_CON2, 0x00800000);
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	/* Check the word length */
+ 	switch (params_format(params)) {
+ 	case SNDRV_PCM_FORMAT_S16_LE:
+@@ -411,6 +417,7 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 		dosr_round = 8;
+ 	}
+ 
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	/* TODO: When implementing filters replace this with a table lookup
+ 	 * to choose the best processing block. */
+ 	switch(filter) {
+@@ -445,6 +452,7 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 		return -EINVAL;
+ 	}
+ 
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	/* If the mclk is not a multiple of the samplerate
+ 	 * we need to use the fractional PLL to produce such a rate */
+ 	if (dac->clkin_rate % fs) {
+@@ -484,6 +492,7 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 		}
+ 	}
+ 
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	/* Find the highest possible DOSR value */
+ 	dosr = DAC3100_DAC_MOD_CLK_MAX / fs;
+ 	dosr = dosr / dosr_round * dosr_round;
+@@ -535,6 +544,7 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 	if (err)
+ 		goto error;
+ 
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	/* Setup the clock mux */
+ 	clkmux = dac->clkin_src & 3;
+ 	if (jd > 10000)
+@@ -566,6 +576,7 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 		msleep(10);
+ 	}
+ 
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	/* Configure the dividers */
+ 	err = snd_soc_write(codec, DAC3100_DAC_NDAC, (ndac & 0x7f) | BIT(7));
+ 	if (err)
+@@ -580,6 +591,7 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 	if (err)
+ 		goto error_mdac;
+ 
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	/* Setup the word size */
+ 	err = snd_soc_update_bits(codec, DAC3100_CODEC_IFACE_CTRL1,
+ 				3 << 4, word_len << 4);
+@@ -591,6 +603,7 @@ static int dac3100_hw_params(struct snd_pcm_substream *substream,
+ 	if (err)
+ 		goto error_mdac;
+ 
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 	return 0;
+ 
+ error_mdac:
+@@ -692,6 +705,14 @@ static struct snd_soc_dai_driver dac3100_dai = {
+ };
+ 
+ static struct snd_soc_codec_driver soc_codec_dac3100 = {
++	.component_driver = {
++		.controls = dac3100_snd_controls,
++		.num_controls = ARRAY_SIZE(dac3100_snd_controls),
++		.dapm_widgets = dac3100_dapm_widgets,
++		.num_dapm_widgets = ARRAY_SIZE(dac3100_dapm_widgets),
++		.dapm_routes = dac3100_intercon,
++		.num_dapm_routes = ARRAY_SIZE(dac3100_intercon),
++	},
+ };
+ 
+ 
+@@ -715,13 +736,22 @@ static int dac3100_i2c_probe(struct i2c_client *client,
+ {
+ 	struct dac3100 *dac;
+     enum of_gpio_flags flags;
++	struct device_node *np = client->dev.of_node;
+ 	int err;
+ 
+-    printk("-------------------------------------%s %d\n", __func__, __LINE__);
+ 	dac = devm_kzalloc(&client->dev, sizeof(*dac), GFP_KERNEL);
++
+ 	if (dac == NULL)
+ 		return -ENOMEM;
+ 
++    dac->grf = syscon_regmap_lookup_by_phandle(np, "rockchip,grf");
++    if (IS_ERR(dac->grf))
++    {
++        pr_err("Missing rockchip,grf property\n");
++        return PTR_ERR(dac->grf);
++    }
++    regmap_write(dac->grf, GRF_SOC_CON2, 0x00800000);
++
+ 	dac->dev = &client->dev;
+ 	dac->regmap = devm_regmap_init_i2c(client, &dac3100_regmap);
+ 	if (IS_ERR(dac->regmap)) {
+@@ -764,7 +794,6 @@ static int dac3100_i2c_probe(struct i2c_client *client,
+ 	msleep(1);
+ 
+     dac_filter_init(dac->regmap, dac_filter_buff);
+-    printk("-------------------------------------%s %d\n", __func__, __LINE__);
+ 	/* Register the codec */
+ 	return snd_soc_register_codec(&client->dev,
+ 				&soc_codec_dac3100, &dac3100_dai, 1);
+diff --git a/sound/soc/rockchip/rockchip_tlv320dac3100.c b/sound/soc/rockchip/rockchip_tlv320dac3100.c
+old mode 100644
+new mode 100755
+index 73dcdc389097..46f575075342
+--- a/sound/soc/rockchip/rockchip_tlv320dac3100.c
++++ b/sound/soc/rockchip/rockchip_tlv320dac3100.c
+@@ -70,56 +70,13 @@ static const struct snd_kcontrol_new rk_mc_controls[] = {
+ static int rk_tlv320dac3100_hw_params(struct snd_pcm_substream *substream,
+ 			     struct snd_pcm_hw_params *params)
+ {
+-#if 0
+-	int ret = 0;
+-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+-	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+-	struct snd_soc_dai *codec_dai = rtd->codec_dai;
+-	int mclk;
+-
+-	switch (params_rate(params)) {
+-	case 8000:
+-	case 16000:
+-	case 24000:
+-	case 32000:
+-	case 48000:
+-	case 64000:
+-	case 96000:
+-		mclk = 12288000;
+-		break;
+-	case 11025:
+-	case 22050:
+-	case 44100:
+-	case 88200:
+-		mclk = 11289600;
+-		break;
+-	default:
+-		return -EINVAL;
+-	}
+-
+-	ret = snd_soc_dai_set_sysclk(cpu_dai, 0, mclk,
+-				     SND_SOC_CLOCK_OUT);
+-	if (ret < 0) {
+-		dev_err(codec_dai->dev, "Can't set codec clock %d\n", ret);
+-		return ret;
+-	}
+-
+-	ret = snd_soc_dai_set_sysclk(codec_dai, 0, mclk,
+-				     SND_SOC_CLOCK_IN);
+-	if (ret < 0) {
+-		dev_err(codec_dai->dev, "Can't set codec clock %d\n", ret);
+-		return ret;
+-	}
+-
+-	return ret;
+-#else
+     struct snd_soc_pcm_runtime *rtd = substream->private_data;
+     struct snd_soc_dai *codec_dai = rtd->codec_dai;
+     struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
+     unsigned int pll_out = 0, dai_fmt = rtd->card->dai_link->dai_fmt;
+     int ret;
+ 
+-    dev_err(codec_dai->dev, "Enter::%s----%d\n",__FUNCTION__,__LINE__);
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 
+     /* set codec DAI configuration */
+     ret = snd_soc_dai_set_fmt(codec_dai, dai_fmt);
+@@ -127,6 +84,7 @@ static int rk_tlv320dac3100_hw_params(struct snd_pcm_substream *substream,
+         printk("%s():failed to set the format for codec side\n", __FUNCTION__);
+         return ret;
+     }
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 
+     /* set cpu DAI configuration */
+     ret = snd_soc_dai_set_fmt(cpu_dai, dai_fmt);
+@@ -134,6 +92,7 @@ static int rk_tlv320dac3100_hw_params(struct snd_pcm_substream *substream,
+         printk("%s():failed to set the format for cpu side\n", __FUNCTION__);
+         return ret;
+     }
++    printk("Enter::%s----%d\n",__FUNCTION__,__LINE__);
+ 
+     switch(params_rate(params)) {
+     case 8000:
+@@ -163,24 +122,10 @@ static int rk_tlv320dac3100_hw_params(struct snd_pcm_substream *substream,
+ 
+     dev_err(codec_dai->dev, "Enter:%s, %d, LRCK=%d\n",__FUNCTION__,__LINE__,(pll_out/4)/params_rate(params));
+     return 0;
+-
+-#endif
+ }
+ 
+ static int rk_init(struct snd_soc_pcm_runtime *runtime)
+ {
+-#if 0
+-	/* Enable Headset and 4 Buttons Jack detection */
+-	ret = snd_soc_card_jack_new(card, "Headset Jack",
+-				    SND_JACK_HEADPHONE | SND_JACK_MICROPHONE |
+-				    SND_JACK_BTN_0 | SND_JACK_BTN_1 |
+-				    SND_JACK_BTN_2 | SND_JACK_BTN_3,
+-				    &headset_jack, NULL, 0);
+-	if (ret) {
+-		dev_err(card->dev, "New Headset Jack failed! (%d)\n", ret);
+-		return ret;
+-	}
+-#else
+     struct snd_soc_dai *codec_dai = runtime->codec_dai;
+     int ret;
+ 
+@@ -191,7 +136,7 @@ static int rk_init(struct snd_soc_pcm_runtime *runtime)
+         printk(KERN_ERR "Failed to set dac3100 SYSCLK: %d\n", ret);
+         return ret;
+     }
+-#endif  
++
+     return 0;
+ }
+ 
+-- 
+2.11.0
+

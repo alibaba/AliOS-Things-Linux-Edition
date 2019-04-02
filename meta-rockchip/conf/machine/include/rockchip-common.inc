@@ -37,7 +37,7 @@ do_post_rootfs() {
 
 	echo "Running ${POST_ROOTFS_SCRIPT}..."
 
-	cd ${POST_ROOTFS_SCRIPT}/../
+	cd `dirname ${POST_ROOTFS_SCRIPT}`
 	./post_rootfs.sh ${IMAGE_ROOTFS}
 }
 
@@ -49,8 +49,10 @@ gen_data() {
 
 	[ -f data.tar ] && tar xf data.tar
 
-	dd if=/dev/null of=data.ext4 bs=${RK_DATA_SIZE}K count=0 seek=1
-	mke2fs -F data.ext4 -d data -L data
+	dd if=/dev/zero of=data.ext4 bs=${RK_DATA_SIZE}K count=0 seek=1
+	mkfs.ext4 -F -i 4096 data.ext4 -d data -L data
+	# Error codes 0-3 indicate successfull operation of fsck (no errors or errors corrected)
+	fsck.ext4 -pvfD data.ext4 || [ $? -le 3  ]
 }
 
 IMAGE_POSTPROCESS_COMMAND += "gen_rkparameter;"
@@ -76,7 +78,8 @@ gen_rkparameter() {
 		SIZE=$(expr ${END} - ${START} + 1)
 		printf "0x%08x@0x%08x(%s)," ${SIZE} ${START} ${NAME} >> ${OUT}
 	done
-	echo "\nuuid: rootfs=${RK_ROOTDEV_UUID}" >> ${OUT}
+	echo "" >> ${OUT}
+	echo "uuid: rootfs=${RK_ROOTDEV_UUID}" >> ${OUT}
 }
 
 IMAGE_POSTPROCESS_COMMAND += "gen_rkupdateimg;"

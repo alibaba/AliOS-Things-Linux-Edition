@@ -1,0 +1,1338 @@
+diff --git a/runtest/cve b/runtest/cve
+index 6e3e52d..937db09 100644
+--- a/runtest/cve
++++ b/runtest/cve
+@@ -1,10 +1,10 @@
+ # Tests which check for vulnerabilities by CVE number
+ cve-2012-0957 cve-2012-0957
+ cve-2014-0196 cve-2014-0196
+-cve-2016-4997 cve-2016-4997
+-cve-2016-5195 dirtyc0w
++#cve-2016-4997 cve-2016-4997
++#cve-2016-5195 dirtyc0w
+ cve-2016-7117 cve-2016-7117
+ cve-2017-2671 cve-2017-2671
+ cve-2017-5669 cve-2017-5669
+-cve-2017-6951 cve-2017-6951
++#cve-2017-6951 cve-2017-6951
+ cve-2017-1000364 stack_clash
+diff --git a/runtest/dio b/runtest/dio
+index 185cd57..86deeb7 100644
+--- a/runtest/dio
++++ b/runtest/dio
+@@ -3,7 +3,7 @@
+ dio01 diotest1
+ dio02 diotest2
+ dio03 diotest3
+-dio04 diotest4
++#dio04 diotest4
+ dio05 diotest5
+ dio06 diotest6
+ 
+@@ -11,37 +11,37 @@ dio06 diotest6
+ dio07 diotest1 -b 65536
+ dio08 diotest2 -b 65536
+ dio09 diotest3 -b 65536
+-dio10 diotest4 -b 65536
++#dio10 diotest4 -b 65536
+ dio11 diotest5 -b 65536
+ dio12 diotest6 -b 65536
+ 
+ ### Run the tests with larger iterations
+-dio13 diotest1 -b 65536 -n 2000
+-dio14 diotest2 -b 65536 -i 1000
+-dio15 diotest3 -b 65536 -i 1000
+-dio16 diotest5 -b 65536 -i 1000
+-dio17 diotest6 -b 65536 -i 1000
++#dio13 diotest1 -b 65536 -n 2000
++#dio14 diotest2 -b 65536 -i 1000
++#dio15 diotest3 -b 65536 -i 1000
++#dio16 diotest5 -b 65536 -i 1000
++#dio17 diotest6 -b 65536 -i 1000
+ 
+ ## Run the tests with larger offset - 1MB
+-dio18 diotest2 -b 65536 -i 1000 -o 1024000
+-dio19 diotest3 -b 65536 -i 1000 -o 1024000
+-dio20 diotest5 -b 65536 -i 1000 -o 1024000
+-dio21 diotest6 -b 65536 -i 1000 -o 1024000
++#dio18 diotest2 -b 65536 -i 1000 -o 1024000
++#dio19 diotest3 -b 65536 -i 1000 -o 1024000
++#dio20 diotest5 -b 65536 -i 1000 -o 1024000
++#dio21 diotest6 -b 65536 -i 1000 -o 1024000
+ 
+ ## Run the tests with larger offset - 100 MB
+-dio22 diotest2 -b 65536 -i 1000 -o 104857600
+-dio23 diotest3 -b 65536 -i 1000 -o 104857600
+-dio24 diotest5 -b 65536 -i 1000 -o 104857600
+-dio25 diotest6 -b 65536 -i 1000 -o 104857600
++#dio22 diotest2 -b 65536 -i 1000 -o 104857600
++#dio23 diotest3 -b 65536 -i 1000 -o 104857600
++#dio24 diotest5 -b 65536 -i 1000 -o 104857600
++#dio25 diotest6 -b 65536 -i 1000 -o 104857600
+ 
+ ### Run tests with larger vector array
+-dio26 diotest6 -b 8192 -v 100
+-dio27 diotest6 -b 8192 -o 1024000 -i 1000 -v 100
+-dio28 diotest6 -b 8192 -o 1024000 -i 1000 -v 200
++#dio26 diotest6 -b 8192 -v 100
++#dio27 diotest6 -b 8192 -o 1024000 -i 1000 -v 100
++#dio28 diotest6 -b 8192 -o 1024000 -i 1000 -v 200
+ 
+ ### Run the tests with more children
+-dio29 diotest3 -b 65536 -n 100 -i 100 -o 1024000
+-dio30 diotest6 -b 65536 -n 100 -i 100 -o 1024000
++#dio29 diotest3 -b 65536 -n 100 -i 100 -o 1024000
++#dio30 diotest6 -b 65536 -n 100 -i 100 -o 1024000
+ #
+ # RAW DEVICE TEST SECTION
+ #   DEV1 and DEV2 should be exported prior to execution or
+diff --git a/runtest/fs b/runtest/fs
+index 33a8412..ac28864 100644
+--- a/runtest/fs
++++ b/runtest/fs
+@@ -8,15 +8,15 @@ gf06 growfiles -W gf06 -b -e 1 -u -r 1-5000 -R 0--1 -i 0 -L 30 -C 1 -f g_rand10
+ gf07 growfiles -W gf07 -b -e 1 -u -r 1-5000 -R 0--2 -i 0 -L 30 -C 1 -I p -f g_rand13 -S 2 -d $TMPDIR
+ gf08 growfiles -W gf08 -b -e 1 -u -r 1-5000 -R 0--2 -i 0 -L 30 -C 1 -f g_rand11 -S 2 -d $TMPDIR
+ gf09 growfiles -W gf09 -b -e 1 -u -r 1-5000 -R 0--1 -i 0 -L 30 -C 1 -I p -f g_rand12 -S 2 -d $TMPDIR
+-gf10 growfiles -W gf10 -b -e 1 -u -r 1-5000 -i 0 -L 30 -C 1 -I l -f g_lio14 -S 2 -d $TMPDIR
+-gf11 growfiles -W gf11 -b -e 1 -u -r 1-5000 -i 0 -L 30 -C 1 -I L -f g_lio15 -S 2 -d $TMPDIR
++#gf10 growfiles -W gf10 -b -e 1 -u -r 1-5000 -i 0 -L 30 -C 1 -I l -f g_lio14 -S 2 -d $TMPDIR
++#gf11 growfiles -W gf11 -b -e 1 -u -r 1-5000 -i 0 -L 30 -C 1 -I L -f g_lio15 -S 2 -d $TMPDIR
+ gf12 mkfifo $TMPDIR/gffifo17; growfiles -b -W gf12 -e 1 -u -i 0 -L 30 $TMPDIR/gffifo17
+ gf13 mkfifo $TMPDIR/gffifo18; growfiles -b -W gf13 -e 1 -u -i 0 -L 30 -I r -r 1-4096 $TMPDIR/gffifo18
+ gf14 growfiles -W gf14 -b -e 1 -u -i 0 -L 20 -w -l -C 1 -T 10 -f glseek19 -S 2 -d $TMPDIR
+-gf15 growfiles -W gf15 -b -e 1 -u -r 1-49600 -I r -u -i 0 -L 120 -f Lgfile1 -d $TMPDIR
++#gf15 growfiles -W gf15 -b -e 1 -u -r 1-49600 -I r -u -i 0 -L 120 -f Lgfile1 -d $TMPDIR
+ gf16 growfiles -W gf16 -b -e 1 -i 0 -L 120 -u -g 4090 -T 101 -t 408990 -l -C 10 -c 1000 -S 10 -f Lgf02_ -d $TMPDIR
+ gf17 growfiles -W gf17 -b -e 1 -i 0 -L 120 -u -g 5000 -T 101 -t 499990 -l -C 10 -c 1000 -S 10 -f Lgf03_ -d $TMPDIR
+-gf18 growfiles -W gf18 -b -e 1 -i 0 -L 120 -w -u -r 10-5000 -I r -l -S 2 -f Lgf04_ -d $TMPDIR
++#gf18 growfiles -W gf18 -b -e 1 -i 0 -L 120 -w -u -r 10-5000 -I r -l -S 2 -f Lgf04_ -d $TMPDIR
+ gf19 growfiles -W gf19 -b -e 1 -g 5000 -i 500 -t 49900 -T10 -c9 -I p -o O_RDWR,O_CREAT,O_TRUNC -u -f gf08i_ -d $TMPDIR
+ gf20 growfiles -W gf20 -D 0 -b -i 0 -L 60 -u -B 1000b -e 1 -r 1-256000:512 -R 512-256000 -T 4 -f gfbigio-$$ -d $TMPDIR
+ gf21 growfiles -W gf21 -D 0 -b -i 0 -L 60 -u -B 1000b -e 1 -g 20480 -T 10 -t 20480 -f gf-bld-$$ -d $TMPDIR
+@@ -27,13 +27,13 @@ gf25 growfiles -W gf25 -D 0 -b -i 0 -L 60 -u -B 1000b -e 1 -r 1024000-2048000:20
+ gf26 growfiles -W gf26 -D 0 -b -i 0 -L 60 -u -B 1000b -e 1 -r 128-32768:128 -R 512-64000 -T 4 -f gfsmallio-$$ -d $TMPDIR
+ gf27 growfiles -W gf27 -b -D 0 -w -g 8b -C 1 -b -i 1000 -u -f gfsparse-1-$$ -d $TMPDIR
+ gf28 growfiles -W gf28 -b -D 0 -w -g 16b -C 1 -b -i 1000 -u -f gfsparse-2-$$ -d $TMPDIR
+-gf29 growfiles -W gf29 -b -D 0 -r 1-4096 -R 0-33554432 -i 0 -L 60 -C 1 -u -f gfsparse-3-$$ -d $TMPDIR
++#gf29 growfiles -W gf29 -b -D 0 -r 1-4096 -R 0-33554432 -i 0 -L 60 -C 1 -u -f gfsparse-3-$$ -d $TMPDIR
+ gf30 growfiles -W gf30 -D 0 -b -i 0 -L 60 -u -B 1000b -e 1 -o O_RDWR,O_CREAT,O_SYNC -g 20480 -T 10 -t 20480 -f gf-sync-$$ -d $TMPDIR
+-rwtest01 export LTPROOT; rwtest -N rwtest01 -c -q -i 60s  -f sync 10%25000:$TMPDIR/rw-sync-$$
+-rwtest02 export LTPROOT; rwtest -N rwtest02 -c -q -i 60s  -f buffered 10%25000:$TMPDIR/rw-buffered-$$
+-rwtest03 export LTPROOT; rwtest -N rwtest03 -c -q -i 60s -n 2  -f buffered -s mmread,mmwrite -m random -Dv 10%25000:$TMPDIR/mm-buff-$$
+-rwtest04 export LTPROOT; rwtest -N rwtest04 -c -q -i 60s -n 2  -f sync -s mmread,mmwrite -m random -Dv 10%25000:$TMPDIR/mm-sync-$$
+-rwtest05 export LTPROOT; rwtest -N rwtest05 -c -q -i 50 -T 64b 500b:$TMPDIR/rwtest01%f
++#rwtest01 export LTPROOT; rwtest -N rwtest01 -c -q -i 60s  -f sync 10%25000:$TMPDIR/rw-sync-$$
++#rwtest02 export LTPROOT; rwtest -N rwtest02 -c -q -i 60s  -f buffered 10%25000:$TMPDIR/rw-buffered-$$
++#rwtest03 export LTPROOT; rwtest -N rwtest03 -c -q -i 60s -n 2  -f buffered -s mmread,mmwrite -m random -Dv 10%25000:$TMPDIR/mm-buff-$$
++#rwtest04 export LTPROOT; rwtest -N rwtest04 -c -q -i 60s -n 2  -f sync -s mmread,mmwrite -m random -Dv 10%25000:$TMPDIR/mm-sync-$$
++#rwtest05 export LTPROOT; rwtest -N rwtest05 -c -q -i 50 -T 64b 500b:$TMPDIR/rwtest01%f
+ 
+ #must be run as root
+ #iogen01 iogen -i 120s -s read,write 500b:doio.f1.$$ 1000b:doio.f2.$$ | doio -akv -n 2
+@@ -43,7 +43,7 @@ fs_inod01 fs_inod $TMPDIR 10 10 10
+ linker01 linktest.sh 1000 1000
+ openfile01 openfile -f10 -t10
+ inode01 inode01
+-inode02 inode02
++#inode02 inode02
+ stream01 stream01
+ stream02 stream02
+ stream03 stream03
+@@ -58,11 +58,11 @@ ftest06 ftest06
+ ftest07 ftest07
+ ftest08 ftest08
+ 
+-lftest01	lftest 100
++#lftest01	lftest 100
+ writetest01	writetest
+ 
+ #Also run the fs_di (Data Integrity tests)
+-fs_di fs_di -d $TMPDIR
++#fs_di fs_di -d $TMPDIR
+ 
+ # Read every file in /proc. Not likely to crash, but does enough
+ # to disturb the kernel. A good kernel latency killer too.
+@@ -75,4 +75,4 @@ fs_racer fs_racer.sh -t 5
+ #Run the Quota Remount Test introduced in linux-2.6.26
+ quota_remount_test01 quota_remount_test01.sh
+ 
+-isofs isofs.sh
++#isofs isofs.sh
+diff --git a/runtest/hyperthreading b/runtest/hyperthreading
+index a0a2e23..781e5c0 100644
+--- a/runtest/hyperthreading
++++ b/runtest/hyperthreading
+@@ -1,5 +1,5 @@
+ #DESCRIPTION:Hyperthreading stress tests
+ smt_smp_enabled smt_smp_enabled.sh
+ smt_smp_affinity smt_smp_affinity.sh
+-ht_interrupt ht_interrupt
++#ht_interrupt ht_interrupt
+ 
+diff --git a/runtest/kernel_misc b/runtest/kernel_misc
+index a574802..d24f444 100644
+--- a/runtest/kernel_misc
++++ b/runtest/kernel_misc
+@@ -1,14 +1,14 @@
+ kmsg01 kmsg01
+-fw_load fw_load
+-rtc01 rtc01
+-block_dev block_dev
+-tpci tpci
+-tbio tbio
+-ltp_acpi ltp_acpi
+-cpufreq_boost cpufreq_boost
+-uaccess uaccess
+-rcu_torture rcu_torture.sh
+-lock_torture lock_torture.sh
+-zram01 zram01.sh
+-zram02 zram02.sh
+-zram03 zram03
++#fw_load fw_load
++#rtc01 rtc01
++#block_dev block_dev
++#tpci tpci
++#tbio tbio
++#ltp_acpi ltp_acpi
++#cpufreq_boost cpufreq_boost
++#uaccess uaccess
++#rcu_torture rcu_torture.sh
++#lock_torture lock_torture.sh
++#zram01 zram01.sh
++#zram02 zram02.sh
++#zram03 zram03
+diff --git a/runtest/math b/runtest/math
+index 110c41e..210adb2 100644
+--- a/runtest/math
++++ b/runtest/math
+@@ -3,11 +3,11 @@ abs01 abs01
+ 
+ atof01 atof01
+ 
+-float_bessel cd $LTPROOT/testcases/bin; float_bessel -v
+-float_exp_log cd $LTPROOT/testcases/bin; float_exp_log -v
+-float_iperb cd $LTPROOT/testcases/bin; float_iperb -v
+-float_power cd $LTPROOT/testcases/bin; float_power -v
+-float_trigo cd $LTPROOT/testcases/bin; float_trigo -v
++#float_bessel cd $LTPROOT/testcases/bin; float_bessel -v
++#float_exp_log cd $LTPROOT/testcases/bin; float_exp_log -v
++#float_iperb cd $LTPROOT/testcases/bin; float_iperb -v
++#float_power cd $LTPROOT/testcases/bin; float_power -v
++#float_trigo cd $LTPROOT/testcases/bin; float_trigo -v
+ 
+ fptest01 fptest01
+ fptest02 fptest02
+diff --git a/runtest/mm b/runtest/mm
+index d108d18..466295c 100644
+--- a/runtest/mm
++++ b/runtest/mm
+@@ -1,5 +1,5 @@
+ #DESCRIPTION:Memory Mgmt tests
+-mm01 mmap001 -m 10000
++#mm01 mmap001 -m 10000
+ # 40 Mb mmap() test.
+ # Creates a 10000 page mmap, touches all of the map, sync's it, and
+ # munmap()s it.
+@@ -13,18 +13,18 @@ mtest01 mtest01 -p80
+ mtest01w mtest01 -p80 -w
+ 
+ #test for race conditions
+-mtest05   mmstress
+-mtest06   mmap1 -x 0.05
+-mtest06_2 mmap2 -x 0.002 -a -p
+-mtest06_3 mmap3 -x 0.002 -p
++#mtest05   mmstress
++#mtest06   mmap1 -x 0.05
++#mtest06_2 mmap2 -x 0.002 -a -p
++#mtest06_3 mmap3 -x 0.002 -p
+ # Remains diabled till the infinite loop problem is solved
+ #mtest-6_4 shmat1 -x 0.00005
+ 
+-mem01 mem01
+-mem02 mem02
++#mem01 mem01
++#mem02 mem02
+ mem03 mem03
+ 
+-page01 page01
++#page01 page01
+ page02 page02
+ 
+ data_space data_space
+@@ -48,55 +48,55 @@ mmapstress02 mmapstress02
+ mmapstress03 mmapstress03
+ mmapstress04 TMPFILE=`mktemp /tmp/example.XXXXXXXXXX`; ls -lR /usr/include/ > $TMPFILE; mmapstress04 $TMPFILE
+ mmapstress05 mmapstress05
+-mmapstress06 mmapstress06 20
++#mmapstress06 mmapstress06 20
+ mmapstress07 TMPFILE=`mktemp /tmp/example.XXXXXXXXXXXX`; mmapstress07 $TMPFILE
+-mmapstress08 mmapstress08
++#mmapstress08 mmapstress08
+ mmapstress09 mmapstress09 -p 20 -t 0.2
+ mmapstress10 mmapstress10 -p 20 -t 0.2
+ 
+ mmap10 mmap10
+ mmap10_1 mmap10 -a
+-mmap10_2 mmap10 -s
+-mmap10_3 mmap10 -a -s
+-mmap10_4 mmap10 -a -s -i 60
+-
+-ksm01 ksm01
+-ksm01_1 ksm01 -u 128
+-ksm02 ksm02
+-ksm02_1 ksm02 -u 128
+-ksm03 ksm03
+-ksm03_1 ksm03 -u 128
+-ksm04 ksm04
+-ksm04_1 ksm04 -u 128
+-ksm05 ksm05 -I 10
+-ksm06 ksm06
+-ksm06_1 ksm06 -n 10
+-ksm06_2 ksm06 -n 10000
+-
+-oom01 oom01
+-oom02 oom02
+-oom03 oom03
+-oom04 oom04
+-oom05 oom05
+-
+-swapping01 swapping01 -i 5
+-
+-thp01 thp01 -I 120
+-thp02 thp02
+-thp03 thp03
++#mmap10_2 mmap10 -s
++#mmap10_3 mmap10 -a -s
++#mmap10_4 mmap10 -a -s -i 60
++
++#ksm01 ksm01
++#ksm01_1 ksm01 -u 128
++#ksm02 ksm02
++#ksm02_1 ksm02 -u 128
++#ksm03 ksm03
++#ksm03_1 ksm03 -u 128
++#ksm04 ksm04
++#ksm04_1 ksm04 -u 128
++#ksm05 ksm05 -I 10
++#ksm06 ksm06
++#ksm06_1 ksm06 -n 10
++#ksm06_2 ksm06 -n 10000
++
++#oom01 oom01
++#oom02 oom02
++#oom03 oom03
++#oom04 oom04
++#oom05 oom05
++
++#swapping01 swapping01 -i 5
++
++#thp01 thp01 -I 120
++#thp02 thp02
++#thp03 thp03
+ 
+ vma01 vma01
+-vma02 vma02
++#vma02 vma02
+ vma03 vma03
+-vma04 vma04
++#vma04 vma04
+ 
+-overcommit_memory01 overcommit_memory
+-overcommit_memory02 overcommit_memory -R 0
+-overcommit_memory03 overcommit_memory -R 30
+-overcommit_memory04 overcommit_memory -R 80
+-overcommit_memory05 overcommit_memory -R 100
+-overcommit_memory06 overcommit_memory -R 200
++#overcommit_memory01 overcommit_memory
++#overcommit_memory02 overcommit_memory -R 0
++#overcommit_memory03 overcommit_memory -R 30
++#overcommit_memory04 overcommit_memory -R 80
++#overcommit_memory05 overcommit_memory -R 100
++#overcommit_memory06 overcommit_memory -R 200
+ 
+-max_map_count max_map_count -i 10
++#max_map_count max_map_count -i 10
+ 
+-min_free_kbytes min_free_kbytes
++#min_free_kbytes min_free_kbytes
+diff --git a/runtest/pty b/runtest/pty
+index 92c89ab..ab9ca7a 100644
+--- a/runtest/pty
++++ b/runtest/pty
+@@ -1,5 +1,5 @@
+ #DESCRIPTION:Terminal type stress
+-pty01 pty01
++#pty01 pty01
+ ptem01 ptem01
+ hangup01 hangup01
+ 
+diff --git a/runtest/syscalls b/runtest/syscalls
+index be617e3..69d28e0 100644
+--- a/runtest/syscalls
++++ b/runtest/syscalls
+@@ -7,15 +7,15 @@ accept4_01 accept4_01
+ access01 access01
+ access02 access02
+ access03 access03
+-access04 access04
++#access04 access04
+ 
+-acct01 acct01
++#acct01 acct01
+ 
+-add_key01 add_key01
+-add_key02 add_key02
++#add_key01 add_key01
++#add_key02 add_key02
+ 
+ adjtimex01 adjtimex01
+-adjtimex02 adjtimex02
++#adjtimex02 adjtimex02
+ 
+ alarm01 alarm01
+ alarm02 alarm02
+@@ -39,21 +39,21 @@ capget02 capget02
+ capset01 capset01
+ capset02 capset02
+ 
+-cacheflush01 cacheflush01
++#cacheflush01 cacheflush01
+ 
+ chdir01 chdir01
+-chdir01A symlink01 -T chdir01
++#chdir01A symlink01 -T chdir01
+ chdir02 chdir02
+ chdir03 chdir03
+ chdir04 chdir04
+ 
+ chmod01 chmod01
+-chmod01A symlink01 -T chmod01
++#chmod01A symlink01 -T chmod01
+ chmod02 chmod02
+ chmod03 chmod03
+ chmod04 chmod04
+ chmod05 chmod05
+-chmod06 chmod06
++#chmod06 chmod06
+ chmod07 chmod07
+ 
+ chown01 chown01
+@@ -62,8 +62,8 @@ chown02 chown02
+ chown02_16 chown02_16
+ chown03 chown03
+ chown03_16 chown03_16
+-chown04 chown04
+-chown04_16 chown04_16
++#chown04 chown04
++#chown04_16 chown04_16
+ chown05 chown05
+ chown05_16 chown05_16
+ 
+@@ -72,7 +72,7 @@ chroot02 chroot02
+ chroot03 chroot03
+ chroot04 chroot04
+ 
+-clock_getres01 clock_getres01
++#clock_getres01 clock_getres01
+ clock_nanosleep01 clock_nanosleep01
+ clock_nanosleep02 clock_nanosleep02
+ clock_nanosleep2_01 clock_nanosleep2_01
+@@ -85,7 +85,7 @@ clone05 clone05
+ clone06 clone06
+ clone07 clone07
+ clone08 clone08
+-clone09 clone09
++#clone09 clone09
+ 
+ close01 close01
+ close02 close02
+@@ -99,8 +99,8 @@ creat01 creat01
+ creat03 creat03
+ creat04 creat04
+ creat05 creat05
+-creat06 creat06
+-creat07 creat07
++#creat06 creat06
++#creat07 creat07
+ creat08 creat08
+ 
+ dup01 dup01
+@@ -129,23 +129,23 @@ epoll_wait02 epoll_wait02
+ epoll_wait03 epoll_wait03
+ epoll_pwait01 epoll_pwait01
+ 
+-eventfd01 eventfd01
++#eventfd01 eventfd01
+ 
+ eventfd2_01 eventfd2_01
+ eventfd2_02 eventfd2_02
+ eventfd2_03 eventfd2_03
+ 
+-execl01 execl01
+-execle01 execle01
+-execlp01 execlp01
++#execl01 execl01
++#execle01 execle01
++#execlp01 execlp01
+ 
+-execv01 execv01
+-execve01 execve01
+-execve02 execve02
++#execv01 execv01
++#execve01 execve01
++#execve02 execve02
+ execve03 execve03
+-execve04 execve04
++#execve04 execve04
+ execve05 execve05 20 $LTPROOT/testcases/bin/execve05 $LTPROOT/testcases/bin/execve05 4
+-execvp01 execvp01
++#execvp01 execvp01
+ 
+ exit01 exit01
+ exit02 exit02
+@@ -180,7 +180,7 @@ fchmod02 fchmod02
+ fchmod03 fchmod03
+ fchmod04 fchmod04
+ fchmod05 fchmod05
+-fchmod06 fchmod06
++#fchmod06 fchmod06
+ fchmod07 fchmod07
+ 
+ #fchmodat test cases
+@@ -192,8 +192,8 @@ fchown02 fchown02
+ fchown02_16 fchown02_16
+ fchown03 fchown03
+ fchown03_16 fchown03_16
+-fchown04 fchown04
+-fchown04_16 fchown04_16
++#fchown04 fchown04
++#fchown04_16 fchown04_16
+ fchown05 fchown05
+ fchown05_16 fchown05_16
+ 
+@@ -202,82 +202,82 @@ fchownat01 fchownat01
+ fchownat02 fchownat02
+ 
+ fcntl01 fcntl01
+-fcntl01_64 fcntl01_64
++#fcntl01_64 fcntl01_64
+ fcntl02 fcntl02
+-fcntl02_64 fcntl02_64
++#fcntl02_64 fcntl02_64
+ fcntl03 fcntl03
+-fcntl03_64 fcntl03_64
++#fcntl03_64 fcntl03_64
+ fcntl04 fcntl04
+-fcntl04_64 fcntl04_64
++#fcntl04_64 fcntl04_64
+ fcntl05 fcntl05
+-fcntl05_64 fcntl05_64
+-fcntl06 fcntl06
+-fcntl06_64 fcntl06_64
++#fcntl05_64 fcntl05_64
++#fcntl06 fcntl06
++#fcntl06_64 fcntl06_64
+ fcntl07 fcntl07
+-fcntl07_64 fcntl07_64
++#fcntl07_64 fcntl07_64
+ fcntl08 fcntl08
+-fcntl08_64 fcntl08_64
++#fcntl08_64 fcntl08_64
+ fcntl09 fcntl09
+-fcntl09_64 fcntl09_64
++#fcntl09_64 fcntl09_64
+ fcntl10 fcntl10
+-fcntl10_64 fcntl10_64
++#fcntl10_64 fcntl10_64
+ fcntl11 fcntl11
+-fcntl11_64 fcntl11_64
++#fcntl11_64 fcntl11_64
+ fcntl12 fcntl12
+-fcntl12_64 fcntl12_64
++#fcntl12_64 fcntl12_64
+ fcntl13 fcntl13
+-fcntl13_64 fcntl13_64
++#fcntl13_64 fcntl13_64
+ fcntl14 fcntl14
+-fcntl14_64 fcntl14_64
++#fcntl14_64 fcntl14_64
+ fcntl15 fcntl15
+-fcntl15_64 fcntl15_64
++#fcntl15_64 fcntl15_64
+ fcntl16 fcntl16
+-fcntl16_64 fcntl16_64
++#fcntl16_64 fcntl16_64
+ fcntl17 fcntl17
+-fcntl17_64 fcntl17_64
++#fcntl17_64 fcntl17_64
+ fcntl18 fcntl18
+-fcntl18_64 fcntl18_64
++#fcntl18_64 fcntl18_64
+ fcntl19 fcntl19
+-fcntl19_64 fcntl19_64
++#fcntl19_64 fcntl19_64
+ fcntl20 fcntl20
+-fcntl20_64 fcntl20_64
++#fcntl20_64 fcntl20_64
+ fcntl21 fcntl21
+-fcntl21_64 fcntl21_64
++#fcntl21_64 fcntl21_64
+ fcntl22 fcntl22
+-fcntl22_64 fcntl22_64
++#fcntl22_64 fcntl22_64
+ fcntl23 fcntl23
+-fcntl23_64 fcntl23_64
++#fcntl23_64 fcntl23_64
+ fcntl24 fcntl24
+-fcntl24_64 fcntl24_64
++#fcntl24_64 fcntl24_64
+ fcntl25 fcntl25
+-fcntl25_64 fcntl25_64
++#fcntl25_64 fcntl25_64
+ fcntl26 fcntl26
+-fcntl26_64 fcntl26_64
++#fcntl26_64 fcntl26_64
+ fcntl27 fcntl27
+-fcntl27_64 fcntl27_64
++#fcntl27_64 fcntl27_64
+ fcntl28 fcntl28
+-fcntl28_64 fcntl28_64
++#fcntl28_64 fcntl28_64
+ fcntl29 fcntl29
+-fcntl29_64 fcntl29_64
++#fcntl29_64 fcntl29_64
+ fcntl30 fcntl30
+-fcntl30_64 fcntl30_64
++#fcntl30_64 fcntl30_64
+ fcntl31 fcntl31
+-fcntl31_64 fcntl31_64
++#fcntl31_64 fcntl31_64
+ fcntl32 fcntl32
+-fcntl32_64 fcntl32_64
++#fcntl32_64 fcntl32_64
+ fcntl33 fcntl33
+-fcntl33_64 fcntl33_64
++#fcntl33_64 fcntl33_64
+ fcntl34 fcntl34
+-fcntl34_64 fcntl34_64
++#fcntl34_64 fcntl34_64
+ fcntl35 fcntl35
+-fcntl35_64 fcntl35_64
++#fcntl35_64 fcntl35_64
+ 
+ fdatasync01 fdatasync01
+ fdatasync02 fdatasync02
+ 
+-flistxattr01 flistxattr01
+-flistxattr02 flistxattr02
+-flistxattr03 flistxattr03
++#flistxattr01 flistxattr01
++#flistxattr02 flistxattr02
++#flistxattr03 flistxattr03
+ 
+ flock01 flock01
+ flock02 flock02
+@@ -300,7 +300,7 @@ fork09 fork09
+ fork10 fork10
+ fork11 fork11
+ fork13 fork13 -i 1000000
+-fork14 fork14
++#fork14 fork14
+ 
+ fpathconf01 fpathconf01
+ 
+@@ -326,13 +326,13 @@ fsync02 fsync02
+ fsync03 fsync03
+ 
+ ftruncate01 ftruncate01
+-ftruncate01_64 ftruncate01_64
++#ftruncate01_64 ftruncate01_64
+ ftruncate02 ftruncate02
+-ftruncate02_64 ftruncate02_64
++#ftruncate02_64 ftruncate02_64
+ ftruncate03 ftruncate03
+-ftruncate03_64 ftruncate03_64
+-ftruncate04 ftruncate04
+-ftruncate04_64 ftruncate04_64
++#ftruncate03_64 ftruncate03_64
++#ftruncate04 ftruncate04
++#ftruncate04_64 ftruncate04_64
+ 
+ #futimesat test cases
+ futimesat01 futimesat01
+@@ -378,7 +378,7 @@ getgroups03_16 getgroups03_16
+ 
+ gethostbyname_r01 gethostbyname_r01
+ 
+-gethostid01 gethostid01
++#gethostid01 gethostid01
+ 
+ gethostname01 gethostname01
+ 
+@@ -420,12 +420,12 @@ getresuid03 getresuid03
+ getrlimit01 getrlimit01
+ getrlimit02 getrlimit02
+ 
+-get_mempolicy01 get_mempolicy01
++#get_mempolicy01 get_mempolicy01
+ get_robust_list01 get_robust_list01
+ 
+ getrusage01 getrusage01
+ getrusage02 getrusage02
+-getrusage03 getrusage03
++#getrusage03 getrusage03
+ getrusage04 getrusage04
+ 
+ getsid01 getsid01
+@@ -449,36 +449,36 @@ getuid03_16 getuid03_16
+ getxattr01 getxattr01
+ getxattr02 getxattr02
+ getxattr03 getxattr03
+-getxattr04 getxattr04
++#getxattr04 getxattr04
+ 
+ #Needs tty device.
+ #ioctl01 ioctl01 -D /dev/tty0
+ #ioctl02 ioctl02 -D /dev/tty0
+ 
+ # Introducing ioctl tests for all /dev/tty* devices
+-ioctl01_02   test_ioctl
+-ioctl03      ioctl03
+-ioctl04      ioctl04
+-ioctl05      ioctl05
+-ioctl06      ioctl06
++#ioctl01_02   test_ioctl
++#ioctl03      ioctl03
++#ioctl04      ioctl04
++#ioctl05      ioctl05
++#ioctl06      ioctl06
+ 
+ inotify_init1_01 inotify_init1_01
+ inotify_init1_02 inotify_init1_02
+ 
+ inotify01 inotify01
+ inotify02 inotify02
+-inotify03 inotify03
++#inotify03 inotify03
+ inotify04 inotify04
+ inotify05 inotify05
+ inotify06 inotify06
+ 
+-fanotify01 fanotify01
+-fanotify02 fanotify02
+-fanotify03 fanotify03
+-fanotify04 fanotify04
+-fanotify05 fanotify05
+-fanotify06 fanotify06
+-fanotify07 fanotify07
++#fanotify01 fanotify01
++#fanotify02 fanotify02
++#fanotify03 fanotify03
++#fanotify04 fanotify04
++#fanotify05 fanotify05
++#fanotify06 fanotify06
++#fanotify07 fanotify07
+ 
+ ioperm01 ioperm01
+ ioperm02 ioperm02
+@@ -486,19 +486,19 @@ ioperm02 ioperm02
+ iopl01 iopl01
+ iopl02 iopl02
+ 
+-io_cancel01 io_cancel01
+-io_destroy01 io_destroy01
+-io_getevents01 io_getevents01
+-io_setup01 io_setup01
+-io_submit01 io_submit01
++#io_cancel01 io_cancel01
++#io_destroy01 io_destroy01
++#io_getevents01 io_getevents01
++#io_setup01 io_setup01
++#io_submit01 io_submit01
+ 
+-keyctl01 keyctl01
+-keyctl02 keyctl02
+-keyctl03 keyctl03
++#keyctl01 keyctl01
++#keyctl02 keyctl02
++#keyctl03 keyctl03
+ 
+-kcmp01 kcmp01
+-kcmp02 kcmp02
+-kcmp03 kcmp03
++#kcmp01 kcmp01
++#kcmp02 kcmp02
++#kcmp03 kcmp03
+ 
+ kill01 kill01
+ kill02 kill02
+@@ -516,12 +516,12 @@ kill12 kill12
+ lchown01 lchown01
+ lchown01_16 lchown01_16
+ lchown02  lchown02
+-lchown03  lchown03
++#lchown03  lchown03
+ lchown02_16 lchown02_16
+-lchown03_16 lchown03_16
++#lchown03_16 lchown03_16
+ 
+-lgetxattr01 lgetxattr01
+-lgetxattr02 lgetxattr02
++#lgetxattr01 lgetxattr01
++#lgetxattr02 lgetxattr02
+ 
+ link01 symlink01 -T link01
+ link02 link02
+@@ -530,21 +530,21 @@ link04 link04
+ link05 link05
+ link06 link06
+ link07 link07
+-link08 link08
++#link08 link08
+ 
+ #linkat test cases
+ linkat01 linkat01
+-linkat02 linkat02
++#linkat02 linkat02
+ 
+ listen01 listen01
+ 
+-listxattr01 listxattr01
+-listxattr02 listxattr02
+-listxattr03 listxattr03
+-
+-llistxattr01 llistxattr01
+-llistxattr02 llistxattr02
+-llistxattr03 llistxattr03
++#listxattr01 listxattr01
++#listxattr02 listxattr02
++#listxattr03 listxattr03
++#
++#llistxattr01 llistxattr01
++#llistxattr02 llistxattr02
++#llistxattr03 llistxattr03
+ 
+ llseek01 llseek01
+ llseek02 llseek02
+@@ -555,8 +555,8 @@ lseek02 lseek02
+ lseek07 lseek07
+ lseek11 lseek11
+ 
+-lstat01A symlink01 -T lstat01
+-lstat01A_64 symlink01 -T lstat01_64
++#lstat01A symlink01 -T lstat01
++#lstat01A_64 symlink01 -T lstat01_64
+ lstat01 lstat01
+ lstat01_64 lstat01_64
+ lstat02 lstat02
+@@ -566,14 +566,14 @@ lstat03_64 lstat03_64
+ 
+ mallopt01 mallopt01
+ 
+-mbind01 mbind01
++#mbind01 mbind01
+ 
+ memset01 memset01
+ memcmp01 memcmp01
+ memcpy01 memcpy01
+ 
+-migrate_pages01 migrate_pages01
+-migrate_pages02 migrate_pages02
++#migrate_pages01 migrate_pages01
++#migrate_pages02 migrate_pages02
+ 
+ mlockall01 mlockall01
+ mlockall02 mlockall02
+@@ -581,16 +581,16 @@ mlockall03 mlockall03
+ 
+ mkdir01 mkdir01
+ mkdir02 mkdir02
+-mkdir03 mkdir03
++#mkdir03 mkdir03
+ mkdir04 mkdir04
+ mkdir05 mkdir05
+-mkdir05A symlink01 -T mkdir05
++#mkdir05A symlink01 -T mkdir05
+ mkdir08 mkdir08
+ mkdir09 mkdir09
+ 
+ #mkdirat test cases
+ mkdirat01 mkdirat01
+-mkdirat02 mkdirat02
++#mkdirat02 mkdirat02
+ 
+ mknod01 mknod01
+ mknod02 mknod02
+@@ -598,13 +598,13 @@ mknod03 mknod03
+ mknod04 mknod04
+ mknod05 mknod05
+ mknod06 mknod06
+-mknod07 mknod07
++#mknod07 mknod07
+ mknod08 mknod08
+ mknod09 mknod09
+ 
+ #mknodat test cases
+ mknodat01 mknodat01
+-mknodat02 mknodat02
++#mknodat02 mknodat02
+ 
+ mlock01 mlock01
+ mlock02 mlock02
+@@ -626,44 +626,44 @@ mmap13 mmap13
+ mmap14 mmap14
+ # test is broken, mask it for now.
+ #mmap11 mmap11 -i 30000
+-mmap15 mmap15
+-mmap16 mmap16
++#mmap15 mmap15
++#mmap16 mmap16
+ 
+ modify_ldt01 modify_ldt01
+ modify_ldt02 modify_ldt02
+ modify_ldt03 modify_ldt03
+ 
+-mount01 mount01
+-mount02 mount02
+-mount03 mount03
+-mount04 mount04
++#mount01 mount01
++#mount02 mount02
++#mount03 mount03
++#mount04 mount04
+ mount05 mount05
+-mount06 mount06
+-
+-move_pages01 move_pages.sh 01
+-move_pages02 move_pages.sh 02
+-move_pages03 cd $LTPROOT/testcases/bin && chown root move_pages03 && chmod 04755 move_pages03 && move_pages.sh 03
+-move_pages04 move_pages.sh 04
+-move_pages05 move_pages.sh 05
+-move_pages06 move_pages.sh 06
+-move_pages07 move_pages.sh 07
+-move_pages08 move_pages.sh 08
+-move_pages09 move_pages.sh 09
+-move_pages10 move_pages.sh 10
+-move_pages11 cd $LTPROOT/testcases/bin && chown root move_pages11 && chmod 04755 move_pages11 && move_pages.sh 11
+-move_pages12 move_pages12
++#mount06 mount06
++
++#move_pages01 move_pages.sh 01
++#move_pages02 move_pages.sh 02
++#move_pages03 cd $LTPROOT/testcases/bin && chown root move_pages03 && chmod 04755 move_pages03 && move_pages.sh 03
++#move_pages04 move_pages.sh 04
++#move_pages05 move_pages.sh 05
++#move_pages06 move_pages.sh 06
++#move_pages07 move_pages.sh 07
++#move_pages08 move_pages.sh 08
++#move_pages09 move_pages.sh 09
++#move_pages10 move_pages.sh 10
++#move_pages11 cd $LTPROOT/testcases/bin && chown root move_pages11 && chmod 04755 move_pages11 && move_pages.sh 11
++#move_pages12 move_pages12
+ 
+ mprotect01 mprotect01
+ mprotect02 mprotect02
+ mprotect03 mprotect03
+ mprotect04 mprotect04
+ 
+-mq_notify01 mq_notify01
+-mq_notify02 mq_notify02
+-mq_open01 mq_open01
+-mq_timedreceive01 mq_timedreceive01
+-mq_timedsend01 mq_timedsend01
+-mq_unlink01 mq_unlink01
++#mq_notify01 mq_notify01
++#mq_notify02 mq_notify02
++#mq_open01 mq_open01
++#mq_timedreceive01 mq_timedreceive01
++#mq_timedsend01 mq_timedsend01
++#mq_unlink01 mq_unlink01
+ 
+ mremap01 mremap01
+ mremap02 mremap02
+@@ -678,10 +678,10 @@ msgctl04 msgctl04
+ msgctl05 msgctl05
+ msgctl06 msgctl06
+ msgctl07 msgctl07
+-msgctl08 msgctl08
+-msgctl09 msgctl09
+-msgctl10 msgctl10
+-msgctl11 msgctl11
++#msgctl08 msgctl08
++#msgctl09 msgctl09
++#msgctl10 msgctl10
++#msgctl11 msgctl11
+ msgctl12 msgctl12
+ msgctl13 msgctl13
+ 
+@@ -706,13 +706,13 @@ msgsnd06 msgsnd06
+ msync01 msync01
+ msync02 msync02
+ msync03 msync03
+-msync04 msync04
++#msync04 msync04
+ 
+ munlock01 munlock01
+ munlock02 munlock02
+ 
+ munlockall01 munlockall01
+-munlockall02 munlockall02
++#munlockall02 munlockall02
+ 
+ munmap01 munmap01
+ munmap02 munmap02
+@@ -732,7 +732,7 @@ nice03 nice03
+ nice04 nice04
+ 
+ open01 open01
+-open01A symlink01 -T open01
++#open01A symlink01 -T open01
+ open02 open02
+ open03 open03
+ open04 open04
+@@ -743,25 +743,25 @@ open08 open08
+ open09 open09
+ open10 open10
+ open11 open11
+-open12 open12
++#open12 open12
+ open13 open13
+ open14 open14
+ 
+ #openat test cases
+ openat01 openat01
+-openat02 openat02
++#openat02 openat02
+ openat03 openat03
+ 
+ mincore01 mincore01
+ mincore02 mincore02
+ 
+-madvise01 madvise01
+-madvise02 madvise02
+-madvise05 madvise05
+-madvise06 madvise06
+-madvise07 madvise07
++#madvise01 madvise01
++#madvise02 madvise02
++#madvise05 madvise05
++#madvise06 madvise06
++#madvise07 madvise07
+ madvise08 madvise08
+-madvise09 madvise09
++#madvise09 madvise09
+ 
+ newuname01 newuname01
+ 
+@@ -818,7 +818,7 @@ process_vm_writev01 process_vm01 -w
+ process_vm_writev02 process_vm_writev02
+ 
+ prot_hsymlinks prot_hsymlinks
+-dirtyc0w dirtyc0w
++#dirtyc0w dirtyc0w
+ 
+ pselect01 pselect01
+ pselect01_64 pselect01_64
+@@ -829,8 +829,8 @@ pselect03_64 pselect03_64
+ 
+ ptrace01 ptrace01
+ ptrace02 ptrace02
+-ptrace03 ptrace03
+-ptrace04 ptrace04
++#ptrace03 ptrace03
++#ptrace04 ptrace04
+ ptrace05 ptrace05
+ # Broken test; See: testcases/kernel/syscalls/ptrace/Makefile for more details.
+ #ptrace06 ptrace06
+@@ -848,9 +848,9 @@ pwritev01_64 pwritev01_64
+ pwritev02 pwritev02
+ pwritev02_64 pwritev02_64
+ 
+-quotactl01 quotactl01
+-quotactl02 quotactl02
+-quotactl03 quotactl03
++#quotactl01 quotactl01
++#quotactl02 quotactl02
++#quotactl03 quotactl03
+ 
+ read01 read01
+ read02 read02
+@@ -858,13 +858,13 @@ read03 read03
+ read04 read04
+ 
+ readahead01 readahead01
+-readahead02 readahead02
++#readahead02 readahead02
+ 
+ readdir01 readdir01
+ readdir02 readdir02
+-readdir21 readdir21
++#readdir21 readdir21
+ 
+-readlink01A symlink01 -T readlink01
++#readlink01A symlink01 -T readlink01
+ readlink01 readlink01
+ readlink02 readlink02
+ readlink03 readlink03
+@@ -886,17 +886,17 @@ recv01 recv01
+ recvfrom01 recvfrom01
+ 
+ recvmsg01 recvmsg01
+-recvmsg02 recvmsg02
+-recvmsg03 recvmsg03
++#recvmsg02 recvmsg02
++#recvmsg03 recvmsg03
+ 
+-remap_file_pages01 remap_file_pages01
++#remap_file_pages01 remap_file_pages01
+ remap_file_pages02 remap_file_pages02
+ 
+ removexattr01 removexattr01
+ removexattr02 removexattr02
+ 
+ rename01 rename01
+-rename01A symlink01 -T rename01
++#rename01A symlink01 -T rename01
+ rename02 rename02
+ rename03 rename03
+ rename04 rename04
+@@ -906,27 +906,27 @@ rename07 rename07
+ rename08 rename08
+ rename09 rename09
+ rename10 rename10
+-rename11 rename11
++#rename11 rename11
+ rename12 rename12
+ rename13 rename13
+ rename14 rename14
+ 
+ #renameat test cases
+-renameat01 renameat01
++#renameat01 renameat01
+ 
+ renameat201 renameat201
+ renameat202 renameat202 -i 10
+ 
+-request_key01 request_key01
+-request_key02 request_key02
+-cve-2017-6951 cve-2017-6951
++#request_key01 request_key01
++#request_key02 request_key02
++#cve-2017-6951 cve-2017-6951
+ 
+ rmdir01 rmdir01
+-rmdir02 rmdir02
++#rmdir02 rmdir02
+ rmdir03 rmdir03
+-rmdir03A symlink01 -T rmdir03
++#rmdir03A symlink01 -T rmdir03
+ rmdir04 rmdir04
+-rmdir05 rmdir05
++#rmdir05 rmdir05
+ 
+ rt_sigaction01 rt_sigaction01
+ rt_sigaction02 rt_sigaction02
+@@ -1017,15 +1017,15 @@ sendfile07 sendfile07
+ sendfile07_64 sendfile07_64
+ sendfile08 sendfile08
+ sendfile08_64 sendfile08_64
+-sendfile09 sendfile09
+-sendfile09_64 sendfile09_64
++#sendfile09 sendfile09
++#sendfile09_64 sendfile09_64
+ 
+ 
+ sendmsg01 sendmsg01
+ sendmsg02 sendmsg02
+ 
+ sendto01 sendto01
+-sendto02 sendto02
++#sendto02 sendto02
+ 
+ setdomainname01	setdomainname01
+ setdomainname02	setdomainname02
+@@ -1057,7 +1057,7 @@ setgid03_16 setgid03_16
+ setegid01 setegid01
+ setegid02 setegid02
+ 
+-sgetmask01 sgetmask01
++#sgetmask01 sgetmask01
+ 
+ setgroups01 setgroups01
+ setgroups01_16 setgroups01_16
+@@ -1077,11 +1077,11 @@ setitimer02 setitimer02
+ setitimer03 setitimer03
+ 
+ setns01 setns01
+-setns02 setns02
++#setns02 setns02
+ 
+ setpgid01 setpgid01
+ setpgid02 setpgid02
+-setpgid03 setpgid03
++#setpgid03 setpgid03
+ 
+ setpgrp01 setpgrp01
+ setpgrp02 setpgrp02
+@@ -1144,7 +1144,7 @@ set_tid_address01 set_tid_address01
+ setsid01 setsid01
+ 
+ setsockopt01 setsockopt01
+-cve-2016-4997 cve-2016-4997
++#cve-2016-4997 cve-2016-4997
+ 
+ settimeofday01 settimeofday01
+ settimeofday02 settimeofday02
+@@ -1162,12 +1162,12 @@ setxattr01 setxattr01
+ setxattr02 setxattr02
+ setxattr03 setxattr03
+ 
+-shmat01 shmat01
++#shmat01 shmat01
+ shmat02 shmat02
+ cve-2017-5669 cve-2017-5669
+ 
+ shmctl01 shmctl01
+-shmctl02 shmctl02
++#shmctl02 shmctl02
+ shmctl03 shmctl03
+ shmctl04 shmctl04
+ 
+@@ -1194,7 +1194,7 @@ signal02 signal02
+ signal03 signal03
+ signal04 signal04
+ signal05 signal05
+-signal06 signal06
++#signal06 signal06
+ 
+ signalfd01 signalfd01
+ 
+@@ -1213,7 +1213,7 @@ sigsuspend01 sigsuspend01
+ socket01 socket01
+ socket02 socket02
+ 
+-socketcall01 socketcall01
++#socketcall01 socketcall01
+ socketcall02 socketcall02
+ socketcall03 socketcall03
+ socketcall04 socketcall04
+@@ -1232,7 +1232,7 @@ splice05 splice05
+ tee01 tee01
+ tee02 tee02
+ 
+-ssetmask01 ssetmask01
++#ssetmask01 ssetmask01
+ 
+ stat01 stat01
+ stat01_64 stat01_64
+@@ -1262,15 +1262,15 @@ stime02 stime02
+ 
+ string01 string01
+ 
+-swapoff01 swapoff01
+-swapoff02 swapoff02
++#swapoff01 swapoff01
++#swapoff02 swapoff02
+ 
+-swapon01 swapon01
+-swapon02 swapon02
+-swapon03 swapon03
++#swapon01 swapon01
++#swapon02 swapon02
++#swapon03 swapon03
+ 
+ #Exclusive syscall() for POWER6 machines only
+-switch01 endian_switch01
++#switch01 endian_switch01
+ 
+ symlink01 symlink01
+ symlink02 symlink02
+@@ -1289,12 +1289,12 @@ sync_file_range01 sync_file_range01
+ 
+ syscall01 syscall01
+ 
+-sysconf01 sysconf01
++#sysconf01 sysconf01
+ 
+-sysctl01 sysctl01
+-sysctl03 sysctl03
+-sysctl04 sysctl04
+-sysctl05 sysctl05
++#sysctl01 sysctl01
++#sysctl03 sysctl03
++#sysctl04 sysctl04
++#sysctl05 sysctl05
+ 
+ sysfs01 sysfs01
+ sysfs02 sysfs02
+@@ -1377,29 +1377,29 @@ unshare02 unshare02
+ # to run correctly. Please see individual test
+ # code for more information.
+ #
+-umount01 umount01
+-umount02 umount02
+-umount03 umount03
+-
+-umount2_01 umount2_01
+-umount2_02 umount2_02
+-umount2_03 umount2_03
++#umount01 umount01
++#umount02 umount02
++#umount03 umount03
++#
++#umount2_01 umount2_01
++#umount2_02 umount2_02
++#umount2_03 umount2_03
+ 
+ ustat01 ustat01
+ ustat02 ustat02
+ 
+ utime01 utime01
+-utime01A symlink01 -T utime01
++#utime01A symlink01 -T utime01
+ utime02 utime02
+ utime03 utime03
+ utime04 utime04
+ utime05 utime05
+-utime06 utime06
++#utime06 utime06
+ 
+-utimes01 utimes01
++#utimes01 utimes01
+ 
+ # Introduced from Kernel 2.6.22 onwards
+-utimensat01 utimensat_tests.sh
++#utimensat01 utimensat_tests.sh
+ 
+ vfork01 vfork01
+ vfork02 vfork02
+@@ -1434,7 +1434,7 @@ waitpid13 waitpid13
+ waitid01 waitid01
+ waitid02 waitid02
+ 
+-write01 write01
++#write01 write01
+ write03 write03
+ write04 write04
+ write05 write05
+@@ -1445,8 +1445,8 @@ writev05 writev05
+ writev06 writev06
+ writev07 writev07
+ 
+-perf_event_open01 perf_event_open01
+-perf_event_open02 perf_event_open02
++#perf_event_open01 perf_event_open01
++#perf_event_open02 perf_event_open02
+ 
+ futex_wait01 futex_wait01
+ futex_wait02 futex_wait02
+@@ -1456,7 +1456,7 @@ futex_wait05 futex_wait05
+ futex_wake01 futex_wake01
+ futex_wake02 futex_wake02
+ futex_wake03 futex_wake03
+-futex_wake04 futex_wake04
++#futex_wake04 futex_wake04
+ futex_wait_bitset01 futex_wait_bitset01
+ futex_wait_bitset02 futex_wait_bitset02
+ 

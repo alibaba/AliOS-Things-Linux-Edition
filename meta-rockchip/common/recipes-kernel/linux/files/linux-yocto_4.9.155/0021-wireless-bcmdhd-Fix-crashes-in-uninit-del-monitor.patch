@@ -1,0 +1,103 @@
+From d92b63c9db8002d356a63398b05b71d55d95d503 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 26 Jun 2018 15:48:47 +0800
+Subject: [PATCH 21/73] wireless: bcmdhd: Fix crashes in uninit/del monitor
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ drivers/net/wireless/bcmdhd/wl_cfg80211.c  | 12 ++++++++++--
+ drivers/net/wireless/bcmdhd/wl_linux_mon.c | 16 ++++++++++------
+ 2 files changed, 20 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfg80211.c b/drivers/net/wireless/bcmdhd/wl_cfg80211.c
+index 9a39b6f68688..70435eeba768 100644
+--- a/drivers/net/wireless/bcmdhd/wl_cfg80211.c
++++ b/drivers/net/wireless/bcmdhd/wl_cfg80211.c
+@@ -1598,8 +1598,12 @@ wl_cfg80211_add_monitor_if(struct bcm_cfg80211 *cfg, const char *name)
+ 	return ERR_PTR(-EOPNOTSUPP);
+ #else
+ 	struct net_device* ndev = NULL;
++	int ret;
++
++	ret = dhd_add_monitor(cfg, name, &ndev);
++	if (ret < 0)
++		return ERR_PTR(ret);
+ 
+-	dhd_add_monitor(cfg, name, &ndev);
+ 	WL_INFORM(("wl_cfg80211_add_monitor_if net device returned: 0x%p\n", ndev));
+ 
+ 	return ndev_to_cfgdev(ndev);
+@@ -2061,6 +2065,11 @@ wl_cfg80211_del_virtual_iface(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev)
+ 	}
+ #endif /* WLAIBSS_MCHAN */
+ 
++	if (dev->ieee80211_ptr->iftype == NL80211_IFTYPE_MONITOR) {
++		ret = dhd_del_monitor(dev);
++		goto done;
++	}
++
+ 	if ((index = wl_get_bssidx_by_wdev(cfg, cfgdev_to_wdev(cfgdev))) < 0) {
+ 		WL_ERR(("Find p2p index from wdev failed\n"));
+ 		ret = -ENODEV;
+@@ -2163,7 +2172,6 @@ wl_cfg80211_del_virtual_iface(struct wiphy *wiphy, bcm_struct_cfgdev *cfgdev)
+ #endif /* SUPPORT_SET_CAC */
+ 			}
+ 
+-			ret = dhd_del_monitor(dev);
+ 			if (wl_get_mode_by_netdev(cfg, dev) == WL_MODE_AP) {
+ 				DHD_OS_WAKE_LOCK_CTRL_TIMEOUT_CANCEL((dhd_pub_t *)(cfg->pub));
+ 			}
+diff --git a/drivers/net/wireless/bcmdhd/wl_linux_mon.c b/drivers/net/wireless/bcmdhd/wl_linux_mon.c
+index 5f96402e4a6e..77e81d227d56 100755
+--- a/drivers/net/wireless/bcmdhd/wl_linux_mon.c
++++ b/drivers/net/wireless/bcmdhd/wl_linux_mon.c
+@@ -279,6 +279,12 @@ static int dhd_mon_if_change_mac(struct net_device *ndev, void *addr)
+ 	return ret;
+ }
+ 
++static void dhd_mon_dev_free(struct net_device *ndev)
++{
++	kfree(ndev->ieee80211_ptr);
++	free_netdev(ndev);
++}
++
+ /**
+  * Global function definitions (declared in dhd_linux_mon.h)
+  */
+@@ -333,6 +339,7 @@ int dhd_add_monitor(struct bcm_cfg80211 *cfg, const char *name, struct net_devic
+ 	strncpy(ndev->name, name, IFNAMSIZ);
+ 	ndev->name[IFNAMSIZ - 1] = 0;
+ 	ndev->netdev_ops = &dhd_mon_if_ops;
++	ndev->destructor = dhd_mon_dev_free;
+ 
+ 	wdev->wiphy = bcmcfg_to_wiphy(cfg);
+ 	wdev->iftype = NL80211_IFTYPE_MONITOR;
+@@ -377,12 +384,9 @@ int dhd_del_monitor(struct net_device *ndev)
+ 	for (i = 0; i < DHD_MAX_IFS; i++) {
+ 		if (g_monitor.mon_if[i].mon_ndev == ndev ||
+ 			g_monitor.mon_if[i].real_ndev == ndev) {
+-
+-			g_monitor.mon_if[i].real_ndev = NULL;
+ 			unregister_netdevice(g_monitor.mon_if[i].mon_ndev);
+-			kfree(g_monitor.mon_if[i].mon_ndev->ieee80211_ptr);
+-			free_netdev(g_monitor.mon_if[i].mon_ndev);
+ 			g_monitor.mon_if[i].mon_ndev = NULL;
++			g_monitor.mon_if[i].real_ndev = NULL;
+ 			g_monitor.monitor_state = MONITOR_STATE_INTERFACE_DELETED;
+ 			break;
+ 		}
+@@ -415,9 +419,9 @@ int dhd_monitor_uninit(void)
+ 			ndev = g_monitor.mon_if[i].mon_ndev;
+ 			if (ndev) {
+ 				unregister_netdevice(ndev);
+-				free_netdev(ndev);
+-				g_monitor.mon_if[i].real_ndev = NULL;
+ 				g_monitor.mon_if[i].mon_ndev = NULL;
++				g_monitor.mon_if[i].real_ndev = NULL;
++				g_monitor.monitor_state = MONITOR_STATE_INTERFACE_DELETED;
+ 			}
+ 		}
+ 		g_monitor.monitor_state = MONITOR_STATE_DEINIT;
+-- 
+2.11.0
+

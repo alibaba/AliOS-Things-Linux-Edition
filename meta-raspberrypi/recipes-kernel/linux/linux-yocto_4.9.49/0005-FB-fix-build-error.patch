@@ -1,0 +1,42 @@
+From ba0ef64345fe856f2c4c56346f43809e90901434 Mon Sep 17 00:00:00 2001
+From: OpenEmbedded <oe.patch@oe>
+Date: Wed, 9 May 2018 20:54:40 +0800
+Subject: [PATCH 5/9] FB: fix build error
+
+---
+ include/uapi/linux/fb.h | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/include/uapi/linux/fb.h b/include/uapi/linux/fb.h
+index fb795c3..703fa8a 100644
+--- a/include/uapi/linux/fb.h
++++ b/include/uapi/linux/fb.h
+@@ -34,6 +34,12 @@
+ #define FBIOPUT_MODEINFO        0x4617
+ #define FBIOGET_DISPINFO        0x4618
+ #define FBIO_WAITFORVSYNC	_IOW('F', 0x20, __u32)
++/*
++ * HACK: use 'z' in order not to clash with any other ioctl numbers which might
++ * be concurrently added to the mainline kernel
++ */
++#define FBIOCOPYAREA		_IOW('z', 0x21, struct fb_copyarea)
++#define FBIODMACOPY 		_IOW('z', 0x22, struct fb_dmacopy)
+ 
+ #define FB_TYPE_PACKED_PIXELS		0	/* Packed Pixels	*/
+ #define FB_TYPE_PLANES			1	/* Non interleaved planes */
+@@ -346,6 +352,12 @@ struct fb_copyarea {
+ 	__u32 sy;
+ };
+ 
++struct fb_dmacopy {
++	void *dst;
++	__u32 src;
++	__u32 length;
++};
++
+ struct fb_fillrect {
+ 	__u32 dx;	/* screen-relative */
+ 	__u32 dy;
+-- 
+2.7.4
+

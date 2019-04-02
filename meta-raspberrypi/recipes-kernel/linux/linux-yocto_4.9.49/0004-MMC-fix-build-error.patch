@@ -1,0 +1,26 @@
+From c44d7e64bda294330727dddbb0e30befa27fc03b Mon Sep 17 00:00:00 2001
+From: OpenEmbedded <oe.patch@oe>
+Date: Wed, 9 May 2018 20:49:11 +0800
+Subject: [PATCH 4/9] MMC: fix build error
+
+---
+ include/linux/mmc/card.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/include/linux/mmc/card.h b/include/linux/mmc/card.h
+index 73fad83..e7c9d30 100644
+--- a/include/linux/mmc/card.h
++++ b/include/linux/mmc/card.h
+@@ -283,6 +283,9 @@ struct mmc_card {
+ #define MMC_QUIRK_BROKEN_HPI	(1<<13)		/* Disable broken HPI support */
+ 
+ 
++#define MMC_QUIRK_ERASE_BROKEN	(1<<31)		/* Skip erase */
++
++
+ 	unsigned int		erase_size;	/* erase size in sectors */
+  	unsigned int		erase_shift;	/* if erase unit is power 2 */
+  	unsigned int		pref_erase;	/* in sectors */
+-- 
+2.7.4
+

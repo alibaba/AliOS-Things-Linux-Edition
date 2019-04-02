@@ -1,0 +1,24 @@
+From 02714c8543d53cef8249e144ef614309a3ed5227 Mon Sep 17 00:00:00 2001
+From: Bruce Lee <lr437200361@126.com>
+Date: Mon, 19 Nov 2018 15:12:16 +0800
+Subject: [PATCH] Enable watchdog of SOC
+
+---
+ arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+index 441a3fb..d2f5aff 100644
+--- a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
++++ b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+@@ -449,3 +449,7 @@
+ 		gpios = <&gpio0 RK_PB6 GPIO_ACTIVE_HIGH>;
+ 	};
+ };
++
++&wdt {
++    status = "okay";
++};
+-- 
+2.7.4
+

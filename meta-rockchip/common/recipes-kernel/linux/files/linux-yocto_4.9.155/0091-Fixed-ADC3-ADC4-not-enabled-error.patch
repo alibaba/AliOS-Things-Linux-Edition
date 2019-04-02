@@ -1,0 +1,24 @@
+From 86f90d25fa77e671510e6d3e9b93944deff50020 Mon Sep 17 00:00:00 2001
+From: Bruce Lee <lr437200361@126.com>
+Date: Thu, 25 Oct 2018 17:11:21 +0800
+Subject: [PATCH] Fixed ADC3 ADC4 not enabled error
+
+---
+ arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+index ad69cae..441a3fb 100644
+--- a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
++++ b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+@@ -211,7 +211,6 @@
+ 	status = "okay";
+ 
+ 	rockchip,no-hp-det;
+-	rockchip,loopback-grp = <1>;
+ 	spk-ctl-gpios = <&gpio0 RK_PA5 GPIO_ACTIVE_HIGH>;
+ };
+ 
+-- 
+2.7.4
+

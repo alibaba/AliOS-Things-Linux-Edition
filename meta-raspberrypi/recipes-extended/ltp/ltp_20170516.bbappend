@@ -40,6 +40,7 @@ SRC_URI += "file://0001-disable-16bit-syscall-tests.patch \
             file://0031-move-pids-cases-to-front-in-controllers.patch \
             file://0032-rm-cve-2016-4997.c-when-LIBC-musl.patch \
             file://0033-add-musl_patch.patch \
+            file://0034-disable-cases-for-adb.patch \
            "
 
 do_install_append(){
