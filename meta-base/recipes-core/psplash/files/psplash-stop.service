@@ -1,0 +1,14 @@
+[Unit]
+Description=Terminate Psplash Boot Screen
+Wants=psplash-update.service
+After=psplash-update.service
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/bin/echo "PROGRESS 100" > /mnt/.psplash/psplash_fifo'
+ExecStart=/bin/sh -c '/bin/echo "QUIT" > /mnt/.psplash/psplash_fifo'
+TimeoutSec=5
+
+[Install]
+WantedBy=multi-user.target poweroff.target reboot.target

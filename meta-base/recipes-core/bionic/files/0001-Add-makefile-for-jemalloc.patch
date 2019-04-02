@@ -1,0 +1,120 @@
+From 896db0271f978b0ecb7c60eefb59d15839e8c800 Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Mon, 24 Dec 2018 16:47:41 +0800
+Subject: [PATCH] Add makefile for jemalloc
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ .gitignore |  2 --
+ Makefile   | 85 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 85 insertions(+), 2 deletions(-)
+ create mode 100644 Makefile
+
+diff --git a/.gitignore b/.gitignore
+index 26d3531..83ef2db 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -19,8 +19,6 @@
+ 
+ /lib/
+ 
+-/Makefile
+-
+ /src/*.[od]
+ /src/*.gcda
+ /src/*.gcno
+diff --git a/Makefile b/Makefile
+new file mode 100644
+index 0000000..f78e0af
+--- /dev/null
++++ b/Makefile
+@@ -0,0 +1,85 @@
++ifeq ($(TARGET_ARCH), x86_64)
++TARGET_ASM_DIR := asm-x86
++TARGET_LIBM_DIR := amd64
++endif
++
++ifeq ($(TARGET_ARCH), arm64)
++TARGET_ASM_DIR := asm-arm64
++TARGET_LIBM_DIR := arm64
++endif
++
++CFLAGS += \
++	-DANDROID_ALWAYS_PURGE \
++	-DANDROID_MAX_ARENAS=2 \
++	-DANDROID_TCACHE_NSLOTS_SMALL_MAX=8 \
++	-DANDROID_TCACHE_NSLOTS_LARGE=16 \
++	-DANDROID_LG_TCACHE_MAXCLASS_DEFAULT=16 \
++	-DANDROID_LG_CHUNK_DEFAULT=21 \
++	-DJEMALLOC_TCACHE \
++	-D_REENTRANT \
++	-fvisibility=hidden \
++	-include ../../bionic/libc/private/libc_logging.h \
++	-nostdinc \
++	-std=gnu99 \
++	-Wno-unused-parameter \
++	-Wno-type-limits \
++	-O2 \
++
++# the optimization flag is necessary
++
++INCLUDES = \
++	-I ../../external/jemalloc/include \
++	-I ../../bionic/libc/include \
++	-I ../../bionic/libm/include \
++	-I ../../bionic/libm/include/$(TARGET_LIBM_DIR) \
++	-I ../../bionic/libc/arch-$(TARGET_ARCH)/includes \
++	-I ../../bionic/libc/include \
++	-I ../../bionic/libc/kernel/uapi \
++	-I ../../bionic/libc/kernel/common \
++	-I ../../bionic/libc/kernel/uapi/$(TARGET_ASM_DIR) \
++	-I $(GCC_INCLUDE)/include \
++	-I $(GCC_INCLUDE)/include-fixed \
++
++libjemalloc_src_files := \
++	src/arena.c \
++	src/atomic.c \
++	src/base.c \
++	src/bitmap.c \
++	src/chunk.c \
++	src/chunk_dss.c \
++	src/chunk_mmap.c \
++	src/ckh.c \
++	src/ctl.c \
++	src/extent.c \
++	src/hash.c \
++	src/huge.c \
++	src/jemalloc.c \
++	src/mb.c \
++	src/mutex.c \
++	src/nstime.c \
++	src/pages.c \
++	src/prng.c \
++	src/prof.c \
++	src/quarantine.c \
++	src/rtree.c \
++	src/stats.c \
++	src/tcache.c \
++	src/ticker.c \
++	src/tsd.c \
++	src/util.c \
++
++libjemalloc_obj_files := $(patsubst %.c,%.o,$(notdir $(libjemalloc_src_files)))
++
++all:
++	@echo "building jemalloc"
++
++	@for file in $(libjemalloc_src_files); do \
++		$(CC) $(CFLAGS) $(INCLUDES) -c $$file; \
++	done
++
++	@$(RM) -rf libjemalloc.a
++
++	@$(AR) crsPD libjemalloc.a $(libjemalloc_obj_files)
++
++clean:
++	@rm -rf *.o *.a
+\ No newline at end of file
+-- 
+2.7.4
+

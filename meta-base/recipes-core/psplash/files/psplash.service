@@ -1,0 +1,12 @@
+[Unit]
+Description=Starts Psplash Boot screen
+Wants=systemd-firstboot.service
+After=systemd-udev-trigger.service systemd-udevd.service psplash.path
+Before=default.target
+DefaultDependencies=no
+ConditionPathExists=/dev/fb0
+
+[Service]
+Type=forking
+ExecStart=/etc/init.d/psplash.sh
+ExecStartPost=/bin/sh -c '/bin/echo "PROGRESS 40" > /mnt/.psplash/psplash_fifo'

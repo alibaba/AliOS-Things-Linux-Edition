@@ -1,0 +1,13 @@
+[Unit]
+Description=Update Psplash Boot Screen Process
+Wants=psplash.service
+After=psplash.service
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/bin/echo "PROGRESS 70" > /mnt/.psplash/psplash_fifo'
+TimeoutSec=5
+
+[Install]
+WantedBy=basic.target

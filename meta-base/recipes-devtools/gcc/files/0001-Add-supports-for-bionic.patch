@@ -1,0 +1,272 @@
+From e74d7a77a064c5d716ba9191a09931f2d45436e8 Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Tue, 27 Nov 2018 13:50:00 +0800
+Subject: [PATCH] Add supports for bionic
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ gcc/config.gcc                             |  5 ++-
+ gcc/config/aarch64/aarch64-linux-android.h | 59 ++++++++++++++++++++++++++++++
+ gcc/config/i386/gnu-user.h                 |  3 +-
+ gcc/config/i386/linux-common.h             |  4 ++
+ gcc/config/linux-android.h                 | 14 ++++++-
+ gcc/config/linux.h                         |  9 +++--
+ gcc/configure                              |  6 +++
+ libstdc++-v3/config/abi/pre/float128.ver   |  3 ++
+ libstdc++-v3/config/os/bionic/ctype_base.h | 23 ++++++------
+ 9 files changed, 107 insertions(+), 19 deletions(-)
+ create mode 100644 gcc/config/aarch64/aarch64-linux-android.h
+
+diff --git a/gcc/config.gcc b/gcc/config.gcc
+index 840447d..9e29072 100644
+--- a/gcc/config.gcc
++++ b/gcc/config.gcc
+@@ -947,13 +947,16 @@ aarch64*-*-elf | aarch64*-*-rtems*)
+ 	TM_MULTILIB_CONFIG=`echo $TM_MULTILIB_CONFIG | sed 's/^,//'`
+ 	;;
+ aarch64*-*-linux*)
+-	tm_file="${tm_file} dbxelf.h elfos.h gnu-user.h linux.h glibc-stdint.h"
++	tm_file="${tm_file} dbxelf.h elfos.h gnu-user.h linux.h linux-android.h glibc-stdint.h"
+ 	tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-linux.h"
+ 	tmake_file="${tmake_file} aarch64/t-aarch64 aarch64/t-aarch64-linux"
+ 	case $target in
+ 	aarch64_be-*)
+ 		tm_defines="${tm_defines} TARGET_BIG_ENDIAN_DEFAULT=1"
+ 		;;
++	aarch64*-*-linux-android*)
++		tm_file="${tm_file} aarch64/aarch64-linux-android.h"
++		;;
+ 	esac
+ 	aarch64_multilibs="${with_multilib_list}"
+ 	if test "$aarch64_multilibs" = "default"; then
+diff --git a/gcc/config/aarch64/aarch64-linux-android.h b/gcc/config/aarch64/aarch64-linux-android.h
+new file mode 100644
+index 0000000..0510e72
+--- /dev/null
++++ b/gcc/config/aarch64/aarch64-linux-android.h
+@@ -0,0 +1,59 @@
++/* Machine description for AArch64 architecture.
++   Copyright (C) 2014 Free Software Foundation, Inc.
++
++   This file is part of GCC.
++
++   GCC is free software; you can redistribute it and/or modify it
++   under the terms of the GNU General Public License as published by
++   the Free Software Foundation; either version 3, or (at your option)
++   any later version.
++
++   GCC is distributed in the hope that it will be useful, but
++   WITHOUT ANY WARRANTY; without even the implied warranty of
++   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++   General Public License for more details.
++
++   You should have received a copy of the GNU General Public License
++   along with GCC; see the file COPYING3.  If not see
++   <http://www.gnu.org/licenses/>.  */
++
++#ifndef GCC_AARCH64_LINUX_ANDROID_H
++#define GCC_AARCH64_LINUX_ANDROID_H
++
++
++#undef TARGET_OS_CPP_BUILTINS
++#define TARGET_OS_CPP_BUILTINS()		\
++  do						\
++    {						\
++	GNU_USER_TARGET_OS_CPP_BUILTINS();	\
++	ANDROID_TARGET_OS_CPP_BUILTINS();	\
++    }						\
++  while (0)
++
++#undef  LINK_SPEC
++#define LINK_SPEC							\
++  LINUX_OR_ANDROID_LD (LINUX_TARGET_LINK_SPEC,				\
++		       LINUX_TARGET_LINK_SPEC " " ANDROID_LINK_SPEC)
++
++#undef  CC1_SPEC
++#define CC1_SPEC							\
++  LINUX_OR_ANDROID_CC (GNU_USER_TARGET_CC1_SPEC,			\
++		       GNU_USER_TARGET_CC1_SPEC " " ANDROID_CC1_SPEC)
++
++#define CC1PLUS_SPEC \
++  LINUX_OR_ANDROID_CC ("", ANDROID_CC1PLUS_SPEC)
++
++#undef  LIB_SPEC
++#define LIB_SPEC							\
++  LINUX_OR_ANDROID_LD (GNU_USER_TARGET_LIB_SPEC,			\
++		    GNU_USER_TARGET_NO_PTHREADS_LIB_SPEC " " ANDROID_LIB_SPEC)
++
++#undef	STARTFILE_SPEC
++#define STARTFILE_SPEC \
++  LINUX_OR_ANDROID_LD (GNU_USER_TARGET_STARTFILE_SPEC, ANDROID_STARTFILE_SPEC)
++
++#undef	ENDFILE_SPEC
++#define ENDFILE_SPEC \
++  LINUX_OR_ANDROID_LD (GNU_USER_TARGET_ENDFILE_SPEC, ANDROID_ENDFILE_SPEC)
++
++#endif  /* GCC_AARCH64_LINUX_ANDROID_H */
+diff --git a/gcc/config/i386/gnu-user.h b/gcc/config/i386/gnu-user.h
+index fee33a3..fcb12e3 100644
+--- a/gcc/config/i386/gnu-user.h
++++ b/gcc/config/i386/gnu-user.h
+@@ -67,7 +67,8 @@ along with GCC; see the file COPYING3.  If not see
+ 
+ #undef  ASM_SPEC
+ #define ASM_SPEC \
+-  "--32 %{!mno-sse2avx:%{mavx:-msse2avx}} %{msse2avx:%{!mavx:-msse2avx}}"
++  "--32 %{!mno-sse2avx:%{mavx:-msse2avx}} %{msse2avx:%{!mavx:-msse2avx}} " \
++  LINUX_OR_ANDROID_CC ("", ANDROID_ASM_SPEC)
+ 
+ #undef  SUBTARGET_EXTRA_SPECS
+ #define SUBTARGET_EXTRA_SPECS \
+diff --git a/gcc/config/i386/linux-common.h b/gcc/config/i386/linux-common.h
+index 4b9910f..8d40482 100644
+--- a/gcc/config/i386/linux-common.h
++++ b/gcc/config/i386/linux-common.h
+@@ -32,6 +32,10 @@ along with GCC; see the file COPYING3.  If not see
+   LINUX_OR_ANDROID_CC (GNU_USER_TARGET_CC1_SPEC, \
+ 		       GNU_USER_TARGET_CC1_SPEC " " ANDROID_CC1_SPEC)
+ 
++/* aos-note: add asflags and cxxflags for android */
++#define CC1PLUS_SPEC \
++  LINUX_OR_ANDROID_CC ("", ANDROID_CC1PLUS_SPEC)
++
+ #undef	LINK_SPEC
+ #define LINK_SPEC \
+   LINUX_OR_ANDROID_LD (GNU_USER_TARGET_LINK_SPEC, \
+diff --git a/gcc/config/linux-android.h b/gcc/config/linux-android.h
+index 301a41c..d9b200b 100644
+--- a/gcc/config/linux-android.h
++++ b/gcc/config/linux-android.h
+@@ -19,10 +19,10 @@
+    along with GCC; see the file COPYING3.  If not see
+    <http://www.gnu.org/licenses/>.  */
+ 
++/* aos-note: remove __ANDROID__ to be compatible */
+ #define ANDROID_TARGET_OS_CPP_BUILTINS()			\
+     do {							\
+-	if (TARGET_ANDROID)					\
+-	  builtin_define ("__ANDROID__");			\
++								\
+     } while (0)
+ 
+ #if ANDROID_DEFAULT
+@@ -37,9 +37,15 @@
+ #define LINUX_OR_ANDROID_LD(LINUX_SPEC, ANDROID_SPEC) \
+   "%{" NOANDROID "|tno-android-ld:" LINUX_SPEC ";:" ANDROID_SPEC "}"
+ 
++/* aos-note: modify default link flags */
+ #define ANDROID_LINK_SPEC \
+   "%{shared: -Bsymbolic}"
+ 
++#define ANDROID_LINK_SPEC \
++  "-z noexecstack -z relro -z now " \
++  "%{shared: -Bsymbolic} " \
++  "--eh-frame-hdr "
++
+ #define ANDROID_CC1_SPEC						\
+   "%{!mglibc:%{!muclibc:%{!mbionic: -mbionic}}} "			\
+   "%{!fno-pic:%{!fno-PIC:%{!fpic:%{!fPIC: -fPIC}}}}"
+@@ -48,6 +54,10 @@
+   "%{!fexceptions:%{!fno-exceptions: -fno-exceptions}} "		\
+   "%{!frtti:%{!fno-rtti: -fno-rtti}}"
+ 
++/* aos-note: add asflags for bionic */
++#define ANDROID_ASM_SPEC 						\
++  "--noexecstack "							\
++
+ #define ANDROID_LIB_SPEC \
+   "%{!static: -ldl}"
+ 
+diff --git a/gcc/config/linux.h b/gcc/config/linux.h
+index b055652..d2afb1d 100644
+--- a/gcc/config/linux.h
++++ b/gcc/config/linux.h
+@@ -85,10 +85,11 @@ see the files COPYING3 and COPYING.RUNTIME respectively.  If not, see
+ #define UCLIBC_DYNAMIC_LINKER32 SYSTEMLIBS_DIR "ld-uClibc.so.0"
+ #define UCLIBC_DYNAMIC_LINKER64 SYSTEMLIBS_DIR "ld64-uClibc.so.0"
+ #define UCLIBC_DYNAMIC_LINKERX32 SYSTEMLIBS_DIR "ldx32-uClibc.so.0"
+-#define BIONIC_DYNAMIC_LINKER "/system/bin/linker"
+-#define BIONIC_DYNAMIC_LINKER32 "/system/bin/linker"
+-#define BIONIC_DYNAMIC_LINKER64 "/system/bin/linker64"
+-#define BIONIC_DYNAMIC_LINKERX32 "/system/bin/linkerx32"
++/* aos-note: modify default linker paths. */
++#define BIONIC_DYNAMIC_LINKER "/lib/linker"
++#define BIONIC_DYNAMIC_LINKER32 "/lib/linker"
++#define BIONIC_DYNAMIC_LINKER64 "/lib/linker64"
++#define BIONIC_DYNAMIC_LINKERX32 "/lib/linkerx32"
+ /* Should be redefined for each target that supports musl.  */
+ #define MUSL_DYNAMIC_LINKER "/dev/null"
+ #define MUSL_DYNAMIC_LINKER32 "/dev/null"
+diff --git a/gcc/configure b/gcc/configure
+index 111fe23..b8b9011 100755
+--- a/gcc/configure
++++ b/gcc/configure
+@@ -27928,6 +27928,12 @@ EOF
+   fi
+ fi
+ 
++# aos-note: the bionic linker does not support copy reloc
++case "$target" in
++  *-*-linux-android)
++    gcc_cv_ld_pie_copyreloc=no
++    ;;
++esac
+ cat >>confdefs.h <<_ACEOF
+ #define HAVE_LD_PIE_COPYRELOC `if test x"$gcc_cv_ld_pie_copyreloc" = xyes; then echo 1; else echo 0; fi`
+ _ACEOF
+diff --git a/libstdc++-v3/config/abi/pre/float128.ver b/libstdc++-v3/config/abi/pre/float128.ver
+index 26c62c7..98ee032 100644
+--- a/libstdc++-v3/config/abi/pre/float128.ver
++++ b/libstdc++-v3/config/abi/pre/float128.ver
+@@ -7,4 +7,7 @@ CXXABI_FLOAT128 {
+     _ZT[IS]Pg;
+     _ZT[IS]PKg;
+ 
++    # aos-note: currently we add all symbols to cover the missing ones
++    *;
++
+ };
+diff --git a/libstdc++-v3/config/os/bionic/ctype_base.h b/libstdc++-v3/config/os/bionic/ctype_base.h
+index 33978f3..33cc074 100644
+--- a/libstdc++-v3/config/os/bionic/ctype_base.h
++++ b/libstdc++-v3/config/os/bionic/ctype_base.h
+@@ -27,6 +27,7 @@
+ //
+ 
+ // Information as gleaned from /usr/include/ctype.h
++// aos-note: use bionic ctypes
+ 
+ namespace std _GLIBCXX_VISIBILITY(default)
+ {
+@@ -41,17 +42,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+     // NB: Offsets into ctype<char>::_M_table force a particular size
+     // on the mask type. Because of this, we don't use an enum.
+     typedef char 		mask;
+-    static const mask upper    	= _U;
+-    static const mask lower 	= _L;
+-    static const mask alpha 	= _U | _L;
+-    static const mask digit 	= _N;
+-    static const mask xdigit 	= _X | _N;
+-    static const mask space 	= _S;
+-    static const mask print 	= _P | _U | _L | _N | _B;
+-    static const mask graph 	= _P | _U | _L | _N;
+-    static const mask cntrl 	= _C;
+-    static const mask punct 	= _P;
+-    static const mask alnum 	= _U | _L | _N;
++    static const mask upper    	= _CTYPE_U;
++    static const mask lower 	= _CTYPE_L;
++    static const mask alpha 	= _CTYPE_U | _CTYPE_L;
++    static const mask digit 	= _CTYPE_N;
++    static const mask xdigit 	= _CTYPE_X | _CTYPE_N;
++    static const mask space 	= _CTYPE_S;
++    static const mask print 	= _CTYPE_P | _CTYPE_U | _CTYPE_L | _CTYPE_N | _CTYPE_B;
++    static const mask graph 	= _CTYPE_P | _CTYPE_U | _CTYPE_L | _CTYPE_N;
++    static const mask cntrl 	= _CTYPE_C;
++    static const mask punct 	= _CTYPE_P;
++    static const mask alnum 	= _CTYPE_U | _CTYPE_L | _CTYPE_N;
+ #if __cplusplus >= 201103L
+     static const mask blank 	= space;
+ #endif
+-- 
+2.7.4
+

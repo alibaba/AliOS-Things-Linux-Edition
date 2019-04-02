@@ -1,0 +1,33 @@
+From 71d98e9b33fddc9b796b70eae31a7b8888cb3bd9 Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Thu, 10 Jan 2019 19:43:22 +0800
+Subject: [PATCH] fix fbtfb driver bug
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ drivers/staging/fbtft/fbtft-core.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/staging/fbtft/fbtft-core.c b/drivers/staging/fbtft/fbtft-core.c
+index 587f68a..3fa6aed 100644
+--- a/drivers/staging/fbtft/fbtft-core.c
++++ b/drivers/staging/fbtft/fbtft-core.c
+@@ -35,6 +35,7 @@
+ #include <linux/dma-mapping.h>
+ #include <linux/of.h>
+ #include <linux/of_gpio.h>
++#include <linux/of_device.h>
+ #include <video/mipi_display.h>
+ 
+ #include "fbtft.h"
+@@ -832,6 +833,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
+ #ifdef CONFIG_HAS_DMA
+ 		if (dma) {
+ 			dev->coherent_dma_mask = ~0;
++			of_dma_configure(dev, dev->of_node);
+ 			txbuf = dmam_alloc_coherent(dev, txbuflen, &par->txbuf.dma, GFP_DMA);
+ 		} else
+ #endif
+-- 
+2.7.4
+

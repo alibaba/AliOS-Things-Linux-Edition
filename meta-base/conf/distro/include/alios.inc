@@ -1,7 +1,7 @@
 DISTRO = "alios"
 DISTRO_NAME = "AliOS Things Linux Edition"
-DISTRO_CODENAME = "M2"
-DISTRO_VERSION = "1.2.0"
+DISTRO_CODENAME = "M3"
+DISTRO_VERSION = "1.3.0"
 HOSTOS_VERSION = "${DISTRO_VERSION}"
 
 MAINTAINER = "iot <iot@alibaba-inc.com>"
@@ -56,6 +56,28 @@ WARN_TO_ERROR_QA = "already-stripped compile-host-path install-host-path \
                     useless-rpaths"
 WARN_QA_remove = "${WARN_TO_ERROR_QA}"
 ERROR_QA_append = " ${WARN_TO_ERROR_QA}"
+
+# Set AliOS Things splash image
+SPLASH = "psplash-alios-things"
+
+# Add welcome message in /etc/issue for /sbin/agetty
+# create from http://patorjk.com/software/taag/
+add_welcom_message_for_agetty() {
+echo "       █████╗ ██╗     ██╗ ██████╗ ███████╗     " >> ${IMAGE_ROOTFS}/etc/issue
+echo "      ██╔══██╗██║     ██║██╔═══██╗██╔════╝     " >> ${IMAGE_ROOTFS}/etc/issue
+echo "      ███████║██║     ██║██║   ██║███████╗     " >> ${IMAGE_ROOTFS}/etc/issue
+echo "      ██╔══██║██║     ██║██║   ██║╚════██║     " >> ${IMAGE_ROOTFS}/etc/issue
+echo "      ██║  ██║███████╗██║╚██████╔╝███████║     " >> ${IMAGE_ROOTFS}/etc/issue
+echo "      ╚═╝  ╚═╝╚══════╝╚═╝ ╚═════╝ ╚══════╝     " >> ${IMAGE_ROOTFS}/etc/issue
+echo "████████╗██╗  ██╗██╗███╗   ██╗ ██████╗ ███████╗" >> ${IMAGE_ROOTFS}/etc/issue
+echo "╚══██╔══╝██║  ██║██║████╗  ██║██╔════╝ ██╔════╝" >> ${IMAGE_ROOTFS}/etc/issue
+echo "   ██║   ███████║██║██╔██╗ ██║██║  ███╗███████╗" >> ${IMAGE_ROOTFS}/etc/issue
+echo "   ██║   ██╔══██║██║██║╚██╗██║██║   ██║╚════██║" >> ${IMAGE_ROOTFS}/etc/issue
+echo "   ██║   ██║  ██║██║██║ ╚████║╚██████╔╝███████║" >> ${IMAGE_ROOTFS}/etc/issue
+echo "   ╚═╝   ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝" >> ${IMAGE_ROOTFS}/etc/issue
+}
+ROOTFS_POSTPROCESS_COMMAND += "add_welcom_message_for_agetty; "
+
 
 require conf/distro/include/no-static-libs.inc
 require conf/distro/include/yocto-uninative.inc

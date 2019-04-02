@@ -1,0 +1,118 @@
+From 2b9201a41e47e8c184fbe8c6d81f8fabc450c499 Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Tue, 29 Jan 2019 19:55:18 +0800
+Subject: [PATCH] Replace int -> uint to avoid signed integer overflow
+
+An example of such an error (should be compiled with DEBUG_SANITIZE):
+
+runtime error: left shift of 1 by 31 places cannot be represented in
+type 'int'
+
+Signed-off-by: Rostislav Skudnov <rostislav@tuxera.com>
+Signed-off-by: Denys Vlasenko <vda.linux@googlemail.com>
+
+The patch comes from:
+https://git.busybox.net/busybox/commit/?id=8762512fdb088acefb9f3ea5f7b1e1bf2d336ff3
+
+Upstream-Status: Backport
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ archival/libarchive/decompress_bunzip2.c | 6 +++---
+ libbb/crc32.c                            | 2 +-
+ libbb/getopt32.c                         | 4 ++--
+ libbb/pw_encrypt.c                       | 2 +-
+ miscutils/rx.c                           | 2 +-
+ 5 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/archival/libarchive/decompress_bunzip2.c b/archival/libarchive/decompress_bunzip2.c
+index fe5953d..4fb989c 100644
+--- a/archival/libarchive/decompress_bunzip2.c
++++ b/archival/libarchive/decompress_bunzip2.c
+@@ -134,7 +134,7 @@ static unsigned get_bits(bunzip_data *bd, int bits_wanted)
+ 
+ 		/* Avoid 32-bit overflow (dump bit buffer to top of output) */
+ 		if (bit_count >= 24) {
+-			bits = bd->inbufBits & ((1 << bit_count) - 1);
++			bits = bd->inbufBits & ((1U << bit_count) - 1);
+ 			bits_wanted -= bit_count;
+ 			bits <<= bits_wanted;
+ 			bit_count = 0;
+@@ -158,11 +158,11 @@ static int get_next_block(bunzip_data *bd)
+ {
+ 	struct group_data *hufGroup;
+ 	int dbufCount, dbufSize, groupCount, *base, *limit, selector,
+-		i, j, t, runPos, symCount, symTotal, nSelectors, byteCount[256];
++		i, j, runPos, symCount, symTotal, nSelectors, byteCount[256];
+ 	int runCnt = runCnt; /* for compiler */
+ 	uint8_t uc, symToByte[256], mtfSymbol[256], *selectors;
+ 	uint32_t *dbuf;
+-	unsigned origPtr;
++	unsigned origPtr, t;
+ 
+ 	dbuf = bd->dbuf;
+ 	dbufSize = bd->dbufSize;
+diff --git a/libbb/crc32.c b/libbb/crc32.c
+index ac9836c..0711ca8 100644
+--- a/libbb/crc32.c
++++ b/libbb/crc32.c
+@@ -24,7 +24,7 @@ uint32_t* FAST_FUNC crc32_filltable(uint32_t *crc_table, int endian)
+ {
+ 	uint32_t polynomial = endian ? 0x04c11db7 : 0xedb88320;
+ 	uint32_t c;
+-	int i, j;
++	unsigned i, j;
+ 
+ 	if (!crc_table)
+ 		crc_table = xmalloc(256 * sizeof(uint32_t));
+diff --git a/libbb/getopt32.c b/libbb/getopt32.c
+index d0e83d8..cebb4b2 100644
+--- a/libbb/getopt32.c
++++ b/libbb/getopt32.c
+@@ -376,7 +376,7 @@ getopt32(char **argv, const char *applet_opts, ...)
+ 		if (c >= 32)
+ 			break;
+ 		on_off->opt_char = *s;
+-		on_off->switch_on = (1 << c);
++		on_off->switch_on = (1U << c);
+ 		if (*++s == ':') {
+ 			on_off->optarg = va_arg(p, void **);
+ 			while (*++s == ':')
+@@ -419,7 +419,7 @@ getopt32(char **argv, const char *applet_opts, ...)
+ 			if (c >= 32)
+ 				break;
+ 			on_off->opt_char = l_o->val;
+-			on_off->switch_on = (1 << c);
++			on_off->switch_on = (1U << c);
+ 			if (l_o->has_arg != no_argument)
+ 				on_off->optarg = va_arg(p, void **);
+ 			c++;
+diff --git a/libbb/pw_encrypt.c b/libbb/pw_encrypt.c
+index bfc7030..ba45bb7 100644
+--- a/libbb/pw_encrypt.c
++++ b/libbb/pw_encrypt.c
+@@ -30,7 +30,7 @@ static int i64c(int i)
+ int FAST_FUNC crypt_make_salt(char *p, int cnt /*, int x */)
+ {
+ 	/* was: x += ... */
+-	int x = getpid() + monotonic_us();
++	unsigned x = getpid() + monotonic_us();
+ 	do {
+ 		/* x = (x*1664525 + 1013904223) % 2^32 generator is lame
+ 		 * (low-order bit is not "random", etc...),
+diff --git a/miscutils/rx.c b/miscutils/rx.c
+index 1dffb59..2bbf19a 100644
+--- a/miscutils/rx.c
++++ b/miscutils/rx.c
+@@ -84,7 +84,7 @@ static int receive(/*int read_fd, */int file_fd)
+ 		int blockBegin;
+ 		int blockNo, blockNoOnesCompl;
+ 		int cksum_or_crc;
+-		int expected;
++		unsigned expected;
+ 		int i, j;
+ 
+ 		blockBegin = read_byte(timeout);
+-- 
+2.7.4
+

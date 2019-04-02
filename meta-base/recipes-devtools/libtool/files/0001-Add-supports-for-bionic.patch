@@ -1,0 +1,38 @@
+From 56093710660fa838de5ffbb0ed3b06ccc8c97168 Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Thu, 13 Dec 2018 10:31:46 +0800
+Subject: [PATCH] Add supports for bionic
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ m4/libtool.m4 | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/m4/libtool.m4 b/m4/libtool.m4
+index 36a43e2..738be72 100644
+--- a/m4/libtool.m4
++++ b/m4/libtool.m4
+@@ -2823,14 +2823,15 @@ linux*oldld* | linux*aout* | linux*coff*)
+   ;;
+ 
+ linux*android*)
+-  version_type=none # Android doesn't support versioned libraries.
++  # Add supports for bionic.
++  version_type=linux # correct to gnu/linux during the next big refactor
+   need_lib_prefix=no
+   need_version=no
+-  library_names_spec='$libname$release$shared_ext'
+-  soname_spec='$libname$release$shared_ext'
+-  finish_cmds=
++  library_names_spec='$libname$release$shared_ext$versuffix $libname$release$shared_ext$major $libname$shared_ext'
++  soname_spec='$libname$release$shared_ext$major'
++  finish_cmds='PATH="\$PATH:/sbin" ldconfig -n $libdir'
+   shlibpath_var=LD_LIBRARY_PATH
+-  shlibpath_overrides_runpath=yes
++  shlibpath_overrides_runpath=no
+ 
+   # This implies no fast_install, which is unacceptable.
+   # Some rework will be needed to allow for fast_install
+-- 
+2.7.4
+

@@ -1,0 +1,2478 @@
+From 0f3cc4a1a5ff8ad84396d9f2531ff71d79fc2929 Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Tue, 25 Dec 2018 17:40:25 +0800
+Subject: [PATCH 2/3] Essential patch to fix bionic
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ libc/bionic/__errno.cpp                            |   4 +-
+ libc/bionic/getentropy_linux.c                     |  74 +++++-
+ libc/bionic/libc_logging.cpp                       |   5 +
+ libc/bionic/pututline.c                            |   4 +
+ libc/bionic/stubs.cpp                              |  11 +-
+ libc/dns/include/resolv_private.h                  |   5 +-
+ libc/dns/net/getaddrinfo.c                         |   6 +-
+ libc/dns/resolv/res_init.c                         |  22 +-
+ libc/external/crypt.c                              |  12 +
+ libc/external/gcvt.c                               |   9 +
+ libc/external/get_current_dir_name.c               |   6 +
+ libc/external/ioperm.c                             |  11 +
+ libc/external/iopl.c                               |  11 +
+ libc/external/langinfo.c                           |   8 +
+ libc/external/mblen.c                              |   6 +
+ libc/external/pthread_cancel.cpp                   |   7 +
+ libc/external/shadow.c                             | 103 ++++++++
+ libc/external/vhangup.c                            |   7 +
+ libc/external/wait3.c                              |   6 +
+ libc/include/bits/wordsize.h                       |  23 ++
+ libc/include/crypt.h                               |  18 ++
+ libc/include/ctype.h                               |   3 +
+ libc/include/errno.h                               |   4 +-
+ libc/include/fcntl.h                               |   3 +-
+ libc/include/grp.h                                 |   5 +
+ libc/include/limits.h                              |   2 +
+ libc/include/netdb.h                               |  11 +-
+ libc/include/netinet/ip.h                          |   2 +
+ libc/include/paths.h                               |  11 +-
+ libc/include/pthread.h                             |   3 +-
+ libc/include/pwd.h                                 |   8 +
+ libc/include/scsi/scsi.h                           | 261 +++++++++++++++++++++
+ libc/include/scsi/scsi_ioctl.h                     |  34 +++
+ libc/include/scsi/sg.h                             | 181 ++++++++++++++
+ libc/include/shadow.h                              |  68 ++++++
+ libc/include/signal.h                              |   3 +-
+ libc/include/stdlib.h                              |   4 +
+ libc/include/string.h                              |   3 +
+ libc/include/sys/capability.h                      |  42 ----
+ libc/include/sys/glibc-syscalls.h                  |  41 ++++
+ libc/include/sys/io.h                              |  25 ++
+ libc/include/sys/kd.h                              |   4 +
+ libc/include/sys/limits.h                          |   5 +-
+ libc/include/sys/mtio.h                            |   4 +
+ libc/include/sys/param.h                           |   2 +
+ libc/include/sys/resource.h                        |  22 ++
+ libc/include/sys/shm.h                             |   4 +
+ libc/include/sys/ttydefaults.h                     |   2 +-
+ libc/include/sys/types.h                           |   3 +
+ libc/include/syslog.h                              |  28 +++
+ libc/include/unistd.h                              |   2 +
+ libc/include/utmp.h                                |  10 +
+ libc/include/utmpx.h                               |  43 ++++
+ libc/include/wait.h                                |   2 +
+ libc/stdio/refill.c                                |   6 +-
+ libc/tzcode/strftime.c                             |   5 +-
+ libc/upstream-netbsd/lib/libc/gen/utmp.c           |  25 ++
+ .../android/include/openbsd-compat.h               |   3 +-
+ libc/upstream-openbsd/lib/libc/include/langinfo.h  |  92 +++++++-
+ linker/debugger.cpp                                |   3 +
+ linker/linker.cpp                                  |  62 +++--
+ linker/linker_allocator.cpp                        |   3 +
+ linker/linker_dlwarning.cpp                        |   3 +
+ linker/linker_utils.h                              |   3 +
+ 64 files changed, 1296 insertions(+), 112 deletions(-)
+ create mode 100644 libc/external/crypt.c
+ create mode 100644 libc/external/gcvt.c
+ create mode 100644 libc/external/get_current_dir_name.c
+ create mode 100644 libc/external/ioperm.c
+ create mode 100644 libc/external/iopl.c
+ create mode 100644 libc/external/langinfo.c
+ create mode 100644 libc/external/mblen.c
+ create mode 100644 libc/external/pthread_cancel.cpp
+ create mode 100644 libc/external/shadow.c
+ create mode 100644 libc/external/vhangup.c
+ create mode 100644 libc/external/wait3.c
+ create mode 100644 libc/include/bits/wordsize.h
+ create mode 100644 libc/include/crypt.h
+ create mode 100644 libc/include/scsi/scsi.h
+ create mode 100644 libc/include/scsi/scsi_ioctl.h
+ create mode 100644 libc/include/scsi/sg.h
+ create mode 100644 libc/include/shadow.h
+ delete mode 100644 libc/include/sys/capability.h
+ create mode 100644 libc/include/sys/io.h
+ create mode 100644 libc/include/sys/kd.h
+ create mode 100644 libc/include/sys/mtio.h
+ create mode 100644 libc/include/sys/shm.h
+ create mode 100644 libc/include/utmpx.h
+
+diff --git a/libc/bionic/__errno.cpp b/libc/bionic/__errno.cpp
+index c9c1605..6a72920 100644
+--- a/libc/bionic/__errno.cpp
++++ b/libc/bionic/__errno.cpp
+@@ -31,6 +31,8 @@
+ 
+ #include "private/bionic_tls.h"
+ 
+-volatile int*  __errno() {
++/*  aos-note: compatible with libstdc++ */
++
++int*  __errno() {
+   return reinterpret_cast<int*>(&(__get_tls()[TLS_SLOT_ERRNO]));
+ }
+diff --git a/libc/bionic/getentropy_linux.c b/libc/bionic/getentropy_linux.c
+index 409bd7d..e5e7773 100644
+--- a/libc/bionic/getentropy_linux.c
++++ b/libc/bionic/getentropy_linux.c
+@@ -76,18 +76,27 @@
+ int	getentropy(void *buf, size_t len);
+ 
+ static int gotdata(char *buf, size_t len);
+-#ifdef SYS__getrandom
++#ifdef SYS_getrandom
+ static int getentropy_getrandom(void *buf, size_t len);
+ #endif
+ static int getentropy_urandom(void *buf, size_t len);
++/* aos-note: this feature is disabled */
++#if 0
+ #ifdef SYS__sysctl
+ static int getentropy_sysctl(void *buf, size_t len);
+ #endif
++#endif
+ #ifdef HAVE_OPENSSL
+ static int getentropy_fallback(void *buf, size_t len);
+ static int getentropy_phdr(struct dl_phdr_info *info, size_t size, void *data);
+ #endif
+ 
++#define RANDOM_FALLBACK
++/* aos-note: use random fallback in case that we don't have enough entroypy */
++#ifdef RANDOM_FALLBACK
++static int getentropy_random(void *buf, size_t len);
++#endif
++
+ int
+ getentropy(void *buf, size_t len)
+ {
+@@ -98,7 +107,7 @@ getentropy(void *buf, size_t len)
+ 		return -1;
+ 	}
+ 
+-#ifdef SYS__getrandom
++#ifdef SYS_getrandom
+ 	/*
+ 	 * Try descriptor-less getrandom()
+ 	 */
+@@ -117,6 +126,8 @@ getentropy(void *buf, size_t len)
+ 	if (ret != -1)
+ 		return (ret);
+ 
++/* aos-note: this feature is deprecated */
++#if 0
+ #ifdef SYS__sysctl
+ 	/*
+ 	 * Try to use sysctl CTL_KERN, KERN_RANDOM, RANDOM_UUID.
+@@ -140,6 +151,7 @@ getentropy(void *buf, size_t len)
+ 	if (ret != -1)
+ 		return (ret);
+ #endif /* SYS__sysctl */
++#endif
+ 
+ 	/*
+ 	 * Entropy collection via /dev/urandom and sysctl have failed.
+@@ -168,6 +180,12 @@ getentropy(void *buf, size_t len)
+ #ifdef FAIL_INSTEAD_OF_TRYING_FALLBACK
+ 	raise(SIGKILL);
+ #endif
++/* aos-note: use random fallback in case that we don't have enough entroypy */
++#ifdef RANDOM_FALLBACK
++	ret = getentropy_random(buf, len);
++	if (ret != -1)
++		return (ret);
++#endif
+ #ifdef HAVE_OPENSSL
+ 	ret = getentropy_fallback(buf, len);
+ 	if (ret != -1)
+@@ -194,29 +212,39 @@ gotdata(char *buf, size_t len)
+ 	return 0;
+ }
+ 
+-#ifdef SYS__getrandom
++#ifdef SYS_getrandom
++/* aos-note: add supports for getrandom */
++struct __bionic_getrandom_args {
++		void *buf;
++		size_t len;
++		unsigned int flags;
++};
++
+ static int
+ getentropy_getrandom(void *buf, size_t len)
+ {
+-#if 0
++/* aos-note: enable getrandom */
++#if 1
+ 
+ /* Hand-definitions until the API becomes commonplace */
+-#ifndef SYS__getrandom
++#ifndef SYS_getrandom
+ #ifdef __LP64__
+-#define SYS__getrandom 317
++#define SYS_getrandom 317
+ #else
+-#define SYS__getrandom 354
++#define SYS_getrandom 354
+ #endif
+ #endif
+-	struct __getrandom_args args = {
+-		.buf = buf;
+-		.len = len;
+-		.flags = 0;
++	struct __bionic_getrandom_args args = {
++		.buf = buf,
++		.len = len,
++		.flags = GRND_NONBLOCK,
+ 	};
+ 
+ 	if (len > 256)
+ 		return (-1);
+-	ret = syscall(SYS__getrandom, &args);
++
++	ssize_t ret = syscall(SYS_getrandom, buf, len, GRND_NONBLOCK);
++
+ 	if (ret == len)
+ 		return (0);
+ #endif
+@@ -282,6 +310,9 @@ nodevrandom:
+ 	return -1;
+ }
+ 
++
++/* aos-note: this feature is deprecated */
++#if 0
+ #ifdef SYS__sysctl
+ static int
+ getentropy_sysctl(void *buf, size_t len)
+@@ -313,6 +344,7 @@ sysctlfailed:
+ 	return -1;
+ }
+ #endif /* SYS__sysctl */
++#endif
+ 
+ #ifdef HAVE_OPENSSL
+ 
+@@ -563,3 +595,21 @@ getentropy_fallback(void *buf, size_t len)
+ }
+ 
+ #endif /* HAVE_OPENSSL */
++
++#ifdef RANDOM_FALLBACK
++/* aos-note: add fallback with getrandom */
++static int
++getentropy_random(void *buf, size_t len){
++	if (len > 256) {
++		errno = EIO;
++		return -1;
++	}
++	time_t current_time = time(NULL);
++	srandom((unsigned int) current_time);
++	char* p = (char *)buf;
++	for (int i = 0; i < len; i ++){
++		p[i] = random();
++	}
++	return len;
++}
++#endif
+\ No newline at end of file
+diff --git a/libc/bionic/libc_logging.cpp b/libc/bionic/libc_logging.cpp
+index fffaea8..729cd36 100644
+--- a/libc/bionic/libc_logging.cpp
++++ b/libc/bionic/libc_logging.cpp
+@@ -459,6 +459,10 @@ static int __libc_open_log_socket() {
+   // found that all logd crashes thus far have had no problem stuffing
+   // the UNIX domain socket and moving on so not critical *today*.
+ 
++  /* aos-note: disable logging */
++  return -1;
++
++  /*
+   int log_fd = TEMP_FAILURE_RETRY(socket(PF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0));
+   if (log_fd < 0) {
+     return -1;
+@@ -483,6 +487,7 @@ static int __libc_open_log_socket() {
+   }
+ 
+   return log_fd;
++  */
+ }
+ 
+ struct cache {
+diff --git a/libc/bionic/pututline.c b/libc/bionic/pututline.c
+index 8cbf470..214543a 100644
+--- a/libc/bionic/pututline.c
++++ b/libc/bionic/pututline.c
+@@ -28,6 +28,7 @@
+ #include <string.h>
+ #include <stdio.h>
+ #include <utmp.h>
++#include <utmpx.h>
+ 
+ 
+ void pututline(struct utmp* utmp)
+@@ -62,3 +63,6 @@ void pututline(struct utmp* utmp)
+ ret:
+     fclose(f);
+ }
++
++/* aos-note: add alias for pututxline */
++weak_alias(pututline, pututxline);
+\ No newline at end of file
+diff --git a/libc/bionic/stubs.cpp b/libc/bionic/stubs.cpp
+index 374d015..0194bab 100644
+--- a/libc/bionic/stubs.cpp
++++ b/libc/bionic/stubs.cpp
+@@ -144,7 +144,9 @@ static passwd* android_iinfo_to_passwd(passwd_state_t* state,
+                                        const android_id_info* iinfo) {
+   snprintf(state->name_buffer_, sizeof(state->name_buffer_), "%s", iinfo->name);
+   snprintf(state->dir_buffer_, sizeof(state->dir_buffer_), "/");
+-  snprintf(state->sh_buffer_, sizeof(state->sh_buffer_), "/system/bin/sh");
++
++  /* aos-note: modify shell path */
++  snprintf(state->sh_buffer_, sizeof(state->sh_buffer_), "/bin/sh");
+ 
+   passwd* pw = &state->passwd_;
+   pw->pw_name  = state->name_buffer_;
+@@ -335,7 +337,9 @@ static passwd* oem_id_to_passwd(uid_t uid, passwd_state_t* state) {
+   snprintf(state->name_buffer_, sizeof(state->name_buffer_), "oem_%u",
+            uid - AID_OEM_RESERVED_2_START);
+   snprintf(state->dir_buffer_, sizeof(state->dir_buffer_), "/");
+-  snprintf(state->sh_buffer_, sizeof(state->sh_buffer_), "/system/bin/sh");
++
++  /* aos-note: modify shell path */
++  snprintf(state->sh_buffer_, sizeof(state->sh_buffer_), "/bin/sh");
+ 
+   passwd* pw = &state->passwd_;
+   pw->pw_name  = state->name_buffer_;
+@@ -382,7 +386,8 @@ static passwd* app_id_to_passwd(uid_t uid, passwd_state_t* state) {
+       snprintf(state->dir_buffer_, sizeof(state->dir_buffer_), "/data");
+   }
+ 
+-  snprintf(state->sh_buffer_, sizeof(state->sh_buffer_), "/system/bin/sh");
++  /* aos-note: modify shell path */
++  snprintf(state->sh_buffer_, sizeof(state->sh_buffer_), "/bin/sh");
+ 
+   passwd* pw = &state->passwd_;
+   pw->pw_name  = state->name_buffer_;
+diff --git a/libc/dns/include/resolv_private.h b/libc/dns/include/resolv_private.h
+index 3ab8ea6..12ec40b 100644
+--- a/libc/dns/include/resolv_private.h
++++ b/libc/dns/include/resolv_private.h
+@@ -112,11 +112,14 @@ struct __res_state; /* forward */
+  */
+ 
+ #ifndef _PATH_RESCONF
++/* aos-note: modify the path of resolv.conf */
++/*
+ #ifdef ANDROID_CHANGES
+ #define _PATH_RESCONF        "/etc/ppp/resolv.conf"
+ #else
++*/
+ #define _PATH_RESCONF        "/etc/resolv.conf"
+-#endif
++/* #endif */
+ #endif
+ 
+ typedef enum { res_goahead, res_nextns, res_modified, res_done, res_error }
+diff --git a/libc/dns/net/getaddrinfo.c b/libc/dns/net/getaddrinfo.c
+index 829b679..af1e308 100644
+--- a/libc/dns/net/getaddrinfo.c
++++ b/libc/dns/net/getaddrinfo.c
+@@ -325,11 +325,9 @@ freeaddrinfo(struct addrinfo *ai)
+ {
+ 	struct addrinfo *next;
+ 
+-#if __ANDROID__
++/* aos-note: remove __ANDROID__ */
++
+ 	if (ai == NULL) return;
+-#else
+-	_DIAGASSERT(ai != NULL);
+-#endif
+ 
+ 	do {
+ 		next = ai->ai_next;
+diff --git a/libc/dns/resolv/res_init.c b/libc/dns/resolv/res_init.c
+index 713b6e0..73e1ac4 100644
+--- a/libc/dns/resolv/res_init.c
++++ b/libc/dns/resolv/res_init.c
+@@ -121,11 +121,12 @@ __RCSID("$NetBSD: res_init.c,v 1.8 2006/03/19 03:10:08 christos Exp $");
+ 
+ static void res_setoptions __P((res_state, const char *, const char *));
+ 
+-#ifdef RESOLVSORT
++/* aos-note: we need resolv.conf */
++/* #ifdef RESOLVSORT */
+ static const char sort_mask[] = "/&";
+ #define ISSORTMASK(ch) (strchr(sort_mask, ch) != NULL)
+ static uint32_t net_mask(struct in_addr);
+-#endif
++/* #endif */
+ 
+ #if !defined(isascii)	/* XXX - could be a function */
+ # define isascii(c) (!(c & 0200))
+@@ -179,9 +180,12 @@ __res_vinit(res_state statp, int preinit) {
+ 	int haveenv = 0;
+ #endif
+ 	int havesearch = 0;
+-#ifdef RESOLVSORT
++
++/* aos-note: we need this variable */
++/* #ifdef RESOLVSORT */
+ 	int nsort = 0;
+-#endif
++/* #endif */
++
+ #if !defined(__ANDROID__)
+ 	char *net;
+ #endif
+@@ -282,7 +286,8 @@ __res_vinit(res_state statp, int preinit) {
+ 		statp->nscount = nserv;
+ #endif
+ 
+-#ifndef ANDROID_CHANGES /* !ANDROID_CHANGES - IGNORE resolv.conf in Android */
++/* aos-note: do not ignore resolv.conf */
++/* #ifndef ANDROID_CHANGES */ /* !ANDROID_CHANGES - IGNORE resolv.conf in Android */
+ #define	MATCH(line, name) \
+ 	(!strncmp(line, name, sizeof(name) - 1) && \
+ 	(line[sizeof(name) - 1] == ' ' || \
+@@ -435,7 +440,7 @@ __res_vinit(res_state statp, int preinit) {
+ 	    statp->nsort = nsort;
+ 	    (void) fclose(fp);
+ 	}
+-#endif /* !ANDROID_CHANGES */
++/* #endif */ /* !ANDROID_CHANGES */
+ /*
+  * Last chance to get a nameserver.  This should not normally
+  * be necessary
+@@ -601,7 +606,8 @@ res_setoptions(res_state statp, const char *options, const char *source)
+ 	}
+ }
+ 
+-#ifdef RESOLVSORT
++/* aos-note: we need resolv.conf */
++/* #ifdef RESOLVSORT */
+ /* XXX - should really support CIDR which means explicit masks always. */
+ static uint32_t
+ net_mask(struct in_addr in)	/*!< XXX - should really use system's version of this */
+@@ -614,7 +620,7 @@ net_mask(struct in_addr in)	/*!< XXX - should really use system's version of thi
+ 		return (htonl(IN_CLASSB_NET));
+ 	return (htonl(IN_CLASSC_NET));
+ }
+-#endif
++/* #endif */
+ 
+ /*%
+  * This routine is for closing the socket if a virtual circuit is used and
+diff --git a/libc/external/crypt.c b/libc/external/crypt.c
+new file mode 100644
+index 0000000..b6db7b0
+--- /dev/null
++++ b/libc/external/crypt.c
+@@ -0,0 +1,12 @@
++#include "crypt.h"
++
++/* aos-note: this is a temporary workaround */
++char *crypt(const char *key, const char *salt) {
++    static char buf[128];
++    strncpy(buf, key, strlen(key));
++    return buf;
++}
++
++char *crypt_r(const char *key, const char *salt, struct crypt_data *data) {
++    return data;
++}
+\ No newline at end of file
+diff --git a/libc/external/gcvt.c b/libc/external/gcvt.c
+new file mode 100644
+index 0000000..84b167c
+--- /dev/null
++++ b/libc/external/gcvt.c
+@@ -0,0 +1,9 @@
++#include <stdlib.h>
++#include <stdio.h>
++
++/* aos-note: add gcvt */
++char *gcvt(double x, int n, char *b)
++{
++    sprintf(b, "%.*g", n, x);
++    return b;
++}
+\ No newline at end of file
+diff --git a/libc/external/get_current_dir_name.c b/libc/external/get_current_dir_name.c
+new file mode 100644
+index 0000000..b709da1
+--- /dev/null
++++ b/libc/external/get_current_dir_name.c
+@@ -0,0 +1,6 @@
++#include <stdlib.h>
++
++/* aos-note: add get_current_dir_name */
++char *get_current_dir_name(void) {
++    return getcwd(0, 0);
++}
+\ No newline at end of file
+diff --git a/libc/external/ioperm.c b/libc/external/ioperm.c
+new file mode 100644
+index 0000000..22cb850
+--- /dev/null
++++ b/libc/external/ioperm.c
+@@ -0,0 +1,11 @@
++#include "syscall.h"
++
++#ifdef SYS_ioperm
++#include <sys/io.h>
++
++int ioperm(unsigned long from, unsigned long num, int turn_on)
++{
++    return syscall(SYS_ioperm, from, num, turn_on);
++}
++
++#endif
+\ No newline at end of file
+diff --git a/libc/external/iopl.c b/libc/external/iopl.c
+new file mode 100644
+index 0000000..ae8c573
+--- /dev/null
++++ b/libc/external/iopl.c
+@@ -0,0 +1,11 @@
++#include "syscall.h"
++
++#ifdef SYS_iopl
++#include <sys/io.h>
++
++int iopl(int level)
++{
++    return syscall(SYS_iopl, level);
++}
++
++#endif
+diff --git a/libc/external/langinfo.c b/libc/external/langinfo.c
+new file mode 100644
+index 0000000..a5213f1
+--- /dev/null
++++ b/libc/external/langinfo.c
+@@ -0,0 +1,8 @@
++#include <../upstream-openbsd/lib/libc/include/langinfo.h>
++#include <stdlib.h>
++#include <stdio.h>
++
++/* aos-note: add nl_langinfo */
++char* nl_langinfo(nl_item i) {
++    return (i == RADIXCHAR) ? (char*) "." : NULL;
++}
+\ No newline at end of file
+diff --git a/libc/external/mblen.c b/libc/external/mblen.c
+new file mode 100644
+index 0000000..29c6fac
+--- /dev/null
++++ b/libc/external/mblen.c
+@@ -0,0 +1,6 @@
++#include <stdlib.h>
++/* aos-note: add mblen */
++int mblen(const char *s, size_t n)
++{
++    return mbtowc(0, s, n);
++}
+\ No newline at end of file
+diff --git a/libc/external/pthread_cancel.cpp b/libc/external/pthread_cancel.cpp
+new file mode 100644
+index 0000000..756f7b8
+--- /dev/null
++++ b/libc/external/pthread_cancel.cpp
+@@ -0,0 +1,7 @@
++#include <pthread.h>
++
++/* aos-note: this is a temporary workaround */
++int pthread_cancel(pthread_t t)
++{
++    return 0;
++}
+\ No newline at end of file
+diff --git a/libc/external/shadow.c b/libc/external/shadow.c
+new file mode 100644
+index 0000000..a34577c
+--- /dev/null
++++ b/libc/external/shadow.c
+@@ -0,0 +1,103 @@
++#include "shadow.h"
++#include "grp.h"
++#include "pwd.h"
++
++/* aos-note: this is a temporary workaround */
++void setspent (void) {
++    return;
++}
++
++void setgrent (void) {
++    return;
++}
++
++void endgrent (void) {
++    return;
++}
++
++struct group *getgrent(void) {
++    return NULL;
++}
++
++void endspent (void) {
++    return;
++}
++
++struct spwd *getspent (void) {
++    return NULL;
++}
++
++struct spwd *getspnam (const char *__name) {
++    return NULL;
++}
++
++struct spwd *sgetspent (const char *__string) {
++    return NULL;
++}
++
++struct spwd *fgetspent (FILE *__stream) {
++    return NULL;
++}
++
++int putspent (const struct spwd *__p, FILE *__stream) {
++    return 0;
++}
++
++int getspent_r (struct spwd *__result_buf, char *__buffer,
++                size_t __buflen, struct spwd **__result) {
++    return 0;
++}
++
++int getspnam_r (const char *__name, struct spwd *__result_buf,
++            char *__buffer, size_t __buflen,
++            struct spwd **__result) {
++    return 0;
++}
++
++int sgetspent_r (const char *__string, struct spwd *__result_buf,
++            char *__buffer, size_t __buflen,
++            struct spwd **__result) {
++    return 0;
++}
++
++int fgetspent_r (FILE *__stream, struct spwd *__result_buf,
++            char *__buffer, size_t __buflen,
++            struct spwd **__result) {
++    return 0;
++}
++
++int lckpwdf (void) {
++    return 0;
++}
++
++int ulckpwdf (void) {
++    return 0;
++}
++
++struct group  *fgetgrent(FILE * file) {
++    return NULL;
++}
++
++int putgrent(const struct group * g, FILE * file) {
++    return 0;
++}
++
++struct passwd *fgetpwent (FILE * file) {
++    return NULL;
++}
++
++int putpwent(const struct passwd * p, FILE * file) {
++    return 0;
++}
++
++struct passwd *getpwent(void) {
++    return NULL;
++}
++
++void endpwent(void) {
++    return;
++}
++
++void setpwent(void) {
++    return;
++}
+diff --git a/libc/external/vhangup.c b/libc/external/vhangup.c
+new file mode 100644
+index 0000000..e0bf84e
+--- /dev/null
++++ b/libc/external/vhangup.c
+@@ -0,0 +1,7 @@
++#include <syscall.h>
++#ifdef SYS_vhangup
++int vhangup(void)
++{
++    return syscall(SYS_vhangup);
++}
++#endif
+\ No newline at end of file
+diff --git a/libc/external/wait3.c b/libc/external/wait3.c
+new file mode 100644
+index 0000000..50cabf5
+--- /dev/null
++++ b/libc/external/wait3.c
+@@ -0,0 +1,6 @@
++#include <sys/wait.h>
++
++/* aos-note: add wait3 */
++pid_t wait3(int *status, int options, struct rusage *usage) {
++    return wait4(-1, status, options, usage);
++}
+\ No newline at end of file
+diff --git a/libc/include/bits/wordsize.h b/libc/include/bits/wordsize.h
+new file mode 100644
+index 0000000..a9fe8c6
+--- /dev/null
++++ b/libc/include/bits/wordsize.h
+@@ -0,0 +1,23 @@
++#ifndef _WORDSIZE_H
++#define _WORDSIZE_H
++#include <sys/cdefs.h>
++
++__BEGIN_DECLS
++
++#if defined __x86_64__ && !defined __ILP32__
++# define __WORDSIZE        64
++#else
++# define __WORDSIZE        32
++#define __WORDSIZE32_SIZE_ULONG                0
++#define __WORDSIZE32_PTRDIFF_LONG        0
++#endif
++#ifdef __x86_64__
++# define __WORDSIZE_TIME64_COMPAT32        1
++# define __SYSCALL_WORDSIZE                64
++#else
++# define __WORDSIZE_TIME64_COMPAT32        0
++#endif
++
++__END_DECLS
++
++#endif
+\ No newline at end of file
+diff --git a/libc/include/crypt.h b/libc/include/crypt.h
+new file mode 100644
+index 0000000..5852b66
+--- /dev/null
++++ b/libc/include/crypt.h
+@@ -0,0 +1,18 @@
++/* aos-note: add workaround for crypt */
++#ifndef _CRYPT_H
++#define _CRYPT_H
++#include <sys/cdefs.h>
++
++__BEGIN_DECLS
++
++struct crypt_data {
++        int initialized;
++        char __buf[256];
++};
++
++char *crypt(const char *, const char *);
++char *crypt_r(const char *, const char *, struct crypt_data *);
++
++__END_DECLS
++
++#endif
+\ No newline at end of file
+diff --git a/libc/include/ctype.h b/libc/include/ctype.h
+index 83b5ba7..646c17b 100644
+--- a/libc/include/ctype.h
++++ b/libc/include/ctype.h
+@@ -54,6 +54,9 @@
+ #define _CTYPE_R (_CTYPE_P|_CTYPE_U|_CTYPE_L|_CTYPE_D|_CTYPE_B)
+ #define _CTYPE_A (_CTYPE_L|_CTYPE_U)
+ 
++/* aos-note: compatible with libstdc++ */
++#define _CTYPE_N _CTYPE_D
++
+ __BEGIN_DECLS
+ 
+ extern const char	*_ctype_;
+diff --git a/libc/include/errno.h b/libc/include/errno.h
+index 82f4b42..ed5f0b9 100644
+--- a/libc/include/errno.h
++++ b/libc/include/errno.h
+@@ -41,7 +41,9 @@ __BEGIN_DECLS
+ #endif
+ 
+ /* internal function returning the address of the thread-specific errno */
+-extern volatile int* __errno(void) __pure2;
++/* aos-note: compatible with libstdc++ */
++// extern volatile int* __errno(void) __pure2;
++extern int* __errno(void) __pure2;
+ 
+ /* a macro expanding to the errno l-value */
+ #define  errno   (*__errno())
+diff --git a/libc/include/fcntl.h b/libc/include/fcntl.h
+index 6e2ad51..8d0e9b9 100644
+--- a/libc/include/fcntl.h
++++ b/libc/include/fcntl.h
+@@ -138,7 +138,8 @@ int openat(int dirfd, const char* pathname, int flags, ...) {
+ #endif /* !defined(__clang__) */
+ 
+ #endif /* defined(__BIONIC_FORTIFY) */
+-
++/* aos-note: define AT_EACCESS */
++#define AT_EACCESS 0x200
+ __END_DECLS
+ 
+ #endif /* _FCNTL_H */
+diff --git a/libc/include/grp.h b/libc/include/grp.h
+index df7a613..f3e2ab7 100644
+--- a/libc/include/grp.h
++++ b/libc/include/grp.h
+@@ -68,6 +68,11 @@ int   getgrouplist (const char *user, gid_t group,
+ 
+ int   initgroups (const char *user, gid_t group);
+ 
++/* aos-note: for gnu compability */
++#include <stdio.h>
++struct group  *fgetgrent(FILE *);
++int putgrent(const struct group *, FILE *);
++
+ __END_DECLS
+ 
+ #endif /* !_GRP_H_ */
+diff --git a/libc/include/limits.h b/libc/include/limits.h
+index 342217b..ebf3500 100644
+--- a/libc/include/limits.h
++++ b/libc/include/limits.h
+@@ -86,5 +86,7 @@
+ /* POSIX says these belong in <unistd.h> but BSD has some in <limits.h>. */
+ #include <bits/posix_limits.h>
+ 
++/* aos-note: add LINE_MAX */
++#define LINE_MAX 4096
+ #define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
+ #endif /* !_LIMITS_H_ */
+diff --git a/libc/include/netdb.h b/libc/include/netdb.h
+index 3bb973c..73ef4bf 100644
+--- a/libc/include/netdb.h
++++ b/libc/include/netdb.h
+@@ -65,13 +65,14 @@
+ #include <sys/types.h>
+ #include <sys/socket.h>
+ 
++/* aos-note: modify the paths */
+ #ifndef _PATH_HEQUIV
+-# define	_PATH_HEQUIV	"/system/etc/hosts.equiv"
++# define	_PATH_HEQUIV	"/etc/hosts.equiv"
+ #endif
+-#define	_PATH_HOSTS	"/system/etc/hosts"
+-#define	_PATH_NETWORKS	"/system/etc/networks"
+-#define	_PATH_PROTOCOLS	"/system/etc/protocols"
+-#define	_PATH_SERVICES	"/system/etc/services"
++#define	_PATH_HOSTS	"/etc/hosts"
++#define	_PATH_NETWORKS	"/etc/networks"
++#define	_PATH_PROTOCOLS	"/etc/protocols"
++#define	_PATH_SERVICES	"/etc/services"
+ 
+ /*
+  * Structures returned by network data base library.  All addresses are
+diff --git a/libc/include/netinet/ip.h b/libc/include/netinet/ip.h
+index 629ed77..73471d8 100644
+--- a/libc/include/netinet/ip.h
++++ b/libc/include/netinet/ip.h
+@@ -84,6 +84,8 @@ struct ip {
+ #define	IPTOS_THROUGHPUT	0x08
+ #define	IPTOS_RELIABILITY	0x04
+ #define	IPTOS_MINCOST		0x02
++/* aos-note: add IPTOS_MINCOST */
++#define IPTOS_LOWCOST IPTOS_MINCOST
+ #if 1
+ /* ECN RFC3168 obsoletes RFC2481, and these will be deprecated soon. */
+ #define IPTOS_CE		0x01	/* congestion experienced */
+diff --git a/libc/include/paths.h b/libc/include/paths.h
+index 82c2804..7e8bddc 100644
+--- a/libc/include/paths.h
++++ b/libc/include/paths.h
+@@ -32,13 +32,20 @@
+ #ifndef _PATHS_H_
+ #define	_PATHS_H_
+ 
+-#define	_PATH_BSHELL	"/system/bin/sh"
++/* aos-note: modify shell path */
++#define	_PATH_BSHELL	"/bin/sh"
++
+ #define	_PATH_CONSOLE	"/dev/console"
+-#define	_PATH_DEFPATH	"/sbin:/vendor/bin:/system/sbin:/system/bin:/system/xbin"
++
++/* aos-note: modify path */
++#define	_PATH_DEFPATH	"/sbin:/usr/local/bin:/bin:/usr/bin"
+ #define	_PATH_DEV	"/dev/"
+ #define	_PATH_DEVNULL	"/dev/null"
+ #define	_PATH_KLOG	"/proc/kmsg"
+ #define	_PATH_MOUNTED	"/proc/mounts"
+ #define	_PATH_TTY	"/dev/tty"
+ 
++/* aos-note: add path for shadow */
++#define _PATH_SHADOW	"/etc/shadow"
++#define _PATH_TMP	"/tmp/"
+ #endif /* !_PATHS_H_ */
+diff --git a/libc/include/pthread.h b/libc/include/pthread.h
+index 50f2024..fc66c0e 100644
+--- a/libc/include/pthread.h
++++ b/libc/include/pthread.h
+@@ -177,7 +177,8 @@ int pthread_getattr_np(pthread_t, pthread_attr_t*) __nonnull((2));
+ int pthread_getcpuclockid(pthread_t, clockid_t*) __nonnull((2));
+ 
+ int pthread_getschedparam(pthread_t, int*, struct sched_param*) __nonnull((2, 3));
+-
++/* aos-note:add pthread_cancel workaround */
++int pthread_cancel(pthread_t t);
+ void* pthread_getspecific(pthread_key_t);
+ 
+ pid_t pthread_gettid_np(pthread_t);
+diff --git a/libc/include/pwd.h b/libc/include/pwd.h
+index 905bc75..c8b04f9 100644
+--- a/libc/include/pwd.h
++++ b/libc/include/pwd.h
+@@ -122,6 +122,14 @@ struct passwd* getpwuid(uid_t);
+ int getpwnam_r(const char*, struct passwd*, char*, size_t, struct passwd**);
+ int getpwuid_r(uid_t, struct passwd*, char*, size_t, struct passwd**);
+ 
++/* aos-note: add workaround for some functions */
++#include <stdio.h>
++struct passwd *fgetpwent (FILE * file);
++int putpwent(const struct passwd *, FILE *);
++struct passwd *getpwent (void);
++void setpwent (void);
++void endpwent (void);
++
+ __END_DECLS
+ 
+ #endif
+diff --git a/libc/include/scsi/scsi.h b/libc/include/scsi/scsi.h
+new file mode 100644
+index 0000000..9e5edd7
+--- /dev/null
++++ b/libc/include/scsi/scsi.h
+@@ -0,0 +1,261 @@
++/****************************************************************************
++ ****************************************************************************
++ ***
++ ***   This header was automatically generated from a Linux kernel header
++ ***   of the same name, to make information necessary for userspace to
++ ***   call into the kernel available to libc.  It contains only constants,
++ ***   structures, and macros generated from the original header, and thus,
++ ***   contains no copyrightable information.
++ ***
++ ***   To edit the content of this header, modify the corresponding
++ ***   source file (e.g. under external/kernel-headers/original/) then
++ ***   run bionic/libc/kernel/tools/update_all.py
++ ***
++ ***   Any manual change here will be lost the next time this script will
++ ***   be run. You've been warned!
++ ***
++ ****************************************************************************
++ ****************************************************************************/
++#ifndef _SCSI_SCSI_H
++#define _SCSI_SCSI_H
++#include <linux/types.h>
++#define TEST_UNIT_READY 0x00
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define REZERO_UNIT 0x01
++#define REQUEST_SENSE 0x03
++#define FORMAT_UNIT 0x04
++#define READ_BLOCK_LIMITS 0x05
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define REASSIGN_BLOCKS 0x07
++#define INITIALIZE_ELEMENT_STATUS 0x07
++#define READ_6 0x08
++#define WRITE_6 0x0a
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SEEK_6 0x0b
++#define READ_REVERSE 0x0f
++#define WRITE_FILEMARKS 0x10
++#define SPACE 0x11
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define INQUIRY 0x12
++#define RECOVER_BUFFERED_DATA 0x14
++#define MODE_SELECT 0x15
++#define RESERVE 0x16
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define RELEASE 0x17
++#define COPY 0x18
++#define ERASE 0x19
++#define MODE_SENSE 0x1a
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define START_STOP 0x1b
++#define RECEIVE_DIAGNOSTIC 0x1c
++#define SEND_DIAGNOSTIC 0x1d
++#define ALLOW_MEDIUM_REMOVAL 0x1e
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define READ_FORMAT_CAPACITIES 0x23
++#define SET_WINDOW 0x24
++#define READ_CAPACITY 0x25
++#define READ_10 0x28
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define WRITE_10 0x2a
++#define SEEK_10 0x2b
++#define POSITION_TO_ELEMENT 0x2b
++#define WRITE_VERIFY 0x2e
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define VERIFY 0x2f
++#define SEARCH_HIGH 0x30
++#define SEARCH_EQUAL 0x31
++#define SEARCH_LOW 0x32
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SET_LIMITS 0x33
++#define PRE_FETCH 0x34
++#define READ_POSITION 0x34
++#define SYNCHRONIZE_CACHE 0x35
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define LOCK_UNLOCK_CACHE 0x36
++#define READ_DEFECT_DATA 0x37
++#define MEDIUM_SCAN 0x38
++#define COMPARE 0x39
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define COPY_VERIFY 0x3a
++#define WRITE_BUFFER 0x3b
++#define READ_BUFFER 0x3c
++#define UPDATE_BLOCK 0x3d
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define READ_LONG 0x3e
++#define WRITE_LONG 0x3f
++#define CHANGE_DEFINITION 0x40
++#define WRITE_SAME 0x41
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define UNMAP 0x42
++#define READ_TOC 0x43
++#define READ_HEADER 0x44
++#define GET_EVENT_STATUS_NOTIFICATION 0x4a
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define LOG_SELECT 0x4c
++#define LOG_SENSE 0x4d
++#define XDWRITEREAD_10 0x53
++#define MODE_SELECT_10 0x55
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define RESERVE_10 0x56
++#define RELEASE_10 0x57
++#define MODE_SENSE_10 0x5a
++#define PERSISTENT_RESERVE_IN 0x5e
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define PERSISTENT_RESERVE_OUT 0x5f
++#define VARIABLE_LENGTH_CMD 0x7f
++#define REPORT_LUNS 0xa0
++#define SECURITY_PROTOCOL_IN 0xa2
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define MAINTENANCE_IN 0xa3
++#define MAINTENANCE_OUT 0xa4
++#define MOVE_MEDIUM 0xa5
++#define EXCHANGE_MEDIUM 0xa6
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define READ_12 0xa8
++#define WRITE_12 0xaa
++#define READ_MEDIA_SERIAL_NUMBER 0xab
++#define WRITE_VERIFY_12 0xae
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define VERIFY_12 0xaf
++#define SEARCH_HIGH_12 0xb0
++#define SEARCH_EQUAL_12 0xb1
++#define SEARCH_LOW_12 0xb2
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SECURITY_PROTOCOL_OUT 0xb5
++#define READ_ELEMENT_STATUS 0xb8
++#define SEND_VOLUME_TAG 0xb6
++#define WRITE_LONG_2 0xea
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define EXTENDED_COPY 0x83
++#define RECEIVE_COPY_RESULTS 0x84
++#define ACCESS_CONTROL_IN 0x86
++#define ACCESS_CONTROL_OUT 0x87
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define READ_16 0x88
++#define COMPARE_AND_WRITE 0x89
++#define WRITE_16 0x8a
++#define READ_ATTRIBUTE 0x8c
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define WRITE_ATTRIBUTE 0x8d
++#define VERIFY_16 0x8f
++#define SYNCHRONIZE_CACHE_16 0x91
++#define WRITE_SAME_16 0x93
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SERVICE_ACTION_IN 0x9e
++#define GOOD 0x00
++#define CHECK_CONDITION 0x01
++#define CONDITION_GOOD 0x02
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define BUSY 0x04
++#define INTERMEDIATE_GOOD 0x08
++#define INTERMEDIATE_C_GOOD 0x0a
++#define RESERVATION_CONFLICT 0x0c
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define COMMAND_TERMINATED 0x11
++#define QUEUE_FULL 0x14
++#define ACA_ACTIVE 0x18
++#define TASK_ABORTED 0x20
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define STATUS_MASK 0xfe
++#define NO_SENSE 0x00
++#define RECOVERED_ERROR 0x01
++#define NOT_READY 0x02
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define MEDIUM_ERROR 0x03
++#define HARDWARE_ERROR 0x04
++#define ILLEGAL_REQUEST 0x05
++#define UNIT_ATTENTION 0x06
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define DATA_PROTECT 0x07
++#define BLANK_CHECK 0x08
++#define COPY_ABORTED 0x0a
++#define ABORTED_COMMAND 0x0b
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define VOLUME_OVERFLOW 0x0d
++#define MISCOMPARE 0x0e
++#define TYPE_DISK 0x00
++#define TYPE_TAPE 0x01
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define TYPE_PRINTER 0x02
++#define TYPE_PROCESSOR 0x03
++#define TYPE_WORM 0x04
++#define TYPE_ROM 0x05
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define TYPE_SCANNER 0x06
++#define TYPE_MOD 0x07
++#define TYPE_MEDIUM_CHANGER 0x08
++#define TYPE_COMM 0x09
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define TYPE_RAID 0x0c
++#define TYPE_ENCLOSURE 0x0d
++#define TYPE_RBC 0x0e
++#define TYPE_OSD 0x11
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define TYPE_ZBC 0x14
++#define TYPE_WLUN 0x1e
++#define TYPE_NO_LUN 0x7f
++struct ccs_modesel_head {
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  __u8 _r1;
++  __u8 medium;
++  __u8 _r2;
++  __u8 block_desc_length;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  __u8 density;
++  __u8 number_blocks_hi;
++  __u8 number_blocks_med;
++  __u8 number_blocks_lo;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  __u8 _r3;
++  __u8 block_length_hi;
++  __u8 block_length_med;
++  __u8 block_length_lo;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++};
++#define COMMAND_COMPLETE 0x00
++#define EXTENDED_MESSAGE 0x01
++#define EXTENDED_MODIFY_DATA_POINTER 0x00
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define EXTENDED_SDTR 0x01
++#define EXTENDED_EXTENDED_IDENTIFY 0x02
++#define EXTENDED_WDTR 0x03
++#define EXTENDED_PPR 0x04
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define EXTENDED_MODIFY_BIDI_DATA_PTR 0x05
++#define SAVE_POINTERS 0x02
++#define RESTORE_POINTERS 0x03
++#define DISCONNECT 0x04
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define INITIATOR_ERROR 0x05
++#define ABORT_TASK_SET 0x06
++#define MESSAGE_REJECT 0x07
++#define NOP 0x08
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define MSG_PARITY_ERROR 0x09
++#define LINKED_CMD_COMPLETE 0x0a
++#define LINKED_FLG_CMD_COMPLETE 0x0b
++#define TARGET_RESET 0x0c
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define ABORT_TASK 0x0d
++#define CLEAR_TASK_SET 0x0e
++#define INITIATE_RECOVERY 0x0f
++#define RELEASE_RECOVERY 0x10
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define CLEAR_ACA 0x16
++#define LOGICAL_UNIT_RESET 0x17
++#define SIMPLE_QUEUE_TAG 0x20
++#define HEAD_OF_QUEUE_TAG 0x21
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define ORDERED_QUEUE_TAG 0x22
++#define IGNORE_WIDE_RESIDUE 0x23
++#define ACA 0x24
++#define QAS_REQUEST 0x55
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define BUS_DEVICE_RESET TARGET_RESET
++#define ABORT ABORT_TASK_SET
++#define SCSI_IOCTL_GET_IDLUN 0x5382
++#define SCSI_IOCTL_PROBE_HOST 0x5385
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SCSI_IOCTL_GET_BUS_NUMBER 0x5386
++#define SCSI_IOCTL_GET_PCI 0x5387
++#endif
+diff --git a/libc/include/scsi/scsi_ioctl.h b/libc/include/scsi/scsi_ioctl.h
+new file mode 100644
+index 0000000..c2f64a7
+--- /dev/null
++++ b/libc/include/scsi/scsi_ioctl.h
+@@ -0,0 +1,34 @@
++/****************************************************************************
++ ****************************************************************************
++ ***
++ ***   This header was automatically generated from a Linux kernel header
++ ***   of the same name, to make information necessary for userspace to
++ ***   call into the kernel available to libc.  It contains only constants,
++ ***   structures, and macros generated from the original header, and thus,
++ ***   contains no copyrightable information.
++ ***
++ ***   To edit the content of this header, modify the corresponding
++ ***   source file (e.g. under external/kernel-headers/original/) then
++ ***   run bionic/libc/kernel/tools/update_all.py
++ ***
++ ***   Any manual change here will be lost the next time this script will
++ ***   be run. You've been warned!
++ ***
++ ****************************************************************************
++ ****************************************************************************/
++#ifndef _SCSI_IOCTL_H
++#define _SCSI_IOCTL_H
++#define SCSI_IOCTL_SEND_COMMAND 1
++#define SCSI_IOCTL_TEST_UNIT_READY 2
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SCSI_IOCTL_BENCHMARK_COMMAND 3
++#define SCSI_IOCTL_SYNC 4
++#define SCSI_IOCTL_START_UNIT 5
++#define SCSI_IOCTL_STOP_UNIT 6
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SCSI_IOCTL_DOORLOCK 0x5380
++#define SCSI_IOCTL_DOORUNLOCK 0x5381
++#define SCSI_REMOVAL_PREVENT 1
++#define SCSI_REMOVAL_ALLOW 0
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#endif
+diff --git a/libc/include/scsi/sg.h b/libc/include/scsi/sg.h
+new file mode 100644
+index 0000000..5e085a3
+--- /dev/null
++++ b/libc/include/scsi/sg.h
+@@ -0,0 +1,181 @@
++/****************************************************************************
++ ****************************************************************************
++ ***
++ ***   This header was automatically generated from a Linux kernel header
++ ***   of the same name, to make information necessary for userspace to
++ ***   call into the kernel available to libc.  It contains only constants,
++ ***   structures, and macros generated from the original header, and thus,
++ ***   contains no copyrightable information.
++ ***
++ ***   To edit the content of this header, modify the corresponding
++ ***   source file (e.g. under external/kernel-headers/original/) then
++ ***   run bionic/libc/kernel/tools/update_all.py
++ ***
++ ***   Any manual change here will be lost the next time this script will
++ ***   be run. You've been warned!
++ ***
++ ****************************************************************************
++ ****************************************************************************/
++#ifndef _SCSI_GENERIC_H
++#define _SCSI_GENERIC_H
++#include <linux/compiler.h>
++typedef struct sg_iovec {
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  void __user * iov_base;
++  size_t iov_len;
++} sg_iovec_t;
++typedef struct sg_io_hdr {
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  int interface_id;
++  int dxfer_direction;
++  unsigned char cmd_len;
++  unsigned char mx_sb_len;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  unsigned short iovec_count;
++  unsigned int dxfer_len;
++  void __user * dxferp;
++  unsigned char __user * cmdp;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  unsigned char __user * sbp;
++  unsigned int timeout;
++  unsigned int flags;
++  int pack_id;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  void __user * usr_ptr;
++  unsigned char status;
++  unsigned char masked_status;
++  unsigned char msg_status;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  unsigned char sb_len_wr;
++  unsigned short host_status;
++  unsigned short driver_status;
++  int resid;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  unsigned int duration;
++  unsigned int info;
++} sg_io_hdr_t;
++#define SG_INTERFACE_ID_ORIG 'S'
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_DXFER_NONE (- 1)
++#define SG_DXFER_TO_DEV (- 2)
++#define SG_DXFER_FROM_DEV (- 3)
++#define SG_DXFER_TO_FROM_DEV (- 4)
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_DXFER_UNKNOWN (- 5)
++#define SG_FLAG_DIRECT_IO 1
++#define SG_FLAG_UNUSED_LUN_INHIBIT 2
++/* aos-note: add SG_FLAG_LUN_INHIBIT */
++#define SG_FLAG_LUN_INHIBIT 2
++#define SG_FLAG_MMAP_IO 4
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_FLAG_NO_DXFER 0x10000
++#define SG_FLAG_Q_AT_TAIL 0x10
++#define SG_FLAG_Q_AT_HEAD 0x20
++#define SG_INFO_OK_MASK 0x1
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_INFO_OK 0x0
++#define SG_INFO_CHECK 0x1
++#define SG_INFO_DIRECT_IO_MASK 0x6
++#define SG_INFO_INDIRECT_IO 0x0
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_INFO_DIRECT_IO 0x2
++#define SG_INFO_MIXED_IO 0x4
++typedef struct sg_scsi_id {
++  int host_no;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  int channel;
++  int scsi_id;
++  int lun;
++  int scsi_type;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  short h_cmd_per_lun;
++  short d_queue_depth;
++  int unused[2];
++} sg_scsi_id_t;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++typedef struct sg_req_info {
++  char req_state;
++  char orphan;
++  char sg_io_owned;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  char problem;
++  int pack_id;
++  void __user * usr_ptr;
++  unsigned int duration;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  int unused;
++} sg_req_info_t;
++#define SG_EMULATED_HOST 0x2203
++#define SG_SET_TRANSFORM 0x2204
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_GET_TRANSFORM 0x2205
++#define SG_SET_RESERVED_SIZE 0x2275
++#define SG_GET_RESERVED_SIZE 0x2272
++#define SG_GET_SCSI_ID 0x2276
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_SET_FORCE_LOW_DMA 0x2279
++#define SG_GET_LOW_DMA 0x227a
++#define SG_SET_FORCE_PACK_ID 0x227b
++#define SG_GET_PACK_ID 0x227c
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_GET_NUM_WAITING 0x227d
++#define SG_GET_SG_TABLESIZE 0x227F
++#define SG_GET_VERSION_NUM 0x2282
++#define SG_SCSI_RESET 0x2284
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_SCSI_RESET_NOTHING 0
++#define SG_SCSI_RESET_DEVICE 1
++#define SG_SCSI_RESET_BUS 2
++#define SG_SCSI_RESET_HOST 3
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_SCSI_RESET_TARGET 4
++#define SG_IO 0x2285
++#define SG_GET_REQUEST_TABLE 0x2286
++#define SG_SET_KEEP_ORPHAN 0x2287
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_GET_KEEP_ORPHAN 0x2288
++#define SG_GET_ACCESS_COUNT 0x2289
++#define SG_SCATTER_SZ (8 * 4096)
++#define SG_DEFAULT_RETRIES 0
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_DEF_FORCE_LOW_DMA 0
++#define SG_DEF_FORCE_PACK_ID 0
++#define SG_DEF_KEEP_ORPHAN 0
++#define SG_DEF_RESERVED_SIZE SG_SCATTER_SZ
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_MAX_QUEUE 16
++#define SG_BIG_BUFF SG_DEF_RESERVED_SIZE
++typedef struct sg_io_hdr Sg_io_hdr;
++typedef struct sg_io_vec Sg_io_vec;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++typedef struct sg_scsi_id Sg_scsi_id;
++typedef struct sg_req_info Sg_req_info;
++#define SG_MAX_SENSE 16
++struct sg_header {
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  int pack_len;
++  int reply_len;
++  int pack_id;
++  int result;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  unsigned int twelve_byte : 1;
++  unsigned int target_status : 5;
++  unsigned int host_status : 8;
++  unsigned int driver_status : 8;
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++  unsigned int other_flags : 10;
++  unsigned char sense_buffer[SG_MAX_SENSE];
++};
++#define SG_SET_TIMEOUT 0x2201
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_GET_TIMEOUT 0x2202
++#define SG_GET_COMMAND_Q 0x2270
++#define SG_SET_COMMAND_Q 0x2271
++#define SG_SET_DEBUG 0x227e
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#define SG_NEXT_CMD_LEN 0x2283
++#define SG_DEFAULT_TIMEOUT (60 * HZ)
++#define SG_DEF_COMMAND_Q 0
++#define SG_DEF_UNDERRUN_FLAG 0
++/* WARNING: DO NOT EDIT, AUTO-GENERATED CODE - SEE TOP FOR INSTRUCTIONS */
++#endif
+diff --git a/libc/include/shadow.h b/libc/include/shadow.h
+new file mode 100644
+index 0000000..b128174
+--- /dev/null
++++ b/libc/include/shadow.h
+@@ -0,0 +1,68 @@
++/* aos-note: bionic does not provide this header */
++#ifndef _SHADOW_H
++#define _SHADOW_H
++
++#include <features.h>
++#include <paths.h>
++#include <stdio.h>
++#include <stddef.h>
++
++__BEGIN_DECLS
++
++/* Paths to the user database files.  */
++#define	SHADOW _PATH_SHADOW
++
++/* Structure of the password file.  */
++struct spwd
++  {
++    char *sp_namp;		/* Login name.  */
++    char *sp_pwdp;		/* Encrypted password.  */
++    long int sp_lstchg;		/* Date of last change.  */
++    long int sp_min;		/* Minimum number of days between changes.  */
++    long int sp_max;		/* Maximum number of days between changes.  */
++    long int sp_warn;		/* Number of days to warn user to change
++           the password.  */
++    long int sp_inact;		/* Number of days the account may be
++           inactive.  */
++    long int sp_expire;		/* Number of days since 1970-01-01 until
++           account expires.  */
++    unsigned long int sp_flag;	/* Reserved.  */
++  };
++
++
++extern void setspent (void);
++
++extern void endspent (void);
++
++extern struct spwd *getspent (void);
++
++extern struct spwd *getspnam (const char *__name);
++
++extern struct spwd *sgetspent (const char *__string);
++
++extern struct spwd *fgetspent (FILE *__stream);
++
++extern int putspent (const struct spwd *__p, FILE *__stream);
++
++extern int getspent_r (struct spwd *__result_buf, char *__buffer,
++           size_t __buflen, struct spwd **__result);
++
++extern int getspnam_r (const char *__name, struct spwd *__result_buf,
++           char *__buffer, size_t __buflen,
++           struct spwd **__result);
++
++extern int sgetspent_r (const char *__string, struct spwd *__result_buf,
++      char *__buffer, size_t __buflen,
++      struct spwd **__result);
++
++extern int fgetspent_r (FILE *__stream, struct spwd *__result_buf,
++      char *__buffer, size_t __buflen,
++      struct spwd **__result);
++
++extern int lckpwdf (void);
++
++extern int ulckpwdf (void);
++
++__END_DECLS
++
++#endif /* shadow.h */
+\ No newline at end of file
+diff --git a/libc/include/signal.h b/libc/include/signal.h
+index 85c46c0..b312be5 100644
+--- a/libc/include/signal.h
++++ b/libc/include/signal.h
+@@ -71,7 +71,8 @@ extern int __libc_current_sigrtmin(void);
+ extern int __libc_current_sigrtmax(void);
+ 
+ extern const char* const sys_siglist[];
+-extern const char* const sys_signame[]; /* BSD compatibility. */
++/* aos: this will introduce conflicts */
++// extern const char* const sys_signame[]; /* BSD compatibility. */
+ 
+ typedef __sighandler_t sig_t; /* BSD compatibility. */
+ typedef __sighandler_t sighandler_t; /* glibc compatibility. */
+diff --git a/libc/include/stdlib.h b/libc/include/stdlib.h
+index d9d277a..96c38e3 100644
+--- a/libc/include/stdlib.h
++++ b/libc/include/stdlib.h
+@@ -197,6 +197,10 @@ char* realpath(const char* path, char* resolved) {
+ 
+ #endif /* defined(__BIONIC_FORTIFY) */
+ 
++/* aos-note: add workaroud for program_invocation_short_name */
++// #define program_invocation_short_name getprogname()
++char *gcvt(double, int, char *);
++
+ __END_DECLS
+ 
+ #endif /* _STDLIB_H */
+diff --git a/libc/include/string.h b/libc/include/string.h
+index 32d4a18..7b6d1a0 100644
+--- a/libc/include/string.h
++++ b/libc/include/string.h
+@@ -365,6 +365,9 @@ char* strrchr(const char *s, int c) {
+ 
+ #endif /* defined(__BIONIC_FORTIFY) */
+ 
++/* aos-note: add workaround for strdupa */
++#define	strdupa(x)	strcpy(alloca(strlen(x)+1),x)
++
+ __END_DECLS
+ 
+ #endif /* _STRING_H */
+diff --git a/libc/include/sys/capability.h b/libc/include/sys/capability.h
+deleted file mode 100644
+index 7718a6c..0000000
+--- a/libc/include/sys/capability.h
++++ /dev/null
+@@ -1,42 +0,0 @@
+-/*
+- * Copyright (C) 2013 The Android Open Source Project
+- * All rights reserved.
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met:
+- *  * Redistributions of source code must retain the above copyright
+- *    notice, this list of conditions and the following disclaimer.
+- *  * Redistributions in binary form must reproduce the above copyright
+- *    notice, this list of conditions and the following disclaimer in
+- *    the documentation and/or other materials provided with the
+- *    distribution.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+- * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT
+- * OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+- * SUCH DAMAGE.
+- */
+-
+-#ifndef _BIONIC_SYS_CAPABILITY_H
+-#define _BIONIC_SYS_CAPABILITY_H
+-
+-#include <sys/cdefs.h>
+-#include <linux/capability.h>
+-
+-__BEGIN_DECLS
+-
+-extern int capget(cap_user_header_t hdrp, cap_user_data_t datap);
+-extern int capset(cap_user_header_t hdrp, const cap_user_data_t datap);
+-
+-__END_DECLS
+-
+-#endif /* _BIONIC_SYS_CAPABILITY_H */
+diff --git a/libc/include/sys/glibc-syscalls.h b/libc/include/sys/glibc-syscalls.h
+index 26887b1..2eb9205 100644
+--- a/libc/include/sys/glibc-syscalls.h
++++ b/libc/include/sys/glibc-syscalls.h
+@@ -2,6 +2,7 @@
+ #ifndef _BIONIC_GLIBC_SYSCALLS_H_
+ #define _BIONIC_GLIBC_SYSCALLS_H_
+ #if defined(__aarch64__)
++#define SYS__sysctl __NR__sysctl
+ #define SYS_accept __NR_accept
+ #define SYS_accept4 __NR_accept4
+ #define SYS_access __NR_access
+@@ -28,6 +29,7 @@
+ #define SYS_clone __NR_clone
+ #define SYS_close __NR_close
+ #define SYS_connect __NR_connect
++#define SYS_copy_file_range __NR_copy_file_range
+ #define SYS_creat __NR_creat
+ #define SYS_delete_module __NR_delete_module
+ #define SYS_dup __NR_dup
+@@ -182,11 +184,15 @@
+ #define SYS_pipe __NR_pipe
+ #define SYS_pipe2 __NR_pipe2
+ #define SYS_pivot_root __NR_pivot_root
++#define SYS_pkey_alloc __NR_pkey_alloc
++#define SYS_pkey_free __NR_pkey_free
++#define SYS_pkey_mprotect __NR_pkey_mprotect
+ #define SYS_poll __NR_poll
+ #define SYS_ppoll __NR_ppoll
+ #define SYS_prctl __NR_prctl
+ #define SYS_pread64 __NR_pread64
+ #define SYS_preadv __NR_preadv
++#define SYS_preadv2 __NR_preadv2
+ #define SYS_prlimit64 __NR_prlimit64
+ #define SYS_process_vm_readv __NR_process_vm_readv
+ #define SYS_process_vm_writev __NR_process_vm_writev
+@@ -194,6 +200,7 @@
+ #define SYS_ptrace __NR_ptrace
+ #define SYS_pwrite64 __NR_pwrite64
+ #define SYS_pwritev __NR_pwritev
++#define SYS_pwritev2 __NR_pwritev2
+ #define SYS_quotactl __NR_quotactl
+ #define SYS_read __NR_read
+ #define SYS_readahead __NR_readahead
+@@ -330,6 +337,9 @@
+ #define SYS_write __NR_write
+ #define SYS_writev __NR_writev
+ #elif defined(__arm__)
++#define SYS__llseek __NR__llseek
++#define SYS__newselect __NR__newselect
++#define SYS__sysctl __NR__sysctl
+ #define SYS_accept __NR_accept
+ #define SYS_accept4 __NR_accept4
+ #define SYS_access __NR_access
+@@ -358,6 +368,7 @@
+ #define SYS_clone __NR_clone
+ #define SYS_close __NR_close
+ #define SYS_connect __NR_connect
++#define SYS_copy_file_range __NR_copy_file_range
+ #define SYS_creat __NR_creat
+ #define SYS_delete_module __NR_delete_module
+ #define SYS_dup __NR_dup
+@@ -520,11 +531,15 @@
+ #define SYS_pipe __NR_pipe
+ #define SYS_pipe2 __NR_pipe2
+ #define SYS_pivot_root __NR_pivot_root
++#define SYS_pkey_alloc __NR_pkey_alloc
++#define SYS_pkey_free __NR_pkey_free
++#define SYS_pkey_mprotect __NR_pkey_mprotect
+ #define SYS_poll __NR_poll
+ #define SYS_ppoll __NR_ppoll
+ #define SYS_prctl __NR_prctl
+ #define SYS_pread64 __NR_pread64
+ #define SYS_preadv __NR_preadv
++#define SYS_preadv2 __NR_preadv2
+ #define SYS_prlimit64 __NR_prlimit64
+ #define SYS_process_vm_readv __NR_process_vm_readv
+ #define SYS_process_vm_writev __NR_process_vm_writev
+@@ -532,6 +547,7 @@
+ #define SYS_ptrace __NR_ptrace
+ #define SYS_pwrite64 __NR_pwrite64
+ #define SYS_pwritev __NR_pwritev
++#define SYS_pwritev2 __NR_pwritev2
+ #define SYS_quotactl __NR_quotactl
+ #define SYS_read __NR_read
+ #define SYS_readahead __NR_readahead
+@@ -687,6 +703,9 @@
+ #define SYS_write __NR_write
+ #define SYS_writev __NR_writev
+ #elif defined(__mips__)
++#define SYS__llseek __NR__llseek
++#define SYS__newselect __NR__newselect
++#define SYS__sysctl __NR__sysctl
+ #define SYS_accept __NR_accept
+ #define SYS_accept4 __NR_accept4
+ #define SYS_access __NR_access
+@@ -716,6 +735,7 @@
+ #define SYS_clone __NR_clone
+ #define SYS_close __NR_close
+ #define SYS_connect __NR_connect
++#define SYS_copy_file_range __NR_copy_file_range
+ #define SYS_creat __NR_creat
+ #define SYS_create_module __NR_create_module
+ #define SYS_delete_module __NR_delete_module
+@@ -880,11 +900,15 @@
+ #define SYS_pipe __NR_pipe
+ #define SYS_pipe2 __NR_pipe2
+ #define SYS_pivot_root __NR_pivot_root
++#define SYS_pkey_alloc __NR_pkey_alloc
++#define SYS_pkey_free __NR_pkey_free
++#define SYS_pkey_mprotect __NR_pkey_mprotect
+ #define SYS_poll __NR_poll
+ #define SYS_ppoll __NR_ppoll
+ #define SYS_prctl __NR_prctl
+ #define SYS_pread64 __NR_pread64
+ #define SYS_preadv __NR_preadv
++#define SYS_preadv2 __NR_preadv2
+ #define SYS_prlimit64 __NR_prlimit64
+ #define SYS_process_vm_readv __NR_process_vm_readv
+ #define SYS_process_vm_writev __NR_process_vm_writev
+@@ -895,6 +919,7 @@
+ #define SYS_putpmsg __NR_putpmsg
+ #define SYS_pwrite64 __NR_pwrite64
+ #define SYS_pwritev __NR_pwritev
++#define SYS_pwritev2 __NR_pwritev2
+ #define SYS_query_module __NR_query_module
+ #define SYS_quotactl __NR_quotactl
+ #define SYS_read __NR_read
+@@ -1059,6 +1084,9 @@
+ #define SYS_write __NR_write
+ #define SYS_writev __NR_writev
+ #elif defined(__i386__)
++#define SYS__llseek __NR__llseek
++#define SYS__newselect __NR__newselect
++#define SYS__sysctl __NR__sysctl
+ #define SYS_accept4 __NR_accept4
+ #define SYS_access __NR_access
+ #define SYS_acct __NR_acct
+@@ -1086,6 +1114,7 @@
+ #define SYS_clone __NR_clone
+ #define SYS_close __NR_close
+ #define SYS_connect __NR_connect
++#define SYS_copy_file_range __NR_copy_file_range
+ #define SYS_creat __NR_creat
+ #define SYS_create_module __NR_create_module
+ #define SYS_delete_module __NR_delete_module
+@@ -1261,11 +1290,15 @@
+ #define SYS_pipe __NR_pipe
+ #define SYS_pipe2 __NR_pipe2
+ #define SYS_pivot_root __NR_pivot_root
++#define SYS_pkey_alloc __NR_pkey_alloc
++#define SYS_pkey_free __NR_pkey_free
++#define SYS_pkey_mprotect __NR_pkey_mprotect
+ #define SYS_poll __NR_poll
+ #define SYS_ppoll __NR_ppoll
+ #define SYS_prctl __NR_prctl
+ #define SYS_pread64 __NR_pread64
+ #define SYS_preadv __NR_preadv
++#define SYS_preadv2 __NR_preadv2
+ #define SYS_prlimit64 __NR_prlimit64
+ #define SYS_process_vm_readv __NR_process_vm_readv
+ #define SYS_process_vm_writev __NR_process_vm_writev
+@@ -1276,6 +1309,7 @@
+ #define SYS_putpmsg __NR_putpmsg
+ #define SYS_pwrite64 __NR_pwrite64
+ #define SYS_pwritev __NR_pwritev
++#define SYS_pwritev2 __NR_pwritev2
+ #define SYS_query_module __NR_query_module
+ #define SYS_quotactl __NR_quotactl
+ #define SYS_read __NR_read
+@@ -1430,6 +1464,7 @@
+ #define SYS_write __NR_write
+ #define SYS_writev __NR_writev
+ #elif defined(__x86_64__)
++#define SYS__sysctl __NR__sysctl
+ #define SYS_accept __NR_accept
+ #define SYS_accept4 __NR_accept4
+ #define SYS_access __NR_access
+@@ -1456,6 +1491,7 @@
+ #define SYS_clone __NR_clone
+ #define SYS_close __NR_close
+ #define SYS_connect __NR_connect
++#define SYS_copy_file_range __NR_copy_file_range
+ #define SYS_creat __NR_creat
+ #define SYS_create_module __NR_create_module
+ #define SYS_delete_module __NR_delete_module
+@@ -1610,11 +1646,15 @@
+ #define SYS_pipe __NR_pipe
+ #define SYS_pipe2 __NR_pipe2
+ #define SYS_pivot_root __NR_pivot_root
++#define SYS_pkey_alloc __NR_pkey_alloc
++#define SYS_pkey_free __NR_pkey_free
++#define SYS_pkey_mprotect __NR_pkey_mprotect
+ #define SYS_poll __NR_poll
+ #define SYS_ppoll __NR_ppoll
+ #define SYS_prctl __NR_prctl
+ #define SYS_pread64 __NR_pread64
+ #define SYS_preadv __NR_preadv
++#define SYS_preadv2 __NR_preadv2
+ #define SYS_prlimit64 __NR_prlimit64
+ #define SYS_process_vm_readv __NR_process_vm_readv
+ #define SYS_process_vm_writev __NR_process_vm_writev
+@@ -1623,6 +1663,7 @@
+ #define SYS_putpmsg __NR_putpmsg
+ #define SYS_pwrite64 __NR_pwrite64
+ #define SYS_pwritev __NR_pwritev
++#define SYS_pwritev2 __NR_pwritev2
+ #define SYS_query_module __NR_query_module
+ #define SYS_quotactl __NR_quotactl
+ #define SYS_read __NR_read
+diff --git a/libc/include/sys/io.h b/libc/include/sys/io.h
+new file mode 100644
+index 0000000..06f7a0d
+--- /dev/null
++++ b/libc/include/sys/io.h
+@@ -0,0 +1,25 @@
++#ifndef _SYS_IO_H
++#define _SYS_IO_H
++#include <sys/cdefs.h>
++
++__BEGIN_DECLS
++
++int iopl(int);
++int ioperm(unsigned long, unsigned long, int);
++
++#ifdef __x86_64__
++static __inline void outb(unsigned char __val, unsigned short __port)
++{
++        __asm__ volatile ("outb %0,%1" : : "a" (__val), "dN" (__port));
++}
++static __inline unsigned char inb(unsigned short __port)
++{
++        unsigned char __val;
++        __asm__ volatile ("inb %1,%0" : "=a" (__val) : "dN" (__port));
++        return __val;
++}
++#endif
++
++__END_DECLS
++
++#endif
+\ No newline at end of file
+diff --git a/libc/include/sys/kd.h b/libc/include/sys/kd.h
+new file mode 100644
+index 0000000..66a4177
+--- /dev/null
++++ b/libc/include/sys/kd.h
+@@ -0,0 +1,4 @@
++#ifndef _SYS_KD_H
++#define _SYS_KD_H
++#include <linux/kd.h>
++#endif
+\ No newline at end of file
+diff --git a/libc/include/sys/limits.h b/libc/include/sys/limits.h
+index be79cf3..4d2314d 100644
+--- a/libc/include/sys/limits.h
++++ b/libc/include/sys/limits.h
+@@ -76,8 +76,9 @@
+ #endif
+ 
+ #if __BSD_VISIBLE
+-# define UID_MAX	UINT_MAX	/* max value for a uid_t */
+-# define GID_MAX	UINT_MAX	/* max value for a gid_t */
++/* aos-note: these are useless but will introduce conflicts */
++// # define UID_MAX	UINT_MAX	/* max value for a uid_t */
++// # define GID_MAX	UINT_MAX	/* max value for a gid_t */
+ #endif
+ 
+ 
+diff --git a/libc/include/sys/mtio.h b/libc/include/sys/mtio.h
+new file mode 100644
+index 0000000..cb2b1f8
+--- /dev/null
++++ b/libc/include/sys/mtio.h
+@@ -0,0 +1,4 @@
++#ifndef _SYS_MTIO_H
++#define _SYS_MTIO_H
++#include <linux/mtio.h>
++#endif
+\ No newline at end of file
+diff --git a/libc/include/sys/param.h b/libc/include/sys/param.h
+index e64d6ce..c3c19c0 100644
+--- a/libc/include/sys/param.h
++++ b/libc/include/sys/param.h
+@@ -34,6 +34,8 @@
+ #define MAXPATHLEN  PATH_MAX
+ #define MAXSYMLINKS 8
+ 
++/* aos-note: define MAXNAMLEN */
++#define MAXNAMLEN 255
+ /* Macros for counting and rounding. */
+ #ifndef howmany
+ #define howmany(x, y)   (((x)+((y)-1))/(y))
+diff --git a/libc/include/sys/resource.h b/libc/include/sys/resource.h
+index 8209dfb..10a2aff 100644
+--- a/libc/include/sys/resource.h
++++ b/libc/include/sys/resource.h
+@@ -56,6 +56,28 @@ extern int getrusage(int, struct rusage*);
+ extern int prlimit(pid_t, int, const struct rlimit*, struct rlimit*);
+ extern int prlimit64(pid_t, int, const struct rlimit64*, struct rlimit64*);
+ 
++/* aos-note: define RLIMIT_* */
++#define RLIMIT_CPU     0
++#define RLIMIT_FSIZE   1
++#define RLIMIT_DATA    2
++#define RLIMIT_STACK   3
++#define RLIMIT_CORE    4
++#ifndef RLIMIT_RSS
++#define RLIMIT_RSS     5
++#define RLIMIT_NPROC   6
++#define RLIMIT_NOFILE  7
++#define RLIMIT_MEMLOCK 8
++#define RLIMIT_AS      9
++#endif
++#define RLIMIT_LOCKS   10
++#define RLIMIT_SIGPENDING 11
++#define RLIMIT_MSGQUEUE 12
++#define RLIMIT_NICE    13
++#define RLIMIT_RTPRIO  14
++#define RLIMIT_RTTIME  15
++#define RLIMIT_NLIMITS 16
++#define RLIM_NLIMITS RLIMIT_NLIMITS
++
+ __END_DECLS
+ 
+ #endif /* _SYS_RESOURCE_H_ */
+diff --git a/libc/include/sys/shm.h b/libc/include/sys/shm.h
+new file mode 100644
+index 0000000..1618587
+--- /dev/null
++++ b/libc/include/sys/shm.h
+@@ -0,0 +1,4 @@
++#ifndef _SYS_SHM_H
++#define _SYS_SHM_H
++#include <linux/shm.h>
++#endif
+diff --git a/libc/include/sys/ttydefaults.h b/libc/include/sys/ttydefaults.h
+index 405e759..9cde8c6 100644
+--- a/libc/include/sys/ttydefaults.h
++++ b/libc/include/sys/ttydefaults.h
+@@ -46,7 +46,7 @@
+  * Defaults on "first" open.
+  */
+ #define	TTYDEF_IFLAG	(BRKINT | ICRNL | IMAXBEL | IXON | IXANY)
+-#define TTYDEF_OFLAG	(OPOST | ONLCR | OXTABS)
++#define TTYDEF_OFLAG	(OPOST | ONLCR | XTABS)
+ #define TTYDEF_LFLAG	(ECHO | ICANON | ISIG | IEXTEN | ECHOE|ECHOKE|ECHOCTL)
+ #define TTYDEF_CFLAG	(CREAD | CS8 | HUPCL)
+ #define TTYDEF_SPEED	(B9600)
+diff --git a/libc/include/sys/types.h b/libc/include/sys/types.h
+index 217fd60..80a25e9 100644
+--- a/libc/include/sys/types.h
++++ b/libc/include/sys/types.h
+@@ -153,4 +153,7 @@ typedef uint8_t  u_int8_t;
+ typedef uint64_t u_int64_t;
+ #endif
+ 
++/* aos-note: define ushort */
++typedef unsigned short u_short, ushort;
++
+ #endif
+diff --git a/libc/include/syslog.h b/libc/include/syslog.h
+index 8000f03..cc83f1f 100644
+--- a/libc/include/syslog.h
++++ b/libc/include/syslog.h
+@@ -91,6 +91,34 @@ int setlogmask(int);
+ void syslog(int, const char*, ...) __printflike(2, 3);
+ void vsyslog(int, const char*, va_list) __printflike(2, 0);
+ 
++/* aos-note: add CODE struct */
++typedef struct {
++        char *c_name;
++        int c_val;
++} CODE;
++
++#define	LOG_NFACILITIES	24
++#define INTERNAL_NOPRI 0x10
++#define INTERNAL_MARK (LOG_NFACILITIES<<3)
++
++#define prioritynames ((CODE *)(const CODE []){ \
++        { "alert", LOG_ALERT }, { "crit", LOG_CRIT }, { "debug", LOG_DEBUG }, \
++        { "emerg", LOG_EMERG }, { "err", LOG_ERR }, { "error", LOG_ERR }, \
++        { "info", LOG_INFO }, { "none", INTERNAL_NOPRI }, \
++        { "notice", LOG_NOTICE }, { "panic", LOG_EMERG }, \
++        { "warn", LOG_WARNING }, { "warning", LOG_WARNING }, { 0, -1 } })
++#define facilitynames ((CODE *)(const CODE []){ \
++        { "auth", LOG_AUTH }, { "authpriv", LOG_AUTHPRIV }, \
++        { "cron", LOG_CRON }, { "daemon", LOG_DAEMON }, { "ftp", LOG_FTP }, \
++        { "kern", LOG_KERN }, { "lpr", LOG_LPR }, { "mail", LOG_MAIL }, \
++        { "mark", INTERNAL_MARK }, { "news", LOG_NEWS }, \
++        { "security", LOG_AUTH }, { "syslog", LOG_SYSLOG }, \
++        { "user", LOG_USER }, { "uucp", LOG_UUCP }, \
++        { "local0", LOG_LOCAL0 }, { "local1", LOG_LOCAL1 }, \
++        { "local2", LOG_LOCAL2 }, { "local3", LOG_LOCAL3 }, \
++        { "local4", LOG_LOCAL4 }, { "local5", LOG_LOCAL5 }, \
++        { "local6", LOG_LOCAL6 }, { "local7", LOG_LOCAL7 }, { 0, -1 } })
++
+ __END_DECLS
+ 
+ #endif /* _SYSLOG_H */
+diff --git a/libc/include/unistd.h b/libc/include/unistd.h
+index 5045267..c33a1f7 100644
+--- a/libc/include/unistd.h
++++ b/libc/include/unistd.h
+@@ -541,6 +541,8 @@ ssize_t readlinkat(int dirfd, const char* path, char* buf, size_t size) {
+ 
+ #endif /* defined(__BIONIC_FORTIFY) */
+ 
++/* aos-note: this is a work around for get_current_dir_name. */
++extern char *get_current_dir_name(void);
+ __END_DECLS
+ 
+ #endif /* _UNISTD_H_ */
+diff --git a/libc/include/utmp.h b/libc/include/utmp.h
+index c6f22a5..1f783a7 100644
+--- a/libc/include/utmp.h
++++ b/libc/include/utmp.h
+@@ -36,6 +36,12 @@
+ #define _PATH_WTMP      "/var/log/wtmp"
+ #define _PATH_LASTLOG   "/var/log/lastlog"
+ 
++/* aos-note: add compatible paths */
++#define UTMP_FILE _PATH_UTMP
++#define UTMP_FILENAME _PATH_UTMP
++#define WTMP_FILE _PATH_WTMP
++#define WTMP_FILENAME _PATH_WTMP
++
+ #ifdef __LP64__
+ #define UT_NAMESIZE 32
+ #define UT_LINESIZE 32
+@@ -96,6 +102,7 @@ struct utmp
+ 
+ __BEGIN_DECLS
+ 
++
+ int utmpname(const char*);
+ void setutent(void);
+ struct utmp* getutent(void);
+@@ -103,6 +110,9 @@ void endutent(void);
+ 
+ int login_tty(int);
+ 
++/* aos-note: add workaround for getutid */
++struct utmp *getutid(const struct utmp *);
++
+ __END_DECLS
+ 
+ #endif /* _UTMP_H_ */
+diff --git a/libc/include/utmpx.h b/libc/include/utmpx.h
+new file mode 100644
+index 0000000..b7dd238
+--- /dev/null
++++ b/libc/include/utmpx.h
+@@ -0,0 +1,43 @@
++#ifndef _UTMPX_H
++#define _UTMPX_H
++
++#include <utmp.h>
++
++#define __NEED_pid_t
++#define __NEED_time_t
++#define __NEED_suseconds_t
++#define __NEED_struct_timeval
++
++__BEGIN_DECLS
++
++struct utmpx
++{
++    short int ut_type;
++    pid_t ut_pid;
++    char ut_line[UT_LINESIZE];
++    char ut_id[4];
++    char ut_user[UT_NAMESIZE];
++    char ut_host[UT_HOSTSIZE];
++
++    struct exit_status ut_exit;
++
++    long int ut_session;
++    struct timeval ut_tv;
++
++    int32_t ut_addr_v6[4];
++    char unsed[20];
++};
++
++void          endutxent(void);
++struct utmpx *getutxent(void);
++struct utmpx *getutxid(const struct utmpx *);
++struct utmpx *getutxline(const struct utmpx *);
++struct utmpx *pututxline(const struct utmpx *);
++void          setutxent(void);
++
++void updwtmpx(const char *, const struct utmpx *);
++int utmpxname(const char *);
++
++__END_DECLS
++
++#endif
+\ No newline at end of file
+diff --git a/libc/include/wait.h b/libc/include/wait.h
+index d01b811..b5f924a 100644
+--- a/libc/include/wait.h
++++ b/libc/include/wait.h
+@@ -1 +1,3 @@
+ #include <sys/wait.h>
++/* aos-note: add wait3 */
++pid_t wait3 (int *, int, struct rusage *);
+diff --git a/libc/stdio/refill.c b/libc/stdio/refill.c
+index 5b0811f..c26d0c8 100644
+--- a/libc/stdio/refill.c
++++ b/libc/stdio/refill.c
+@@ -53,10 +53,14 @@ __srefill(FILE *fp)
+ {
+ 	fp->_r = 0;		/* largely a convenience for callers */
+ 
++
+ #if !defined(__ANDROID__)
+ 	/* SysV does not make this test; take it out for compatibility */
+-	if (fp->_flags & __SEOF)
++	/* aos-note: remove this check */
++	/*
++		if (fp->_flags & __SEOF)
+ 		return (EOF);
++	*/
+ #endif
+ 
+ 	/* if not already reading, have to be reading and writing */
+diff --git a/libc/tzcode/strftime.c b/libc/tzcode/strftime.c
+index 4349cf6..0aac2b6 100644
+--- a/libc/tzcode/strftime.c
++++ b/libc/tzcode/strftime.c
+@@ -28,7 +28,8 @@
+ #include "fcntl.h"
+ #include "locale.h"
+ 
+-#if __ANDROID__
++/* aos-note: remove __ANDROID__ */
++/* #if __ANDROID__ */
+ 
+ /* LP32 had a 32-bit time_t, so we need to work around that here. */
+ #if defined(__LP64__)
+@@ -40,7 +41,7 @@
+ 
+ #include <ctype.h>
+ 
+-#endif
++/* #endif */
+ 
+ struct lc_time_T {
+     const char *    mon[MONSPERYEAR];
+diff --git a/libc/upstream-netbsd/lib/libc/gen/utmp.c b/libc/upstream-netbsd/lib/libc/gen/utmp.c
+index 9fb0799..51f88b0 100644
+--- a/libc/upstream-netbsd/lib/libc/gen/utmp.c
++++ b/libc/upstream-netbsd/lib/libc/gen/utmp.c
+@@ -43,6 +43,10 @@ __RCSID("$NetBSD: utmp.c,v 1.10 2011/10/15 23:00:02 christos Exp $");
+ #include <utmp.h>
+ #include <sys/stat.h>
+ 
++/* aos-note: also include utmpx.h */
++#include <utmpx.h>
++#include <errno.h>
++
+ static struct utmp utmp;
+ static FILE *ut;
+ static char utfile[MAXPATHLEN] = _PATH_UTMP;
+@@ -104,3 +108,24 @@ utmpname(const char *fname)
+ 	endutent();
+ 	return 1;
+ }
++
++struct utmp *getutid(const struct utmp *ut)
++{
++	return NULL;
++}
++
++/* aos-note: add workaround for updwtmpx and utmpxname */
++void updwtmpx(const char *f, const struct utmpx *u)
++{
++	return;
++}
++
++int utmpxname(const char *f) {
++        errno = ENOTSUP;
++        return -1;
++}
++
++weak_alias(getutid, getutxid);
++weak_alias(endutent, endutxent);
++weak_alias(setutent, setutxent);
++weak_alias(getutent, getutxent);
+\ No newline at end of file
+diff --git a/libc/upstream-openbsd/android/include/openbsd-compat.h b/libc/upstream-openbsd/android/include/openbsd-compat.h
+index caea45a..67db4e0 100644
+--- a/libc/upstream-openbsd/android/include/openbsd-compat.h
++++ b/libc/upstream-openbsd/android/include/openbsd-compat.h
+@@ -63,7 +63,8 @@
+ /* OpenBSD has this in paths.h. But this directory doesn't normally exist.
+  * Even when it does exist, only the 'shell' user has permissions.
+  */
+-#define _PATH_TMP "/data/local/tmp/"
++/* aos-note: _PATH_TMP is already defined */
++// #define _PATH_TMP "/data/local/tmp/"
+ 
+ /* We have OpenBSD's getentropy_linux.c, but we don't mention getentropy in any header. */
+ __LIBC_HIDDEN__ extern int getentropy(void*, size_t);
+diff --git a/libc/upstream-openbsd/lib/libc/include/langinfo.h b/libc/upstream-openbsd/lib/libc/include/langinfo.h
+index a871ab8..e22ebb0 100644
+--- a/libc/upstream-openbsd/lib/libc/include/langinfo.h
++++ b/libc/upstream-openbsd/lib/libc/include/langinfo.h
+@@ -1,3 +1,91 @@
++#ifndef _LANGINFO_H
++#define _LANGINFO_H
++
++/* aos-note: nl_langinfo need to be a real function */
+ /* Hack to build "vfprintf.c". */
+-#define RADIXCHAR 1
+-#define nl_langinfo(i) ((i == RADIXCHAR) ? (char*) "." : NULL)
++// #define RADIXCHAR 1
++// #define nl_langinfo(i) ((i == RADIXCHAR) ? (char*) "." : NULL)
++
++/* aos-note: add some macros */
++typedef int nl_item;
++typedef void* nl_catd;
++char* nl_langinfo(nl_item);
++#define __NEED_locale_t
++
++#define ABDAY_1 0x20000
++#define ABDAY_2 0x20001
++#define ABDAY_3 0x20002
++#define ABDAY_4 0x20003
++#define ABDAY_5 0x20004
++#define ABDAY_6 0x20005
++#define ABDAY_7 0x20006
++
++#define DAY_1 0x20007
++#define DAY_2 0x20008
++#define DAY_3 0x20009
++#define DAY_4 0x2000A
++#define DAY_5 0x2000B
++#define DAY_6 0x2000C
++#define DAY_7 0x2000D
++
++#define ABMON_1 0x2000E
++#define ABMON_2 0x2000F
++#define ABMON_3 0x20010
++#define ABMON_4 0x20011
++#define ABMON_5 0x20012
++#define ABMON_6 0x20013
++#define ABMON_7 0x20014
++#define ABMON_8 0x20015
++#define ABMON_9 0x20016
++#define ABMON_10 0x20017
++#define ABMON_11 0x20018
++#define ABMON_12 0x20019
++
++#define MON_1 0x2001A
++#define MON_2 0x2001B
++#define MON_3 0x2001C
++#define MON_4 0x2001D
++#define MON_5 0x2001E
++#define MON_6 0x2001F
++#define MON_7 0x20020
++#define MON_8 0x20021
++#define MON_9 0x20022
++#define MON_10 0x20023
++#define MON_11 0x20024
++#define MON_12 0x20025
++
++#define AM_STR 0x20026
++#define PM_STR 0x20027
++
++#define D_T_FMT 0x20028
++#define D_FMT 0x20029
++#define T_FMT 0x2002A
++#define T_FMT_AMPM 0x2002B
++
++#define ERA 0x2002C
++#define ERA_D_FMT 0x2002E
++#define ALT_DIGITS 0x2002F
++#define ERA_D_T_FMT 0x20030
++#define ERA_T_FMT 0x20031
++
++#define CODESET 14
++
++#define CRNCYSTR 0x4000F
++
++#define RADIXCHAR 0x10000
++#define THOUSEP 0x10001
++#define YESEXPR 0x50000
++#define NOEXPR 0x50001
++
++#define _NL_LOCALE_NAME(cat) (((cat)<<16) | 0xffff)
++
++#if defined(_GNU_SOURCE)
++#define NL_LOCALE_NAME(cat) _NL_LOCALE_NAME(cat)
++#endif
++
++#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
++#define YESSTR 0x50002
++#define NOSTR 0x50003
++#endif
++
++#endif
+diff --git a/linker/debugger.cpp b/linker/debugger.cpp
+index d4c7928..65c6814 100644
+--- a/linker/debugger.cpp
++++ b/linker/debugger.cpp
+@@ -225,8 +225,11 @@ static void send_debuggerd_packet(siginfo_t* info) {
+ 
+   int s = socket_abstract_client(DEBUGGER_SOCKET_NAME, SOCK_STREAM | SOCK_CLOEXEC);
+   if (s == -1) {
++    /* aos-note: disable logging */
++    /*
+     __libc_format_log(ANDROID_LOG_FATAL, "libc", "Unable to open connection to debuggerd: %s",
+                       strerror(errno));
++    */
+     return;
+   }
+ 
+diff --git a/linker/linker.cpp b/linker/linker.cpp
+index 39aa2ca..de21a28 100644
+--- a/linker/linker.cpp
++++ b/linker/linker.cpp
+@@ -43,6 +43,10 @@
+ #include <unordered_map>
+ #include <vector>
+ 
++/* aos-note: compatible with libstdc++ */
++#include <cstring>
++#include <algorithm>
++
+ // Private C library headers.
+ #include "private/bionic_globals.h"
+ #include "private/bionic_tls.h"
+@@ -155,29 +159,21 @@ static soinfo* solist;
+ static soinfo* sonext;
+ static soinfo* somain; // main process, always the one after libdl_info
+ 
++/* aos-note: compatible with linux */
+ static const char* const kDefaultLdPaths[] = {
+-#if defined(__LP64__)
+-  "/system/lib64",
+-  "/vendor/lib64",
+-#else
+-  "/system/lib",
+-  "/vendor/lib",
+-#endif
++  "/lib",
++  "/usr/lib",
++  "/lib64",
++  "/usr/lib64",
+   nullptr
+ };
+ 
++/* aos-note: compatible with linux */
+ static const char* const kAsanDefaultLdPaths[] = {
+-#if defined(__LP64__)
+-  "/data/lib64",
+-  "/system/lib64",
+-  "/data/vendor/lib64",
+-  "/vendor/lib64",
+-#else
+-  "/data/lib",
+-  "/system/lib",
+-  "/data/vendor/lib",
+-  "/vendor/lib",
+-#endif
++  "/lib",
++  "/usr/lib",
++  "/lib64",
++  "/usr/lib64",
+   nullptr
+ };
+ 
+@@ -4135,14 +4131,24 @@ static void init_default_namespace() {
+ };
+ 
+ extern "C" int __system_properties_init(void);
++/* aos-note: add supports for linux style init, by default we use busybox */
++# ifndef INIT_PATH
++# define INIT_PATH "/bin/busybox.nosuid"
++# endif
+ 
+-static const char* get_executable_path() {
++static const char* get_executable_path(const char *exec_path) {
+   static std::string executable_path;
+   if (executable_path.empty()) {
+     char path[PATH_MAX];
+     ssize_t path_len = readlink("/proc/self/exe", path, sizeof(path));
+     if (path_len == -1 || path_len >= static_cast<ssize_t>(sizeof(path))) {
+-      __libc_fatal("readlink('/proc/self/exe') failed: %s", strerror(errno));
++      if (getpid() == 1 || strcmp(exec_path, "/bin/mount") == 0 || strcmp(exec_path, "/bin/mkdir") == 0) {
++        path_len = strlen(INIT_PATH);
++        strncpy(path, INIT_PATH, path_len);
++      }
++      else {
++        __libc_fatal("readlink('/proc/self/exe') failed: %s", strerror(errno));
++      }
+     }
+     executable_path = std::string(path, path_len);
+   }
+@@ -4196,7 +4202,7 @@ static ElfW(Addr) __linker_init_post_relocation(KernelArgumentBlock& args, ElfW(
+     }
+   }
+ 
+-  const char* executable_path = get_executable_path();
++  const char* executable_path = get_executable_path(args.argv[0]);
+   struct stat file_stat;
+   if (TEMP_FAILURE_RETRY(stat(executable_path, &file_stat)) != 0) {
+     __libc_fatal("unable to stat file for the executable \"%s\": %s", executable_path, strerror(errno));
+@@ -4473,3 +4479,17 @@ extern "C" ElfW(Addr) __linker_init(void* raw_args) {
+   // Return the address that the calling assembly stub should jump to.
+   return start_address;
+ }
++
++/* aos-note: disable zip archive */
++int32_t OpenArchiveFd(int fd, const char* debug_file_name, ZipArchiveHandle* handle, bool assume_ownership) {
++  return -1;
++}
++
++void CloseArchive(ZipArchiveHandle handle) {
++  return;
++}
++
++int32_t FindEntry(const ZipArchiveHandle handle, const ZipString& entryName,
++                  ZipEntry* data){
++  return -1;
++}
+diff --git a/linker/linker_allocator.cpp b/linker/linker_allocator.cpp
+index 57811d8..b0d5795 100644
+--- a/linker/linker_allocator.cpp
++++ b/linker/linker_allocator.cpp
+@@ -20,6 +20,9 @@
+ #include <algorithm>
+ #include <vector>
+ 
++/* aos-note: compatible with libstdc++ */
++#include <cstring>
++
+ #include <stdlib.h>
+ #include <sys/mman.h>
+ #include <unistd.h>
+diff --git a/linker/linker_dlwarning.cpp b/linker/linker_dlwarning.cpp
+index c53ad66..9101f61 100644
+--- a/linker/linker_dlwarning.cpp
++++ b/linker/linker_dlwarning.cpp
+@@ -20,6 +20,9 @@
+ 
+ #include <string>
+ 
++/* aos-note: compatible with libstdc++ */
++#include <libgen.h>
++
+ static std::string current_msg;
+ 
+ void add_dlwarning(const char* sopath, const char* message, const char* value) {
+diff --git a/linker/linker_utils.h b/linker/linker_utils.h
+index 987eabd..e27f32d 100644
+--- a/linker/linker_utils.h
++++ b/linker/linker_utils.h
+@@ -18,6 +18,9 @@
+ 
+ #include <string>
+ 
++/* aos-note: compatible with libstdc++ */
++#include <cstring>
++
+ extern const char* const kZipFileSeparator;
+ 
+ bool normalize_path(const char* path, std::string* normalized_path);
+-- 
+2.7.4
+
