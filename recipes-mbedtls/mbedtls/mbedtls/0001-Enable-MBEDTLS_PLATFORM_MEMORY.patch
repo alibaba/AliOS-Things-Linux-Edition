@@ -1,0 +1,29 @@
+From 3d64838cc5f926e4f89bfb6d86e9a87f7c725f4e Mon Sep 17 00:00:00 2001
+From: Jinliang Li <jinliang.li@linux.alibaba.com>
+Date: Mon, 18 Mar 2019 15:42:57 +0800
+Subject: [PATCH] Enable MBEDTLS_PLATFORM_MEMORY
+
+Linkkit needs the mbedtls_platform_set_calloc_free function, and mbedtls
+also uses the standard calloc/free if that function is not called.
+
+Signed-off-by: Jinliang Li <jinliang.li@linux.alibaba.com>
+---
+ include/mbedtls/config.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/mbedtls/config.h b/include/mbedtls/config.h
+index 052aed0..d0cca46 100644
+--- a/include/mbedtls/config.h
++++ b/include/mbedtls/config.h
+@@ -168,7 +168,7 @@
+  *
+  * Enable this layer to allow use of alternative memory allocators.
+  */
+-//#define MBEDTLS_PLATFORM_MEMORY
++#define MBEDTLS_PLATFORM_MEMORY
+ 
+ /**
+  * \def MBEDTLS_PLATFORM_NO_STD_FUNCTIONS
+-- 
+2.7.4
+

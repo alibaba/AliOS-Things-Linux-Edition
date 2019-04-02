@@ -1,0 +1,38 @@
+From 0f4372e1baab37814ff8d6134885aa4c6236cd77 Mon Sep 17 00:00:00 2001
+From: Jinliang Li <jinliang.li@linux.alibaba.com>
+Date: Tue, 19 Mar 2019 10:38:47 +0800
+Subject: [PATCH] Enable MBEDTLS_THREADING_C
+
+Make sure that thread safe in multi-thread enviroment, and use pthread
+in linux.
+
+Signed-off-by: Jinliang Li <jinliang.li@linux.alibaba.com>
+---
+ include/mbedtls/config.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/include/mbedtls/config.h b/include/mbedtls/config.h
+index b892687..21b1422 100644
+--- a/include/mbedtls/config.h
++++ b/include/mbedtls/config.h
+@@ -1622,7 +1622,7 @@
+  *
+  * Uncomment this to enable pthread mutexes.
+  */
+-//#define MBEDTLS_THREADING_PTHREAD
++#define MBEDTLS_THREADING_PTHREAD
+ 
+ /**
+  * \def MBEDTLS_VERSION_FEATURES
+@@ -2814,7 +2814,7 @@
+  *
+  * Enable this layer to allow use of mutexes within mbed TLS
+  */
+-//#define MBEDTLS_THREADING_C
++#define MBEDTLS_THREADING_C
+ 
+ /**
+  * \def MBEDTLS_TIMING_C
+-- 
+2.7.4
+
