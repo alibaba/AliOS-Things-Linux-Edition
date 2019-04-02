@@ -1,0 +1,33 @@
+From 21bfea997e278f7b7c47637f7d1a52b464630a61 Mon Sep 17 00:00:00 2001
+From: Jinliang Li <jinliang.li@linux.alibaba.com>
+Date: Fri, 16 Nov 2018 19:16:34 +0800
+Subject: [PATCH] Fix the NULL pointer deference occasionally in rtw_read16
+
+Check the pointer padapter is NULL or not before calling rtw_read16.
+
+Signed-off-by: Jinliang Li <jinliang.li@linux.alibaba.com>
+---
+ drivers/net/wireless/rockchip_wlan/rtl8723ds/hal/hal_btcoex.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/wireless/rockchip_wlan/rtl8723ds/hal/hal_btcoex.c b/drivers/net/wireless/rockchip_wlan/rtl8723ds/hal/hal_btcoex.c
+index 4656f7d..54089b4 100644
+--- a/drivers/net/wireless/rockchip_wlan/rtl8723ds/hal/hal_btcoex.c
++++ b/drivers/net/wireless/rockchip_wlan/rtl8723ds/hal/hal_btcoex.c
+@@ -1752,7 +1752,12 @@ u16 halbtcoutsrc_Read2Byte(void *pBtcContext, u32 RegAddr)
+ 	pBtCoexist = (PBTC_COEXIST)pBtcContext;
+ 	padapter = pBtCoexist->Adapter;
+ 
+-	return	rtw_read16(padapter, RegAddr);
++	if (padapter != NULL) {
++		return rtw_read16(padapter, RegAddr);
++	} else {
++		RTW_ERR("%s, Adapter NULL!!\n", __FUNCTION__);
++		return 0;
++	}
+ }
+ 
+ u32 halbtcoutsrc_Read4Byte(void *pBtcContext, u32 RegAddr)
+-- 
+2.7.4
+

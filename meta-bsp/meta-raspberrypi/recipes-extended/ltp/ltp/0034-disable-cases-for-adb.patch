@@ -1,0 +1,148 @@
+diff --git a/func_test.sh b/func_test.sh
+index 4d0fae6..51d9586 100644
+--- a/func_test.sh
++++ b/func_test.sh
+@@ -22,13 +22,3 @@ echo "*****************************************************"
+ echo "*****************************************************"
+ echo "               end functional test     "
+ echo "*****************************************************"
+-
+-echo "*****************************************************"
+-echo "    start test should executed in notmpfs    "
+-echo "*****************************************************"
+-mkdir tmpdir
+-./runltp -d tmpdir -f `cat notmpfs`
+-rm -rf tmpdir
+-echo "*****************************************************"
+-echo "    end test should executed in notmpfs    "
+-echo "*****************************************************"
+diff --git a/runtest/commands b/runtest/commands
+index 8c109b2..f95b1e2 100644
+--- a/runtest/commands
++++ b/runtest/commands
+@@ -1,12 +1,12 @@
+ #DESCRIPTION:General Linux commands
+ ar export TCdat=$LTPROOT/testcases/bin; ar01
+-ld01 ld01
++#ld01 ld01
+ ldd01 ldd01
+ nm01 nm01
+-file01 file01.sh
++#file01 file01.sh
+ tar01  tar_tests.sh
+ #cron cron_tests.sh
+-logrotate export TCdat=$LTPROOT/testcases/bin; logrotate_tests.sh
++#logrotate export TCdat=$LTPROOT/testcases/bin; logrotate_tests.sh
+ mail export TCdat=$LTPROOT/testcases/bin; mail_tests.sh
+ cpio01 cpio_tests.sh
+ unzip01 unzip01.sh
+@@ -38,7 +38,7 @@ mkfs01_ext4 mkfs01.sh -f ext4
+ #mkfs01_ntfs mkfs01.sh -f ntfs
+ #mkswap01 mkswap01.sh
+ which01 which01.sh
+-lsmod01 lsmod01.sh
++#lsmod01 lsmod01.sh
+ insmod01 insmod01.sh
+ wc01 wc01.sh
+ keyctl01 keyctl01.sh
+diff --git a/runtest/containers b/runtest/containers
+index ede839c..447c6c6 100644
+--- a/runtest/containers
++++ b/runtest/containers
+@@ -24,24 +24,24 @@ mqns_03_clone mqns_03 -clone
+ mqns_04 mqns_04
+ mqns_04_clone mqns_04 -clone
+ 
+-netns_netlink netns_netlink
+-netns_breakns_ns_exec_ipv4_netlink netns_breakns.sh ns_exec ipv4 netlink
+-netns_breakns_ns_exec_ipv6_netlink netns_breakns.sh ns_exec ipv6 netlink
+-netns_breakns_ns_exec_ipv4_ioctl netns_breakns.sh ns_exec ipv4 ioctl
+-netns_breakns_ns_exec_ipv6_ioctl netns_breakns.sh ns_exec ipv6 ioctl
+-netns_breakns_ip_ipv4_netlink netns_breakns.sh ip ipv4 netlink
+-netns_breakns_ip_ipv6_netlink netns_breakns.sh ip ipv6 netlink
+-netns_breakns_ip_ipv4_ioctl netns_breakns.sh ip ipv4 ioctl
+-netns_breakns_ip_ipv6_ioctl netns_breakns.sh ip ipv6 ioctl
++#netns_netlink netns_netlink
++#netns_breakns_ns_exec_ipv4_netlink netns_breakns.sh ns_exec ipv4 netlink
++#netns_breakns_ns_exec_ipv6_netlink netns_breakns.sh ns_exec ipv6 netlink
++#netns_breakns_ns_exec_ipv4_ioctl netns_breakns.sh ns_exec ipv4 ioctl
++#netns_breakns_ns_exec_ipv6_ioctl netns_breakns.sh ns_exec ipv6 ioctl
++#netns_breakns_ip_ipv4_netlink netns_breakns.sh ip ipv4 netlink
++#netns_breakns_ip_ipv6_netlink netns_breakns.sh ip ipv6 netlink
++#netns_breakns_ip_ipv4_ioctl netns_breakns.sh ip ipv4 ioctl
++#netns_breakns_ip_ipv6_ioctl netns_breakns.sh ip ipv6 ioctl
+ #netns_comm_ns_exec_ipv4_netlink netns_comm.sh ns_exec ipv4 netlink
+ #netns_comm_ns_exec_ipv6_netlink netns_comm.sh ns_exec ipv6 netlink
+-netns_comm_ns_exec_ipv4_ioctl netns_comm.sh ns_exec ipv4 ioctl
+-netns_comm_ns_exec_ipv6_ioctl netns_comm.sh ns_exec ipv6 ioctl
++#netns_comm_ns_exec_ipv4_ioctl netns_comm.sh ns_exec ipv4 ioctl
++#netns_comm_ns_exec_ipv6_ioctl netns_comm.sh ns_exec ipv6 ioctl
+ #netns_comm_ip_ipv4_netlink netns_comm.sh ip ipv4 netlink
+ #netns_comm_ip_ipv6_netlink netns_comm.sh ip ipv6 netlink
+-netns_comm_ip_ipv4_ioctl netns_comm.sh ip ipv4 ioctl
+-netns_comm_ip_ipv6_ioctl netns_comm.sh ip ipv6 ioctl
+-netns_sysfs netns_sysfs.sh
++#netns_comm_ip_ipv4_ioctl netns_comm.sh ip ipv4 ioctl
++#netns_comm_ip_ipv6_ioctl netns_comm.sh ip ipv6 ioctl
++#netns_sysfs netns_sysfs.sh
+ 
+ shmnstest_none shmnstest none
+ shmnstest_clone shmnstest clone
+diff --git a/runtest/dio b/runtest/dio
+index fe3c6cb..bb6395a 100644
+--- a/runtest/dio
++++ b/runtest/dio
+@@ -41,7 +41,7 @@ dio28 diotest6 -b 8192 -o 1024000 -i 1000 -v 200
+ 
+ ### Run the tests with more children
+ dio29 diotest3 -b 65536 -n 100 -i 100 -o 1024000
+-dio30 diotest6 -b 65536 -n 100 -i 100 -o 1024000
++#dio30 diotest6 -b 65536 -n 100 -i 100 -o 1024000
+ #
+ # RAW DEVICE TEST SECTION
+ #   DEV1 and DEV2 should be exported prior to execution or
+diff --git a/runtest/fs b/runtest/fs
+index 46587a2..f5682bd 100644
+--- a/runtest/fs
++++ b/runtest/fs
+@@ -8,8 +8,8 @@ gf06 growfiles -W gf06 -b -e 1 -u -r 1-5000 -R 0--1 -i 0 -L 30 -C 1 -f g_rand10
+ gf07 growfiles -W gf07 -b -e 1 -u -r 1-5000 -R 0--2 -i 0 -L 30 -C 1 -I p -f g_rand13 -S 2 -d $TMPDIR
+ gf08 growfiles -W gf08 -b -e 1 -u -r 1-5000 -R 0--2 -i 0 -L 30 -C 1 -f g_rand11 -S 2 -d $TMPDIR
+ gf09 growfiles -W gf09 -b -e 1 -u -r 1-5000 -R 0--1 -i 0 -L 30 -C 1 -I p -f g_rand12 -S 2 -d $TMPDIR
+-gf10 growfiles -W gf10 -b -e 1 -u -r 1-5000 -i 0 -L 30 -C 1 -I l -f g_lio14 -S 2 -d $TMPDIR
+-gf11 growfiles -W gf11 -b -e 1 -u -r 1-5000 -i 0 -L 30 -C 1 -I L -f g_lio15 -S 2 -d $TMPDIR
++#gf10 growfiles -W gf10 -b -e 1 -u -r 1-5000 -i 0 -L 30 -C 1 -I l -f g_lio14 -S 2 -d $TMPDIR
++#gf11 growfiles -W gf11 -b -e 1 -u -r 1-5000 -i 0 -L 30 -C 1 -I L -f g_lio15 -S 2 -d $TMPDIR
+ gf12 mkfifo $TMPDIR/gffifo17; growfiles -b -W gf12 -e 1 -u -i 0 -L 30 $TMPDIR/gffifo17
+ gf13 mkfifo $TMPDIR/gffifo18; growfiles -b -W gf13 -e 1 -u -i 0 -L 30 -I r -r 1-4096 $TMPDIR/gffifo18
+ #gf14 growfiles -W gf14 -b -e 1 -u -i 0 -L 20 -w -l -C 1 -T 10 -f glseek19 -S 2 -d $TMPDIR
+diff --git a/runtest/notmpfs.others b/runtest/notmpfs.others
+index 5fd4ba0..3e99866 100644
+--- a/runtest/notmpfs.others
++++ b/runtest/notmpfs.others
+@@ -29,5 +29,5 @@ chdir01A symlink01 -T chdir01
+ 
+ gf01 growfiles -W gf01 -b -e 1 -u -i 0 -L 20 -w -C 1 -l -I r -T 10 -f glseek20 -S 2 -d $TMPDIR
+ gf14 growfiles -W gf14 -b -e 1 -u -i 0 -L 20 -w -l -C 1 -T 10 -f glseek19 -S 2 -d $TMPDIR
+-gf15 growfiles -W gf15 -b -e 1 -u -r 1-49600 -I r -u -i 0 -L 120 -f Lgfile1 -d $TMPDIR
+-gf18 growfiles -W gf18 -b -e 1 -i 0 -L 120 -w -u -r 10-5000 -I r -l -S 2 -f Lgf04_ -d $TMPDIR
++#gf15 growfiles -W gf15 -b -e 1 -u -r 1-49600 -I r -u -i 0 -L 120 -f Lgfile1 -d $TMPDIR
++#gf18 growfiles -W gf18 -b -e 1 -i 0 -L 120 -w -u -r 10-5000 -I r -l -S 2 -f Lgf04_ -d $TMPDIR
+diff --git a/stress_test.sh b/stress_test.sh
+index 4b13b47..a684e21 100644
+--- a/stress_test.sh
++++ b/stress_test.sh
+@@ -8,3 +8,13 @@ echo "*****************************************************"
+ echo "*****************************************************"
+ echo "    end stress test     "
+ echo "*****************************************************"
++
++echo "*****************************************************"
++echo "    start test should executed in notmpfs    "
++echo "*****************************************************"
++mkdir tmpdir
++./runltp -d tmpdir -f `cat notmpfs`
++rm -rf tmpdir
++echo "*****************************************************"
++echo "    end test should executed in notmpfs    "
++echo "*****************************************************"

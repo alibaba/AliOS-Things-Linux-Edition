@@ -1,0 +1,30 @@
+From 264d027b257f8f9803d27d3f2b6f57b398e45d41 Mon Sep 17 00:00:00 2001
+From: Wu Liang feng <wulf@rock-chips.com>
+Date: Wed, 6 Jul 2016 09:48:23 +0800
+Subject: [PATCH 60/73] power_supply: Add new type for USB chargers
+
+This adds a power supply type for special USB charger,
+this kind of USB charger is similar to Dedicated Charging
+Port, but not a standard DCP because of D+/D- not short.
+
+Change-Id: I7c478da642b43465a9de65c8b5d7b8250c0da037
+Signed-off-by: Wu Liang feng <wulf@rock-chips.com>
+---
+ include/linux/power_supply.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/linux/power_supply.h b/include/linux/power_supply.h
+index 3965503315ef..9bd6ced37c32 100644
+--- a/include/linux/power_supply.h
++++ b/include/linux/power_supply.h
+@@ -166,6 +166,7 @@ enum power_supply_type {
+ 	POWER_SUPPLY_TYPE_USB_TYPE_C,	/* Type C Port */
+ 	POWER_SUPPLY_TYPE_USB_PD,	/* Power Delivery Port */
+ 	POWER_SUPPLY_TYPE_USB_PD_DRP,	/* PD Dual Role Port */
++	POWER_SUPPLY_TYPE_USB_FLOATING,	/* DCP without shorting D+/D- */
+ };
+ 
+ enum power_supply_notifier_events {
+-- 
+2.11.0
+

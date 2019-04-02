@@ -1,0 +1,39 @@
+From 5223a2b43b4575ad1be9388fe3323c081806ea9f Mon Sep 17 00:00:00 2001
+From: Bruce Lee <lr437200361@126.com>
+Date: Wed, 5 Dec 2018 15:08:50 +0800
+Subject: [PATCH] Get wifi mac address from vendor storage
+
+---
+ drivers/net/wireless/rockchip_wlan/rtl8723ds/core/rtw_ieee80211.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/wireless/rockchip_wlan/rtl8723ds/core/rtw_ieee80211.c b/drivers/net/wireless/rockchip_wlan/rtl8723ds/core/rtw_ieee80211.c
+index d76e816..d342427 100644
+--- a/drivers/net/wireless/rockchip_wlan/rtl8723ds/core/rtw_ieee80211.c
++++ b/drivers/net/wireless/rockchip_wlan/rtl8723ds/core/rtw_ieee80211.c
+@@ -18,6 +18,7 @@
+ 	#include <linux/fs.h>
+ #endif
+ #include <drv_types.h>
++#include <linux/rfkill-wlan.h>
+ 
+ 
+ u8 RTW_WPA_OUI_TYPE[] = { 0x00, 0x50, 0xf2, 1 };
+@@ -1481,9 +1482,13 @@ void rtw_macaddr_cfg(u8 *out, const u8 *hw_mac_addr)
+ 	/* Use the mac address stored in the Efuse */
+ 	if (hw_mac_addr) {
+ 		_rtw_memcpy(mac, hw_mac_addr, ETH_ALEN);
+-		goto err_chk;
+ 	}
+ 
++    if (!rockchip_wifi_mac_addr(mac)) { 
++        printk("get mac address from flash=[%02x:%02x:%02x:%02x:%02x:%02x]\n", mac[0], mac[1],
++            mac[2], mac[3], mac[4], mac[5]);
++    }
++
+ err_chk:
+ 	if (rtw_check_invalid_mac_address(mac, _TRUE) == _TRUE) {
+ #if DEFAULT_RANDOM_MACADDR
+-- 
+2.7.4
+

@@ -1,0 +1,58 @@
+From 1bacb1995a914136c3193efdf24acd41280dec53 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 24 Jul 2018 18:00:29 +0800
+Subject: [PATCH 67/73] bcmdhd: Check chip type before probe
+
+Change-Id: Ia24848d381acb608a0c09251f74a438d0110932a
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ .../wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux_platdev.c   | 10 ++++++++++
+ net/rfkill/rfkill-wlan.c                                       |  4 ++++
+ 2 files changed, 14 insertions(+)
+
+diff --git a/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux_platdev.c b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux_platdev.c
+index 7be2fa30d1eb..d66b4813bfa5 100755
+--- a/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux_platdev.c
++++ b/drivers/net/wireless/rockchip_wlan/rkwifi/bcmdhd/dhd_linux_platdev.c
+@@ -47,6 +47,8 @@
+ #include<linux/of_gpio.h>
+ #endif /* CONFIG_DTS */
+ 
++#include <linux/rfkill-wlan.h>
++
+ #if defined(CUSTOMER_HW)
+ extern int dhd_wlan_init_plat_data(void);
+ extern void dhd_wlan_deinit_plat_data(wifi_adapter_info_t *adapter);
+@@ -864,6 +866,14 @@ static int dhd_wifi_platform_load()
+ 	int err = 0;
+ 	printf("%s: Enter\n", __FUNCTION__);
+ 
++	/* Check chip type from dts first */
++	extern int get_wifi_chip_type(void);
++	int type = get_wifi_chip_type();
++	if (type < 0)
++		return -EPROBE_DEFER;
++	if (type >= WIFI_AP6XXX_SERIES)
++		return -EINVAL;
++
+ 	wl_android_init();
+ 
+ 	if ((err = dhd_wifi_platform_load_usb()))
+diff --git a/net/rfkill/rfkill-wlan.c b/net/rfkill/rfkill-wlan.c
+index f54e3b6eff1c..d4d33eca1348 100644
+--- a/net/rfkill/rfkill-wlan.c
++++ b/net/rfkill/rfkill-wlan.c
+@@ -104,6 +104,10 @@ static char wifi_chip_type_string[64];
+ int get_wifi_chip_type(void)
+ {
+     int type;
++
++    if (!wifi_chip_type_string[0])
++	    return -1;
++
+     if (strcmp(wifi_chip_type_string, "ap6210") == 0) {
+         type = WIFI_AP6210;
+     } else if (strcmp(wifi_chip_type_string, "ap6212") == 0) {
+-- 
+2.11.0
+

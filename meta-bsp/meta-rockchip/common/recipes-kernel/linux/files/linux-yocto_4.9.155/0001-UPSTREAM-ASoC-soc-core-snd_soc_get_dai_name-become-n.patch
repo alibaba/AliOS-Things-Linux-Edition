@@ -1,0 +1,59 @@
+From 3088c0e0b441535cff329ccdef583762e4c5d084 Mon Sep 17 00:00:00 2001
+From: Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
+Date: Fri, 11 Nov 2016 01:19:28 +0000
+Subject: [PATCH 01/73] UPSTREAM: ASoC: soc-core: snd_soc_get_dai_name() become
+ non static
+
+snd_soc_get_dai_name() is used from snd_soc_of_get_dai_name(),
+and it is assuming that DT is using "sound-dai" / "#sound-dai-cells".
+But graph base DT is using "remote-endpoint". This patch makes
+snd_soc_get_dai_name() non static for graph support.
+
+Signed-off-by: Kuninori Morimoto <kuninori.morimoto.gx@renesas.com>
+Signed-off-by: Mark Brown <broonie@kernel.org>
+Signed-off-by: Sugar Zhang <sugar.zhang@rock-chips.com>
+(cherry picked from commit 1ad8ec535b997ed36c0f32c2616206725258dd30)
+
+Change-Id: If99dcbfa722f09e3238cfafb5dc2803b6636a2e0
+---
+ include/sound/soc.h  | 2 ++
+ sound/soc/soc-core.c | 3 ++-
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/include/sound/soc.h b/include/sound/soc.h
+index 4f1c784e44f6..f20d77f1c878 100644
+--- a/include/sound/soc.h
++++ b/include/sound/soc.h
+@@ -1661,6 +1661,8 @@ unsigned int snd_soc_of_parse_daifmt(struct device_node *np,
+ 				     const char *prefix,
+ 				     struct device_node **bitclkmaster,
+ 				     struct device_node **framemaster);
++int snd_soc_get_dai_name(struct of_phandle_args *args,
++			 const char **dai_name);
+ int snd_soc_of_get_dai_name(struct device_node *of_node,
+ 			    const char **dai_name);
+ int snd_soc_of_get_dai_link_codecs(struct device *dev,
+diff --git a/sound/soc/soc-core.c b/sound/soc/soc-core.c
+index 4e3de566809c..74ca4f847cbf 100644
+--- a/sound/soc/soc-core.c
++++ b/sound/soc/soc-core.c
+@@ -3785,7 +3785,7 @@ unsigned int snd_soc_of_parse_daifmt(struct device_node *np,
+ }
+ EXPORT_SYMBOL_GPL(snd_soc_of_parse_daifmt);
+ 
+-static int snd_soc_get_dai_name(struct of_phandle_args *args,
++int snd_soc_get_dai_name(struct of_phandle_args *args,
+ 				const char **dai_name)
+ {
+ 	struct snd_soc_component *pos;
+@@ -3837,6 +3837,7 @@ static int snd_soc_get_dai_name(struct of_phandle_args *args,
+ 	mutex_unlock(&client_mutex);
+ 	return ret;
+ }
++EXPORT_SYMBOL_GPL(snd_soc_get_dai_name);
+ 
+ int snd_soc_of_get_dai_name(struct device_node *of_node,
+ 			    const char **dai_name)
+-- 
+2.11.0
+

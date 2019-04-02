@@ -1,0 +1,29 @@
+From 2f7b624ea5a91628983778b85c398bee0af20be2 Mon Sep 17 00:00:00 2001
+From: Finley Xiao <finley.xiao@rock-chips.com>
+Date: Mon, 23 Jul 2018 10:52:56 +0800
+Subject: [PATCH 35/73] cpufreq: dt: Add support for rk3308
+
+Add the compatible string for supporting the generic cpufreq driver on
+the RK3308 SoC.
+
+Change-Id: I0a6ff727095e13b03964b9f6079e324baa7b508a
+Signed-off-by: Finley Xiao <finley.xiao@rock-chips.com>
+---
+ drivers/cpufreq/cpufreq-dt-platdev.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/cpufreq/cpufreq-dt-platdev.c b/drivers/cpufreq/cpufreq-dt-platdev.c
+index 71267626456b..d8a30d5a1732 100644
+--- a/drivers/cpufreq/cpufreq-dt-platdev.c
++++ b/drivers/cpufreq/cpufreq-dt-platdev.c
+@@ -66,6 +66,7 @@ static const struct of_device_id machines[] __initconst = {
+ 	{ .compatible = "rockchip,rk3188", },
+ 	{ .compatible = "rockchip,rk3228", },
+ 	{ .compatible = "rockchip,rk3288", },
++	{ .compatible = "rockchip,rk3308", },
+ 	{ .compatible = "rockchip,rk3366", },
+ 	{ .compatible = "rockchip,rk3368", },
+ 	{ .compatible = "rockchip,rk3399", },
+-- 
+2.11.0
+

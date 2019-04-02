@@ -1,0 +1,40 @@
+From e635a08447a1b622dd5315845158b877c009e433 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 7 Aug 2018 15:36:37 +0800
+Subject: [PATCH] arm: configs: rk3308_linux_aarch32: Enable
+ CONFIG_BT_HCIUART_3WIRE
+
+Change-Id: Ie24a9a8dfc00af9370d03392a415308fcd912c53
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ arch/arm/configs/rk3308_linux_aarch32_debug_defconfig | 1 +
+ arch/arm/configs/rk3308_linux_aarch32_defconfig       | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig b/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
+index dd87aa4e0aa3..d07f378d9ded 100644
+--- a/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
++++ b/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
+@@ -71,6 +71,7 @@ CONFIG_BT_HIDP=y
+ CONFIG_BT_HCIUART=y
+ CONFIG_BT_HCIUART_H4=y
+ CONFIG_BT_HCIUART_LL=y
++CONFIG_BT_HCIUART_3WIRE=y
+ CONFIG_RFKILL=y
+ CONFIG_DEVTMPFS=y
+ CONFIG_DEVTMPFS_MOUNT=y
+diff --git a/arch/arm/configs/rk3308_linux_aarch32_defconfig b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+index 5917e76b552b..c3ae17d11191 100644
+--- a/arch/arm/configs/rk3308_linux_aarch32_defconfig
++++ b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+@@ -71,6 +71,7 @@ CONFIG_BT_HIDP=y
+ CONFIG_BT_HCIUART=y
+ CONFIG_BT_HCIUART_H4=y
+ CONFIG_BT_HCIUART_LL=y
++CONFIG_BT_HCIUART_3WIRE=y
+ CONFIG_RFKILL=y
+ CONFIG_DEVTMPFS=y
+ CONFIG_DEVTMPFS_MOUNT=y
+-- 
+2.11.0
+

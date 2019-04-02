@@ -1,0 +1,36 @@
+From a055d7ebe003f0c251fce02c09938926ad9b9796 Mon Sep 17 00:00:00 2001
+From: Lin Jianhua <linjh@rock-chips.com>
+Date: Wed, 1 Aug 2018 09:09:39 +0800
+Subject: [PATCH 58/73] arm: dts: rockchip: add rockchip_suspend node for
+ rk3308-voice-module
+
+Change-Id: I10725536030e3f5d6b323d791624021a845c968f
+Signed-off-by: Lin Jianhua <linjh@rock-chips.com>
+---
+ arch/arm/boot/dts/rk3308-voice-module-v10-aarch32.dtsi | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/arch/arm/boot/dts/rk3308-voice-module-v10-aarch32.dtsi b/arch/arm/boot/dts/rk3308-voice-module-v10-aarch32.dtsi
+index 029621f99dcf..306167cf8573 100644
+--- a/arch/arm/boot/dts/rk3308-voice-module-v10-aarch32.dtsi
++++ b/arch/arm/boot/dts/rk3308-voice-module-v10-aarch32.dtsi
+@@ -278,6 +278,16 @@
+ 	pinctrl-0 = <&pwm0_pin_pull_down>;
+ };
+ 
++&rockchip_suspend {
++	rockchip,pwm-regulator-config = <
++		(0
++		| RKPM_PWM_REGULATOR
++		)
++	>;
++
++	status = "okay";
++};
++
+ &tsadc {
+ 	rockchip,hw-tshut-mode = <0>; /* tshut mode 0:CRU 1:GPIO */
+ 	rockchip,hw-tshut-polarity = <1>; /* tshut polarity 0:LOW 1:HIGH */
+-- 
+2.11.0
+

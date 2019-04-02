@@ -1,0 +1,140 @@
+From 27ba2349cd71bab125757d865ce266ea9a6c4b74 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Mon, 25 Jun 2018 17:44:53 +0800
+Subject: [PATCH 19/73] wireless: bcmdhd: Create wireless_dev when adding
+ monitor iface
+
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ drivers/net/wireless/bcmdhd/wl_cfg80211.c  |  9 +++++----
+ drivers/net/wireless/bcmdhd/wl_linux_mon.c | 25 +++++++++++++++++++++++--
+ 2 files changed, 28 insertions(+), 6 deletions(-)
+
+diff --git a/drivers/net/wireless/bcmdhd/wl_cfg80211.c b/drivers/net/wireless/bcmdhd/wl_cfg80211.c
+index 03a6a8949d27..9a39b6f68688 100644
+--- a/drivers/net/wireless/bcmdhd/wl_cfg80211.c
++++ b/drivers/net/wireless/bcmdhd/wl_cfg80211.c
+@@ -843,7 +843,7 @@ static int wl_cfg80211_set_mac_acl(struct wiphy *wiphy, struct net_device *cfgde
+ /*
+  * Some external functions, TODO: move them to dhd_linux.h
+  */
+-int dhd_add_monitor(const char *name, struct net_device **new_ndev);
++int dhd_add_monitor(struct bcm_cfg80211 *cfg, const char *name, struct net_device **new_ndev);
+ int dhd_del_monitor(struct net_device *ndev);
+ int dhd_monitor_init(void *dhd_pub);
+ int dhd_monitor_uninit(void);
+@@ -1591,7 +1591,7 @@ static chanspec_t wl_cfg80211_get_shared_freq(struct wiphy *wiphy)
+ }
+ 
+ static bcm_struct_cfgdev *
+-wl_cfg80211_add_monitor_if(const char *name)
++wl_cfg80211_add_monitor_if(struct bcm_cfg80211 *cfg, const char *name)
+ {
+ #if 0// defined(WL_ENABLE_P2P_IF) || defined(WL_CFG80211_P2P_DEV_IF)
+ 	WL_INFORM(("wl_cfg80211_add_monitor_if: No more support monitor interface\n"));
+@@ -1599,8 +1599,9 @@ wl_cfg80211_add_monitor_if(const char *name)
+ #else
+ 	struct net_device* ndev = NULL;
+ 
+-	dhd_add_monitor(name, &ndev);
++	dhd_add_monitor(cfg, name, &ndev);
+ 	WL_INFORM(("wl_cfg80211_add_monitor_if net device returned: 0x%p\n", ndev));
++
+ 	return ndev_to_cfgdev(ndev);
+ #endif /* WL_ENABLE_P2P_IF || WL_CFG80211_P2P_DEV_IF */
+ }
+@@ -1680,7 +1681,7 @@ wl_cfg80211_add_virtual_iface(struct wiphy *wiphy,
+ 		err = -EINVAL;
+ 		goto fail;
+ 	case NL80211_IFTYPE_MONITOR:
+-		new_cfgdev = wl_cfg80211_add_monitor_if(name);
++		new_cfgdev = wl_cfg80211_add_monitor_if(cfg, name);
+ 		mutex_unlock(&cfg->if_sync);
+ 		return new_cfgdev;
+ #if defined(WL_CFG80211_P2P_DEV_IF)
+diff --git a/drivers/net/wireless/bcmdhd/wl_linux_mon.c b/drivers/net/wireless/bcmdhd/wl_linux_mon.c
+index e90fa5d1679a..5f96402e4a6e 100755
+--- a/drivers/net/wireless/bcmdhd/wl_linux_mon.c
++++ b/drivers/net/wireless/bcmdhd/wl_linux_mon.c
+@@ -43,6 +43,9 @@
+ #include <dngl_stats.h>
+ #include <dhd.h>
+ 
++#include <wl_cfg80211.h>
++#include <net/cfg80211.h>
++
+ typedef enum monitor_states
+ {
+ 	MONITOR_STATE_DEINIT = 0x0,
+@@ -50,7 +53,7 @@ typedef enum monitor_states
+ 	MONITOR_STATE_INTERFACE_ADDED = 0x2,
+ 	MONITOR_STATE_INTERFACE_DELETED = 0x4
+ } monitor_states_t;
+-int dhd_add_monitor(const char *name, struct net_device **new_ndev);
++int dhd_add_monitor(struct bcm_cfg80211 *cfg, const char *name, struct net_device **new_ndev);
+ extern int dhd_start_xmit(struct sk_buff *skb, struct net_device *net);
+ int dhd_del_monitor(struct net_device *ndev);
+ int dhd_monitor_init(void *dhd_pub);
+@@ -280,12 +283,13 @@ static int dhd_mon_if_change_mac(struct net_device *ndev, void *addr)
+  * Global function definitions (declared in dhd_linux_mon.h)
+  */
+ 
+-int dhd_add_monitor(const char *name, struct net_device **new_ndev)
++int dhd_add_monitor(struct bcm_cfg80211 *cfg, const char *name, struct net_device **new_ndev)
+ {
+ 	int i;
+ 	int idx = -1;
+ 	int ret = 0;
+ 	struct net_device* ndev = NULL;
++	struct wireless_dev *wdev = NULL;
+ 	dhd_linux_monitor_t **dhd_mon;
+ 
+ 	mutex_lock(&g_monitor.lock);
+@@ -297,6 +301,13 @@ int dhd_add_monitor(const char *name, struct net_device **new_ndev)
+ 		goto out;
+ 	}
+ 
++	wdev = kzalloc(sizeof(*wdev), GFP_KERNEL);
++	if (!wdev) {
++		WL_ERR(("wireless_dev alloc failed! \n"));
++		ret = -ENOMEM;
++		goto out;
++	}
++
+ 	/*
+ 	 * Find a vacancy
+ 	 */
+@@ -323,6 +334,12 @@ int dhd_add_monitor(const char *name, struct net_device **new_ndev)
+ 	ndev->name[IFNAMSIZ - 1] = 0;
+ 	ndev->netdev_ops = &dhd_mon_if_ops;
+ 
++	wdev->wiphy = bcmcfg_to_wiphy(cfg);
++	wdev->iftype = NL80211_IFTYPE_MONITOR;
++
++	ndev->ieee80211_ptr = wdev;
++	SET_NETDEV_DEV(ndev, wiphy_dev(wdev->wiphy));
++
+ 	ret = register_netdevice(ndev);
+ 	if (ret) {
+ 		MON_PRINT(" register_netdevice failed (%d)\n", ret);
+@@ -340,6 +357,9 @@ int dhd_add_monitor(const char *name, struct net_device **new_ndev)
+ 	MON_PRINT("found a matched net device, name %s\n", g_monitor.mon_if[idx].real_ndev->name);
+ 
+ out:
++	if (ret && wdev)
++		kfree(wdev);
++
+ 	if (ret && ndev)
+ 		free_netdev(ndev);
+ 
+@@ -360,6 +380,7 @@ int dhd_del_monitor(struct net_device *ndev)
+ 
+ 			g_monitor.mon_if[i].real_ndev = NULL;
+ 			unregister_netdevice(g_monitor.mon_if[i].mon_ndev);
++			kfree(g_monitor.mon_if[i].mon_ndev->ieee80211_ptr);
+ 			free_netdev(g_monitor.mon_if[i].mon_ndev);
+ 			g_monitor.mon_if[i].mon_ndev = NULL;
+ 			g_monitor.monitor_state = MONITOR_STATE_INTERFACE_DELETED;
+-- 
+2.11.0
+

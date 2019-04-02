@@ -1,0 +1,73 @@
+From f7b0b1b009c6a25eae01cbcd767d6bd0cea55969 Mon Sep 17 00:00:00 2001
+From: Piotr Betlej <piotr.betlej@googlemail.com>
+Date: Sun, 18 Feb 2018 10:47:25 +0100
+Subject: [PATCH] Bugfixed patch 0100-prom_fixes.patch. Fixed bootargs destruction. 
+	Not compatible with 0007-MIPS-ralink-copy-the-commandline-from-the-devicetree.patch anymore.
+---
+ arch/mips/kernel/head.S |  3 +++
+ arch/mips/ralink/of.c   | 21 +++++++++++++++++++--
+ 2 files changed, 22 insertions(+), 2 deletions(-)
+
+diff --git a/arch/mips/kernel/head.S b/arch/mips/kernel/head.S
+index d1bb506..23cd925 100644
+--- a/arch/mips/kernel/head.S
++++ b/arch/mips/kernel/head.S
+@@ -79,6 +79,9 @@ FEXPORT(__kernel_entry)
+ 	j	kernel_entry
+ #endif
+ 
++	.ascii  "OWRTDTB:"
++	EXPORT(__image_dtb)
++	.fill   0x4000
+ 	__REF
+ 
+ NESTED(kernel_entry, 16, sp)			# kernel entry point
+diff --git a/arch/mips/ralink/of.c b/arch/mips/ralink/of.c
+index 0aa67a2..3c21ca8 100644
+--- a/arch/mips/ralink/of.c
++++ b/arch/mips/ralink/of.c
+@@ -3,7 +3,7 @@
+  * under the terms of the GNU General Public License version 2 as published
+  * by the Free Software Foundation.
+  *
+- * Copyright (C) 2008 Imre Kaloz <kaloz@openwrt.org>
++ * Copyright (C) 2008-2014 Imre Kaloz <kaloz@openwrt.org>
+  * Copyright (C) 2008-2009 Gabor Juhos <juhosg@openwrt.org>
+  * Copyright (C) 2013 John Crispin <john@phrozen.org>
+  */
+@@ -64,6 +64,19 @@ static int __init early_init_dt_find_memory(unsigned long node,
+ 	return 0;
+ }
+ 
++static int chosen_dtb;
++
++static int __init early_init_dt_find_chosen(unsigned long node, const char *uname,
++				     int depth, void *data)
++{
++	if (depth == 1 && !strcmp(uname, "chosen"))
++		chosen_dtb = 1;
++
++	return 0;
++}
++
++extern struct boot_param_header __image_dtb;
++
+ void __init plat_mem_setup(void)
+ {
+ 	set_io_port_base(KSEG1);
+@@ -72,7 +85,11 @@ void __init plat_mem_setup(void)
+ 	 * Load the builtin devicetree. This causes the chosen node to be
+ 	 * parsed resulting in our memory appearing
+ 	 */
+-	__dt_setup_arch(__dtb_start);
++	__dt_setup_arch(&__image_dtb);
++
++	of_scan_flat_dt(early_init_dt_find_chosen, NULL);
++	if (chosen_dtb)
++		strlcpy(arcs_cmdline, boot_command_line, COMMAND_LINE_SIZE);
+ 
+ 	of_scan_flat_dt(early_init_dt_find_memory, NULL);
+ 	if (memory_dtb)
+-- 
+1.9.1
+

@@ -1,0 +1,33 @@
+From d39d546caee46230e9d69fef445becc5a654ff79 Mon Sep 17 00:00:00 2001
+From: Xing Zheng <zhengxing@rock-chips.com>
+Date: Mon, 17 Sep 2018 11:08:36 +0800
+Subject: [PATCH] arm: dts: rk3308-smart-voice-a1-aarch32: enable i2s_8ch_0
+
+Let mclk_tx and mclk_rx use the same parent clock and
+avoid that two mclks output the same pad and sample
+rate clock is abnormal.
+
+Change-Id: I91c878871528fb1d2ee176e7c4db231b0192b189
+Signed-off-by: Xing Zheng <zhengxing@rock-chips.com>
+---
+ arch/arm/boot/dts/rk3308-smart-voice-a1-aarch32.dts | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/arch/arm/boot/dts/rk3308-smart-voice-a1-aarch32.dts b/arch/arm/boot/dts/rk3308-smart-voice-a1-aarch32.dts
+index c27290193204..99ceb71fd0d6 100644
+--- a/arch/arm/boot/dts/rk3308-smart-voice-a1-aarch32.dts
++++ b/arch/arm/boot/dts/rk3308-smart-voice-a1-aarch32.dts
+@@ -21,3 +21,10 @@
+ 	rockchip,en-always-grps = <2>;
+ };
+ 
++&i2s_8ch_0 {
++        status = "okay";
++        assigned-clocks = <&cru SCLK_I2S0_8CH_RX>;
++        assigned-clock-parents = <&cru SCLK_I2S0_8CH_TX_MUX>;
++        rockchip,clk-trcm = <1>;
++        #sound-dai-cells = <0>;
++};
+-- 
+2.11.0
+

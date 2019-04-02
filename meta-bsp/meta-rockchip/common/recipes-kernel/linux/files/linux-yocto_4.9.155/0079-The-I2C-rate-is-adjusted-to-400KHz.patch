@@ -1,0 +1,25 @@
+From 3404bfc0b7f5f8172f53d7d14921c731fbc2bd7b Mon Sep 17 00:00:00 2001
+From: OpenEmbedded <oe.patch@oe>
+Date: Wed, 8 Aug 2018 11:52:57 +0800
+Subject: [PATCH] The I2C rate is adjusted to 400KHz
+
+---
+ arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+index 8808dac..54d1b21 100644
+--- a/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
++++ b/arch/arm/boot/dts/rk3308-ali-module-v10-aarch32.dtsi
+@@ -401,7 +401,7 @@
+ 
+ &i2c0 {
+ 	status="okay";
+-
++    clock-frequency = <400000>;
+ 	ac108: ac108@3b {
+ 		status = "okay";
+ 		compatible = "MicArray_0";
+-- 
+2.7.4
+

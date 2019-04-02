@@ -1,0 +1,47 @@
+From 4292c43240ac8fabc98b1faba050ecd3742cab0e Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Tue, 24 Jul 2018 18:01:06 +0800
+Subject: [PATCH 62/73] arm64: dts: rk3308-evb-v11: Switch to fiq
+
+Change-Id: I44f852559828784338beebbd4efc895b7a7c5446
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi b/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi
+index 2aa9d3e07db0..4fc1b0181021 100644
+--- a/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi
++++ b/arch/arm64/boot/dts/rockchip/rk3308-evb-v11.dtsi
+@@ -11,7 +11,7 @@
+ 	compatible = "rockchip,rk3308-evb-v11", "rockchip,rk3308";
+ 
+ 	chosen {
+-		bootargs = "earlyprintk earlycon=uart8250,mmio32,0xff0c0000 swiotlb=1 console=ttyS2,1500000n8 root=PARTUUID=614e0000-0000 rootwait";
++		bootargs = "earlyprintk earlycon=uart8250,mmio32,0xff0c0000 swiotlb=1 console=ttyFIQ0 root=PARTUUID=614e0000-0000 rootwait";
+ 	};
+ 
+ 	adc-keys {
+@@ -279,10 +279,8 @@
+ 	status = "disabled";
+ };
+ 
+-&uart2 {
++&fiq_debugger {
+ 	status = "okay";
+-
+-	pinctrl-0 = <&uart2m1_xfer>;
+ };
+ 
+ &mac {
+@@ -683,7 +681,6 @@
+ 	sd-uhs-sdr104;
+ 	vmmc-supply = <&vcc_sd>;
+ 	vqmmc-supply = <&vccio_sd>;
+-	pinctrl-0 = <&sdmmc_clk &sdmmc_cmd &sdmmc_det &sdmmc_bus1>;
+ 	status = "disabled";
+ };
+ 
+-- 
+2.11.0
+

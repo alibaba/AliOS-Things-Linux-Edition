@@ -1,0 +1,32 @@
+From ac8528090cc6bd8457a0ed7ce4865d057c6f4c60 Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 16 Aug 2018 20:10:33 +0800
+Subject: [PATCH] fiq_debugger: Sanity check state in fiq_tty_proc_show
+
+The fiq_tty_proc_show can be called even when fiq is not enabled in dts,
+which would cause crash.
+
+Add sanity check to avoid that.
+
+Change-Id: I69d34718f91813aed14c542901060e4fd68b818b
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ drivers/staging/android/fiq_debugger/fiq_debugger.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/drivers/staging/android/fiq_debugger/fiq_debugger.c b/drivers/staging/android/fiq_debugger/fiq_debugger.c
+index 997e4c2f8a60..aa26bcb99efe 100644
+--- a/drivers/staging/android/fiq_debugger/fiq_debugger.c
++++ b/drivers/staging/android/fiq_debugger/fiq_debugger.c
+@@ -1217,6 +1217,8 @@ static int fiq_tty_proc_show(struct seq_file *m, void *v)
+ 	seq_puts(m, "fiq-debugger driver\n");
+ 	for (i = 0; i < MAX_FIQ_DEBUGGER_PORTS; i++) {
+ 		state = states[i];
++		if (!state)
++			continue;
+ 
+ 		seq_printf(m, "%d:", i);
+ 		seq_printf(m, " state:%d", state->console_enable);
+-- 
+2.11.0
+

@@ -1,0 +1,36 @@
+From 38f064cc18127576d0c873fec63f03f3806f53f4 Mon Sep 17 00:00:00 2001
+From: lr437200361@126.com
+Date: Fri, 14 Sep 2018 00:57:51 +0800
+Subject: [PATCH] Modify the AC108 channel order to 2 3 4
+
+---
+ sound/soc/codecs/ac108.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/sound/soc/codecs/ac108.c b/sound/soc/codecs/ac108.c
+index ee19020..3298cab 100755
+--- a/sound/soc/codecs/ac108.c
++++ b/sound/soc/codecs/ac108.c
+@@ -803,8 +803,8 @@ static void ac108_hw_init(struct i2c_client *i2c)
+ 	ac108_write(ANA_ADC4_CTRL1, 0x07, i2c);			/*0xB5=0x07: ADC4 AAF & ADC enable, ADC4 PGA enable, ADC4 MICBIAS enable and UnMute*/
+ 
+ 	msleep(50);										/*delay 50ms to let VREF/VRP faststart powerup stable, then disable faststart*/
+-	ac108_update_bits(PWR_CTRL7, 0x1<<VREF_FASTSTART_ENABLE, 0x0<<VREF_FASTSTART_ENABLE, i2c);		/*VREF faststart disable*/
+-	ac108_update_bits(PWR_CTRL9, 0x1<<VREFP_FASTSTART_ENABLE, 0x0<<VREFP_FASTSTART_ENABLE, i2c);	/*VREFP faststart disable*/
++	ac108_write(PWR_CTRL7, 0x9b, i2c);		/*0x07=0x9b: VREF faststart Enable, Enable VREF @ 3.4V (5V) or 3.1V (3.3V) (needed for Analog LDO and MICBIAS)*/
++	ac108_write(PWR_CTRL9, 0x81, i2c);		/*0x09=0x81: VREFP faststart Enable, Enable VREFP (needed by all audio input channels)*/
+ #else
+ 	/*** DMIC module Enable ***/
+ 	ac108_write(DMIC_EN, 0x03, i2c);				/*DMIC1/2 Enable, while ADC DIG source select DMIC1/2*/
+@@ -1098,6 +1098,8 @@ static int ac108_hw_params(struct snd_pcm_substream *substream, struct snd_pcm_h
+ 		ac108_write(I2S_TX2_CTRL3, 0, i2c_clt[i]);
+ 	}
+ #endif
++	ac108_write(I2S_TX1_CTRL1, 0x03, i2c_clt[0]);
++	ac108_write(I2S_TX1_CTRL2, 0x0f, i2c_clt[0]);
+ 
+ 	//AC108 set sample resorution
+ 	switch (params_format(params)) {
+-- 
+2.7.4
+

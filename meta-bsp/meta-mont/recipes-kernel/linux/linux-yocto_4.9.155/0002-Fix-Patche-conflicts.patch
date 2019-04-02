@@ -1,0 +1,189 @@
+From 7de5fd0322a630f1b6e1a159690ec7edbd1573bd Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Tue, 26 Feb 2019 14:46:26 +0800
+Subject: [PATCH] Fix Patche conflicts.
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ Makefile                               |  3 ++-
+ arch/mips/boot/compressed/decompress.c |  2 +-
+ drivers/mmc/host/sdhci.c               |  1 +
+ drivers/net/wireless/mac80211_hwsim.c  |  4 ++++
+ include/linux/netdevice.h              |  2 ++
+ net/8021q/vlan.c                       |  5 +++++
+ net/core/sock.c                        |  2 ++
+ net/mac80211/mesh_sync.c               | 11 +++++++++++
+ scripts/Makefile.lib                   | 15 +++++++++++++++
+ 9 files changed, 43 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index cd743a8..8ac7b61 100644
+--- a/Makefile
++++ b/Makefile
+@@ -651,7 +651,7 @@ endif
+ # command line.
+ # This allow a user to issue only 'make' to build a kernel including modules
+ # Defaults to vmlinux, but the arch makefile usually adds further targets
+-all: vmlinux
++all: vmlinux uImage
+ 
+ KBUILD_CFLAGS	+= $(call cc-option,-fno-PIE)
+ KBUILD_AFLAGS	+= $(call cc-option,-fno-PIE)
+@@ -1585,6 +1585,7 @@ clean: $(clean-dirs)
+ 		-o -name '*.c.[012]*.*' \
+ 		-o -name '*.ll' \
+ 		-o -name '*.gcno' \) -type f -print | xargs rm -f
++	@rm -f vmlinuz.bin
+ 
+ # Generate tags for editors
+ # ---------------------------------------------------------------------------
+diff --git a/arch/mips/boot/compressed/decompress.c b/arch/mips/boot/compressed/decompress.c
+index 7d1a7ad..0e6ce9b 100644
+--- a/arch/mips/boot/compressed/decompress.c
++++ b/arch/mips/boot/compressed/decompress.c
+@@ -94,7 +94,7 @@ void __stack_chk_fail(void)
+ 
+ #ifdef CONFIG_DEBUG_ZBOOT
+ #include <linux/jiffies.h>
+-unsigned long volatile __jiffy_data jiffies;
++unsigned long volatile __cacheline_aligned_in_smp __jiffy_arch_data jiffies;
+ #if defined(CONFIG_FPGA)
+     #define CONFIG_CPU_CLK 75000000
+ #else
+diff --git a/drivers/mmc/host/sdhci.c b/drivers/mmc/host/sdhci.c
+index 66eca22..ed2f09a 100644
+--- a/drivers/mmc/host/sdhci.c
++++ b/drivers/mmc/host/sdhci.c
+@@ -3380,6 +3380,7 @@ int sdhci_setup_host(struct sdhci_host *host)
+ 	    mmc_gpio_get_cd(host->mmc) < 0)
+ 		mmc->caps |= MMC_CAP_NEEDS_POLL;
+ 
++#if !defined(CONFIG_PANTHER_SDHCI)
+ 	if (!IS_ERR(mmc->supply.vqmmc)) {
+ 		ret = regulator_enable(mmc->supply.vqmmc);
+ 
+diff --git a/drivers/net/wireless/mac80211_hwsim.c b/drivers/net/wireless/mac80211_hwsim.c
+index 780acf2..0427047 100644
+--- a/drivers/net/wireless/mac80211_hwsim.c
++++ b/drivers/net/wireless/mac80211_hwsim.c
+@@ -2635,7 +2635,11 @@ static int mac80211_hwsim_new_radio(struct genl_info *info,
+ 
+ 	tasklet_hrtimer_init(&data->beacon_timer,
+ 			     mac80211_hwsim_beacon,
++#if defined(CONFIG_PANTHER)
+ 			     CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
++#else
++			     CLOCK_MONOTONIC_RAW, HRTIMER_MODE_ABS);
++#endif
+ 
+ 	err = ieee80211_register_hw(hw);
+ 	if (err < 0) {
+diff --git a/include/linux/netdevice.h b/include/linux/netdevice.h
+index 7d46e2d..292981f 100644
+--- a/include/linux/netdevice.h
++++ b/include/linux/netdevice.h
+@@ -1437,6 +1437,8 @@ enum netdev_priv_flags {
+ #define IFF_MACSEC			IFF_MACSEC
+ #define IFF_L3MDEV_RX_HANDLER		IFF_L3MDEV_RX_HANDLER
+ 
++#define IFF_NO_IP_ALIGN		IFF_L3MDEV_RX_HANDLER
++
+ /**
+  *	struct net_device - The DEVICE structure.
+  *		Actually, this whole structure is a big mistake.  It mixes I/O
+diff --git a/net/8021q/vlan.c b/net/8021q/vlan.c
+index 159574c..94e2583 100644
+--- a/net/8021q/vlan.c
++++ b/net/8021q/vlan.c
+@@ -111,6 +111,11 @@ void unregister_vlan_dev(struct net_device *dev, struct list_head *head)
+ 		vlan_gvrp_uninit_applicant(real_dev);
+ 	}
+ 
++#if defined(CONFIG_PANTHER)
++	if(vlan_id && real_dev->netdev_ops->ndo_vlan_register_dev)
++		real_dev->netdev_ops->ndo_vlan_register_dev(real_dev, NULL, vlan_id);
++#endif
++
+ 	vlan_vid_del(real_dev, vlan->vlan_proto, vlan_id);
+ 
+ 	/* Get rid of the vlan's reference to real_dev */
+diff --git a/net/core/sock.c b/net/core/sock.c
+index 3041aa6..2c7a11f 100644
+--- a/net/core/sock.c
++++ b/net/core/sock.c
+@@ -1458,9 +1458,11 @@ void sk_destruct(struct sock *sk)
+ 
+ static void __sk_free(struct sock *sk)
+ {
++#ifdef CONFIG_SOCK_DIAG
+ 	if (unlikely(sk->sk_net_refcnt && sock_diag_has_destroy_listeners(sk)))
+ 		sock_diag_broadcast_destroy(sk);
+ 	else
++#endif
+ 		sk_destruct(sk);
+ }
+ 
+diff --git a/net/mac80211/mesh_sync.c b/net/mac80211/mesh_sync.c
+index 83b47eb..f63f972 100644
+--- a/net/mac80211/mesh_sync.c
++++ b/net/mac80211/mesh_sync.c
+@@ -192,11 +192,18 @@ static void mesh_sync_offset_adjust_tbtt(struct ieee80211_sub_if_data *sdata,
+ 					 struct beacon_data *beacon)
+ {
+ 	struct ieee80211_if_mesh *ifmsh = &sdata->u.mesh;
++#if defined(CONFIG_PANTHER)
++	unsigned long flags;
++#endif
+ 
+ 	WARN_ON(ifmsh->mesh_sp_id != IEEE80211_SYNC_METHOD_NEIGHBOR_OFFSET);
+ 	WARN_ON(!rcu_read_lock_held());
+ 
++#if defined(CONFIG_PANTHER)
++	spin_lock_irqsave(&ifmsh->sync_offset_lock, flags);
++#else
+ 	spin_lock_bh(&ifmsh->sync_offset_lock);
++#endif
+ 
+ 	if (ifmsh->sync_offset_clockdrift_max > TOFFSET_MINIMUM_ADJUSTMENT) {
+ 		/* Since ajusting the tsf here would
+@@ -214,7 +221,11 @@ static void mesh_sync_offset_adjust_tbtt(struct ieee80211_sub_if_data *sdata,
+ 			  (long long)ifmsh->sync_offset_clockdrift_max);
+ 		ifmsh->sync_offset_clockdrift_max = 0;
+ 	}
++#if defined(CONFIG_PANTHER)
++	spin_unlock_irqrestore(&ifmsh->sync_offset_lock, flags);
++#else
+ 	spin_unlock_bh(&ifmsh->sync_offset_lock);
++#endif
+ }
+ 
+ static const struct sync_method sync_methods[] = {
+diff --git a/scripts/Makefile.lib b/scripts/Makefile.lib
+index 4e02d51..0c2565f 100644
+--- a/scripts/Makefile.lib
++++ b/scripts/Makefile.lib
+@@ -409,6 +409,21 @@ cmd_xzmisc = (cat $(filter-out FORCE,$^) | \
+ 	xz --check=crc32 --lzma2=dict=1MiB) > $@ || \
+ 	(rm -f $@ ; false)
+ 
++# ZSTD
++# ---------------------------------------------------------------------------
++# Appends the uncompressed size of the data using size_append. The .zst
++# format has the size information available at the beginning of the file too,
++# but it's in a more complex format and it's good to avoid changing the part
++# of the boot code that reads the uncompressed size.
++# Note that the bytes added by size_append will make the zstd tool think that
++# the file is corrupt. This is expected.
++
++quiet_cmd_zstd = ZSTD    $@
++cmd_zstd = (cat $(filter-out FORCE,$^) | \
++	zstd -19 && \
++	$(call size_append, $(filter-out FORCE,$^))) > $@ || \
++	(rm -f $@ ; false)
++
+ # ASM offsets
+ # ---------------------------------------------------------------------------
+ 
+-- 
+2.7.4
+

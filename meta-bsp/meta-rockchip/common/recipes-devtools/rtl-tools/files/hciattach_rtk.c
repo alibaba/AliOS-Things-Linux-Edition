@@ -104,7 +104,7 @@ typedef uint16_t RT_U16, *PRT_U16;
 typedef int32_t RT_S32, *PRT_S32;
 typedef uint32_t RT_U32, *PRT_U32;
 
-RT_U8 DBG_ON = 1;
+RT_U8 DBG_ON = 0;
 #define LOG_STR     "Realtek Bluetooth"
 #define RS_DBG(fmt, arg...) \
     do{ \
@@ -114,7 +114,7 @@ RT_U8 DBG_ON = 1;
 
 #define RS_INFO(fmt, arg...) \
     do{ \
-        fprintf(stderr, "%s :" fmt "\n", LOG_STR, ##arg); \
+        /*fprintf(stderr, "%s :" fmt "\n", LOG_STR, ##arg); */ \
     }while(0)
 
 #define RS_ERR(fmt, arg...) \
@@ -2219,7 +2219,7 @@ int bachk(const char *str)
 /* static void rtk_get_ram_addr(char bt_addr[0])
  * {
  * 	srand(time(NULL) + getpid() + getpid() * 987654 + rand());
- * 
+ *
  * 	RT_U32 addr = rand();
  * 	memcpy(bt_addr, &addr, sizeof(RT_U8));
  * }
@@ -2235,7 +2235,7 @@ int bachk(const char *str)
  * {
  * 	int fd;
  * 	fd = open(BT_ADDR_FILE, O_CREAT | O_RDWR | O_TRUNC);
- * 
+ *
  * 	if (fd > 0) {
  * 		chmod(BT_ADDR_FILE, 0666);
  * 		char addr[18] = { 0 };

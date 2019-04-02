@@ -1,0 +1,42 @@
+From 469213b45b3d3a669d96a5545904573c351897e2 Mon Sep 17 00:00:00 2001
+From: Andy Yan <andy.yan@rock-chips.com>
+Date: Mon, 30 Jul 2018 17:35:25 +0800
+Subject: [PATCH 53/73] arm: rk3308_linux_aarch32_debug_defconfig: enable fiq
+ debugger
+
+Sync from rk3308_linux_aarch32_defconfig
+
+Change-Id: I726003cd5134978b53810965ef1ebe7acaeadfeb
+Signed-off-by: Andy Yan <andy.yan@rock-chips.com>
+---
+ arch/arm/configs/rk3308_linux_aarch32_debug_defconfig | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig b/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
+index ba8d4164c5dd..b1c069f39da3 100644
+--- a/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
++++ b/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
+@@ -172,6 +172,12 @@ CONFIG_RTC_CLASS=y
+ CONFIG_DMADEVICES=y
+ CONFIG_PL330_DMA=y
+ CONFIG_STAGING=y
++CONFIG_FIQ_DEBUGGER=y
++CONFIG_FIQ_DEBUGGER_NO_SLEEP=y
++CONFIG_FIQ_DEBUGGER_CONSOLE=y
++CONFIG_FIQ_DEBUGGER_CONSOLE_DEFAULT_ENABLE=y
++CONFIG_FIQ_DEBUGGER_TRUST_ZONE=y
++CONFIG_RK_CONSOLE_THREAD=y
+ # CONFIG_ARM_ARCH_TIMER_EVTSTREAM is not set
+ # CONFIG_IOMMU_SUPPORT is not set
+ # CONFIG_CPU_RK312X is not set
+@@ -200,6 +206,7 @@ CONFIG_RK_FLASH=y
+ CONFIG_RK_NANDC_NAND=y
+ CONFIG_RK_SFC_NAND=y
+ CONFIG_RK_SFC_NOR=y
++CONFIG_ROCKCHIP_SIP=y
+ CONFIG_EXT4_FS=y
+ # CONFIG_DNOTIFY is not set
+ CONFIG_VFAT_FS=m
+-- 
+2.11.0
+

@@ -1,7 +1,7 @@
 From 3b276a66a6b0cf0623f81a6dc6f9693c06088b89 Mon Sep 17 00:00:00 2001
 From: Stefan Agner <stefan.agner@toradex.com>
 Date: Tue, 14 Nov 2017 15:47:18 +0100
-Subject: [PATCH 1/7] envtools: make sure version/timestamp header file are
+Subject: [PATCH 1/6] envtools: make sure version/timestamp header file are
  available
 
 With commit 84d46e7e8948 ("tools: env: allow to print U-Boot version")

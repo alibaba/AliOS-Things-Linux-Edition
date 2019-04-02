@@ -1,0 +1,30 @@
+From 874bf0a7b98824674b3594318c10dd15130d0017 Mon Sep 17 00:00:00 2001
+From: xiaoyao <xiaoyao@rock-chips.com>
+Date: Tue, 17 Jul 2018 11:04:09 +0800
+Subject: [PATCH 65/73] arm: dts: add ext_clk for
+ rk3308-voice-module-mainboard-v10-aarch32
+
+Change-Id: I8977c0c2f15bdd8be31856a8ad20caf9512feefe
+Signed-off-by: xiaoyao <xiaoyao@rock-chips.com>
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ arch/arm/boot/dts/rk3308-voice-module-mainboard-v10-aarch32.dtsi | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/arch/arm/boot/dts/rk3308-voice-module-mainboard-v10-aarch32.dtsi b/arch/arm/boot/dts/rk3308-voice-module-mainboard-v10-aarch32.dtsi
+index 85e11b26617a..dbd8023ea0ad 100644
+--- a/arch/arm/boot/dts/rk3308-voice-module-mainboard-v10-aarch32.dtsi
++++ b/arch/arm/boot/dts/rk3308-voice-module-mainboard-v10-aarch32.dtsi
+@@ -26,6 +26,9 @@
+ 	wireless-wlan {
+ 		compatible = "wlan-platdata";
+ 		rockchip,grf = <&grf>;
++		clocks = <&cru SCLK_WIFI>;
++		clock-names = "clk_wifi";
++		ext_clk_freq = <24000000>;
+ 		pinctrl-names = "default";
+ 		pinctrl-0 = <&wifi_wake_host>;
+ 		wifi_chip_type = "rtl8723ds";
+-- 
+2.11.0
+

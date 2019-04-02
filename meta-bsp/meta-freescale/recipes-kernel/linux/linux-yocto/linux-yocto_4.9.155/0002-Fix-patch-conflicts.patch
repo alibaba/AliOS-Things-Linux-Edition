@@ -1,0 +1,1168 @@
+From 3d9a2358e6779c10abbbb3fe72560fb9b2879085 Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Fri, 22 Feb 2019 20:44:16 +0800
+Subject: [PATCH] Fix patch conflicts
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ arch/arm/boot/dts/imx6sx.dtsi             |  28 ++--
+ arch/arm/mach-imx/cpu.c                   |  11 +-
+ arch/arm/mach-imx/cpuidle-imx6sx.c        | 121 +++++++++++++--
+ arch/arm/mach-imx/mxc.h                   |  29 ++++
+ drivers/clk/imx/clk-imx6q.c               |   2 +-
+ drivers/cpufreq/imx6q-cpufreq.c           |   1 +
+ drivers/crypto/mxs-dcp.c                  |   4 +
+ drivers/dma/fsl-edma.c                    |  41 +++++
+ drivers/dma/imx-sdma.c                    |  11 +-
+ drivers/mmc/host/sdhci.c                  |   5 -
+ drivers/net/ethernet/freescale/fec_main.c |   5 +-
+ drivers/rtc/rtc-snvs.c                    |   9 +-
+ drivers/staging/android/ion/ion.c         |  34 +++++
+ drivers/staging/android/ion/ion_priv.h    |   5 +
+ drivers/thermal/imx_thermal.c             |  19 ++-
+ drivers/tty/serial/fsl_lpuart.c           | 238 ++++++++++++------------------
+ drivers/usb/chipidea/core.c               |  36 ++++-
+ drivers/usb/chipidea/otg.c                |  52 ++++++-
+ drivers/usb/chipidea/otg.h                |  12 +-
+ drivers/usb/gadget/legacy/mass_storage.c  |   1 -
+ drivers/watchdog/imx2_wdt.c               |  17 ---
+ include/linux/cpu.h                       |   7 +
+ kernel/cpu.c                              |  20 +++
+ 23 files changed, 500 insertions(+), 208 deletions(-)
+
+diff --git a/arch/arm/boot/dts/imx6sx.dtsi b/arch/arm/boot/dts/imx6sx.dtsi
+index 46bbf147..7359c20 100644
+--- a/arch/arm/boot/dts/imx6sx.dtsi
++++ b/arch/arm/boot/dts/imx6sx.dtsi
+@@ -1515,24 +1515,30 @@
+ 
+ 		pcie: pcie@0x08000000 {
+ 			compatible = "fsl,imx6sx-pcie", "snps,dw-pcie";
+-			reg = <0x08ffc000 0x4000>; /* DBI */
++			reg = <0x08ffc000 0x4000>, <0x08f00000 0x80000>;
++			reg-names = "dbi", "config";
+ 			#address-cells = <3>;
+ 			#size-cells = <2>;
+ 			device_type = "pci";
+-				  /* configuration space */
+-			ranges = <0x00000800 0 0x08f00000 0x08f00000 0 0x00080000
+-				  /* downstream I/O */
+-				  0x81000000 0 0          0x08f80000 0 0x00010000
+-				  /* non-prefetchable memory */
+-				  0x82000000 0 0x08000000 0x08000000 0 0x00f00000>;
++			ranges = <0x81000000 0 0          0x08f80000 0 0x00010000 /* downstream I/O */
++				  0x82000000 0 0x08000000 0x08000000 0 0x00f00000>; /* non-prefetchable memory */
+ 			num-lanes = <1>;
+ 			interrupts = <GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
+-			clocks = <&clks IMX6SX_CLK_PCIE_REF_125M>,
+-				 <&clks IMX6SX_CLK_PCIE_AXI>,
++			interrupt-names = "msi";
++			#interrupt-cells = <1>;
++			interrupt-map-mask = <0 0 0 0x7>;
++			interrupt-map = <0 0 0 1 &intc GIC_SPI 123 IRQ_TYPE_LEVEL_HIGH>,
++			                <0 0 0 2 &intc GIC_SPI 122 IRQ_TYPE_LEVEL_HIGH>,
++			                <0 0 0 3 &intc GIC_SPI 121 IRQ_TYPE_LEVEL_HIGH>,
++			                <0 0 0 4 &intc GIC_SPI 120 IRQ_TYPE_LEVEL_HIGH>;
++			clocks = <&clks IMX6SX_CLK_PCIE_AXI>,
+ 				 <&clks IMX6SX_CLK_LVDS1_OUT>,
++				 <&clks IMX6SX_CLK_PCIE_REF_125M>,
+ 				 <&clks IMX6SX_CLK_DISPLAY_AXI>;
+-			clock-names = "pcie_ref_125m", "pcie_axi",
+-				      "lvds_gate", "display_axi";
++			clock-names = "pcie", "pcie_bus", "pcie_phy", "pcie_inbound_axi";
++			pcie-phy-supply = <&reg_pcie_phy>;
++			power-domains = <&gpc 2>;
++			fsl,max-link-speed = <2>;
+ 			status = "disabled";
+ 		};
+ 	};
+diff --git a/arch/arm/mach-imx/cpu.c b/arch/arm/mach-imx/cpu.c
+index 94906ed..3a28b16 100644
+--- a/arch/arm/mach-imx/cpu.c
++++ b/arch/arm/mach-imx/cpu.c
+@@ -126,7 +126,10 @@ struct device * __init imx_soc_device_init(void)
+ 		soc_id = "i.MX6SX";
+ 		break;
+ 	case MXC_CPU_IMX6Q:
+-		soc_id = "i.MX6Q";
++		if (imx_get_soc_revision() == IMX_CHIP_REVISION_2_0)
++			soc_id = "i.MX6QP";
++		else
++			soc_id = "i.MX6Q";
+ 		break;
+ 	case MXC_CPU_IMX6UL:
+ 		soc_id = "i.MX6UL";
+@@ -137,6 +140,12 @@ struct device * __init imx_soc_device_init(void)
+ 	case MXC_CPU_IMX7D:
+ 		soc_id = "i.MX7D";
+ 		break;
++	case MXC_CPU_IMX6SLL:
++		soc_id = "i.MX6SLL";
++		break;
++	case MXC_CPU_IMX7ULP:
++		soc_id = "i.MX7ULP";
++		break;
+ 	default:
+ 		soc_id = "Unknown";
+ 	}
+diff --git a/arch/arm/mach-imx/cpuidle-imx6sx.c b/arch/arm/mach-imx/cpuidle-imx6sx.c
+index 62aba94..be73709 100644
+--- a/arch/arm/mach-imx/cpuidle-imx6sx.c
++++ b/arch/arm/mach-imx/cpuidle-imx6sx.c
+@@ -162,16 +162,119 @@ static struct cpuidle_driver imx6sx_cpuidle_driver = {
+ 
+ int __init imx6sx_cpuidle_init(void)
+ {
++	void __iomem *anatop_base = (void __iomem *)IMX_IO_P2V(MX6Q_ANATOP_BASE_ADDR);
++	u32 val;
++#ifdef CONFIG_CPU_FREQ
++	struct imx6_cpuidle_pm_info *cpuidle_pm_info;
++	int i;
++	const u32 *mmdc_offset_array;
++	u32 wfi_code_size;
++
++	wfi_iram_base_phys = (void *)(iram_tlb_phys_addr + MX6_CPUIDLE_IRAM_ADDR_OFFSET);
++
++	/* Make sure wfi_iram_base is 8 byte aligned. */
++	if ((uintptr_t)(wfi_iram_base_phys) & (FNCPY_ALIGN - 1))
++		wfi_iram_base_phys += FNCPY_ALIGN - ((uintptr_t)wfi_iram_base_phys % (FNCPY_ALIGN));
++
++	wfi_iram_base = (void *)IMX_IO_P2V((unsigned long) wfi_iram_base_phys);
++
++	cpuidle_pm_info = wfi_iram_base;
++	cpuidle_pm_info->pbase = (phys_addr_t) wfi_iram_base_phys;
++	cpuidle_pm_info->pm_info_size = sizeof(*cpuidle_pm_info);
++	cpuidle_pm_info->resume_addr = virt_to_phys(v7_cpu_resume);
++	cpuidle_pm_info->mmdc_io_num = ARRAY_SIZE(imx6sx_mmdc_io_offset);
++	mmdc_offset_array = imx6sx_mmdc_io_offset;
++
++	cpuidle_pm_info->mmdc_base.pbase = MX6Q_MMDC_P0_BASE_ADDR;
++	cpuidle_pm_info->mmdc_base.vbase = (void __iomem *)IMX_IO_P2V(MX6Q_MMDC_P0_BASE_ADDR);
++
++	cpuidle_pm_info->ccm_base.pbase = MX6Q_CCM_BASE_ADDR;
++	cpuidle_pm_info->ccm_base.vbase = (void __iomem *)IMX_IO_P2V(MX6Q_CCM_BASE_ADDR);
++
++	cpuidle_pm_info->anatop_base.pbase = MX6Q_ANATOP_BASE_ADDR;
++	cpuidle_pm_info->anatop_base.vbase = (void __iomem *)IMX_IO_P2V(MX6Q_ANATOP_BASE_ADDR);
++
++	cpuidle_pm_info->gpc_base.pbase = MX6Q_GPC_BASE_ADDR;
++	cpuidle_pm_info->gpc_base.vbase = (void __iomem *)IMX_IO_P2V(MX6Q_GPC_BASE_ADDR);
++
++	cpuidle_pm_info->iomuxc_base.pbase = MX6Q_IOMUXC_BASE_ADDR;
++	cpuidle_pm_info->iomuxc_base.vbase = (void __iomem *)IMX_IO_P2V(MX6Q_IOMUXC_BASE_ADDR);
++
++	cpuidle_pm_info->l2_base.pbase = MX6Q_L2_BASE_ADDR;
++	cpuidle_pm_info->l2_base.vbase = (void __iomem *)IMX_IO_P2V(MX6Q_L2_BASE_ADDR);
++
++	cpuidle_pm_info->src_base.pbase = MX6Q_SRC_BASE_ADDR;
++	cpuidle_pm_info->src_base.vbase = (void __iomem *)IMX_IO_P2V(MX6Q_SRC_BASE_ADDR);
++
++	cpuidle_pm_info->sema4_base.pbase = MX6Q_SEMA4_BASE_ADDR;
++	cpuidle_pm_info->sema4_base.vbase =
++		(void __iomem *)IMX_IO_P2V(MX6Q_SEMA4_BASE_ADDR);
++
++	/* only save mmdc io offset, settings will be saved in asm code */
++	for (i = 0; i < cpuidle_pm_info->mmdc_io_num; i++)
++		cpuidle_pm_info->mmdc_io_val[i][0] = mmdc_offset_array[i];
++
++	/* code size should include cpuidle_pm_info size */
++	wfi_code_size = (&mx6sx_lpm_wfi_end -&mx6sx_lpm_wfi_start) *4 + sizeof(*cpuidle_pm_info);
++	imx6sx_wfi_in_iram_fn = (void *)fncpy(wfi_iram_base + sizeof(*cpuidle_pm_info),
++		&imx6sx_low_power_idle, wfi_code_size);
++#endif
++
+ 	imx6_set_int_mem_clk_lpm(true);
+-	imx6_enable_rbc(false);
+-	/*
+-	 * set ARM power up/down timing to the fastest,
+-	 * sw2iso and sw can be set to one 32K cycle = 31us
+-	 * except for power up sw2iso which need to be
+-	 * larger than LDO ramp up time.
+-	 */
+-	imx_gpc_set_arm_power_up_timing(0xf, 1);
+-	imx_gpc_set_arm_power_down_timing(1, 1);
++
++	if (imx_get_soc_revision() >= IMX_CHIP_REVISION_1_2) {
++		/*
++		 * enable RC-OSC here, as it needs at least 4ms for RC-OSC to
++		 * be stable, low power idle flow can NOT endure this big
++		 * latency, so we make RC-OSC self-tuning enabled here.
++		 */
++		val = readl_relaxed(anatop_base + PMU_LOW_PWR_CTRL);
++		val |= 0x1;
++		writel_relaxed(val, anatop_base + PMU_LOW_PWR_CTRL);
++		/*
++		 * config RC-OSC freq
++		 * tune_enable = 1;tune_start = 1;hyst_plus = 0;hyst_minus = 0;
++		 * osc_prog = 0xa7;
++		 */
++		writel_relaxed(
++			0x4 << XTALOSC24M_OSC_CONFIG0_RC_OSC_PROG_CUR_SHIFT |
++			0xa7 << XTALOSC24M_OSC_CONFIG0_RC_OSC_PROG_SHIFT |
++			0x1 << XTALOSC24M_OSC_CONFIG0_ENABLE_SHIFT |
++			0x1 << XTALOSC24M_OSC_CONFIG0_START_SHIFT,
++			anatop_base + XTALOSC24M_OSC_CONFIG0);
++		/* set count_trg = 0x2dc */
++		writel_relaxed(
++			0x40 << XTALOSC24M_OSC_CONFIG1_COUNT_RC_CUR_SHIFT |
++			0x2dc << XTALOSC24M_OSC_CONFIG1_COUNT_RC_TRG_SHIFT,
++			anatop_base + XTALOSC24M_OSC_CONFIG1);
++		/* wait 4ms according to hardware design */
++		msleep(4);
++		/*
++		 * now add some hysteresis, hyst_plus=3, hyst_minus=3
++		 * (the minimum hysteresis that looks good is 2)
++		 */
++		val = readl_relaxed(anatop_base + XTALOSC24M_OSC_CONFIG0);
++		val &= ~((XTALOSC24M_OSC_CONFIG0_HYST_MINUS_MASK <<
++			XTALOSC24M_OSC_CONFIG0_HYST_MINUS_SHIFT) |
++			(XTALOSC24M_OSC_CONFIG0_HYST_PLUS_MASK <<
++			XTALOSC24M_OSC_CONFIG0_HYST_PLUS_SHIFT));
++		val |= (0x3 << XTALOSC24M_OSC_CONFIG0_HYST_MINUS_SHIFT) |
++			(0x3 << XTALOSC24M_OSC_CONFIG0_HYST_PLUS_SHIFT);
++		writel_relaxed(val, anatop_base  + XTALOSC24M_OSC_CONFIG0);
++		/* set the count_1m_trg = 0x2d7 */
++		val = readl_relaxed(anatop_base  + XTALOSC24M_OSC_CONFIG2);
++		val &= ~(XTALOSC24M_OSC_CONFIG2_COUNT_1M_TRG_MASK <<
++			XTALOSC24M_OSC_CONFIG2_COUNT_1M_TRG_SHIFT);
++		val |= 0x2d7 << XTALOSC24M_OSC_CONFIG2_COUNT_1M_TRG_SHIFT;
++		writel_relaxed(val, anatop_base  + XTALOSC24M_OSC_CONFIG2);
++		/*
++		 * hardware design require to write XTALOSC24M_OSC_CONFIG0 or
++		 * XTALOSC24M_OSC_CONFIG1 to
++		 * make XTALOSC24M_OSC_CONFIG2 write work
++		 */
++		val = readl_relaxed(anatop_base  + XTALOSC24M_OSC_CONFIG1);
++		writel_relaxed(val, anatop_base  + XTALOSC24M_OSC_CONFIG1);
++	}
+ 
+ 	return cpuidle_register(&imx6sx_cpuidle_driver, NULL);
+ }
+diff --git a/arch/arm/mach-imx/mxc.h b/arch/arm/mach-imx/mxc.h
+index e00d626..f162e82 100644
+--- a/arch/arm/mach-imx/mxc.h
++++ b/arch/arm/mach-imx/mxc.h
+@@ -40,9 +40,17 @@
+ #define MXC_CPU_IMX6Q		0x63
+ #define MXC_CPU_IMX6UL		0x64
+ #define MXC_CPU_IMX6ULL		0x65
++#define MXC_CPU_IMX6SLL		0x67
+ #define MXC_CPU_IMX7D		0x72
++#define MXC_CPU_IMX7ULP		0xff /* TBD */
+ 
++#define IMX_DDR_TYPE_DDR3		0
+ #define IMX_DDR_TYPE_LPDDR2		1
++#define IMX_DDR_TYPE_LPDDR3		2
++#define IMX_MMDC_DDR_TYPE_LPDDR3	3
++
++#define IMX_LPDDR2_1CH_MODE            0
++#define IMX_LPDDR2_2CH_MODE            1
+ 
+ #ifndef __ASSEMBLY__
+ extern unsigned int __mxc_cpu_type;
+@@ -79,16 +87,37 @@ static inline bool cpu_is_imx6ull(void)
+ 	return __mxc_cpu_type == MXC_CPU_IMX6ULL;
+ }
+ 
++static inline bool cpu_is_imx6sll(void)
++{
++	return __mxc_cpu_type == MXC_CPU_IMX6SLL;
++}
++
+ static inline bool cpu_is_imx6q(void)
+ {
+ 	return __mxc_cpu_type == MXC_CPU_IMX6Q;
+ }
+ 
++static inline bool cpu_is_imx6(void)
++{
++	return __mxc_cpu_type == MXC_CPU_IMX6Q ||
++		__mxc_cpu_type == MXC_CPU_IMX6DL ||
++		__mxc_cpu_type == MXC_CPU_IMX6SL ||
++		__mxc_cpu_type == MXC_CPU_IMX6SX ||
++		__mxc_cpu_type == MXC_CPU_IMX6UL ||
++		__mxc_cpu_type == MXC_CPU_IMX6ULL ||
++		__mxc_cpu_type == MXC_CPU_IMX6SLL;
++}
++
+ static inline bool cpu_is_imx7d(void)
+ {
+ 	return __mxc_cpu_type == MXC_CPU_IMX7D;
+ }
+ 
++static inline bool cpu_is_imx7ulp(void)
++{
++	return __mxc_cpu_type == MXC_CPU_IMX7ULP;
++}
++
+ struct cpu_op {
+ 	u32 cpu_rate;
+ };
+diff --git a/drivers/clk/imx/clk-imx6q.c b/drivers/clk/imx/clk-imx6q.c
+index 46337eb..9bdaedb 100644
+--- a/drivers/clk/imx/clk-imx6q.c
++++ b/drivers/clk/imx/clk-imx6q.c
+@@ -847,7 +847,7 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
+ 	clk[IMX6QDL_CLK_GPU2D_CORE] = imx_clk_gate2("gpu2d_core", "gpu2d_core_podf", base + 0x6c, 24);
+ 	clk[IMX6QDL_CLK_GPU3D_CORE]   = imx_clk_gate2("gpu3d_core",    "gpu3d_core_podf",   base + 0x6c, 26);
+ 	clk[IMX6QDL_CLK_HDMI_IAHB]    = imx_clk_gate2("hdmi_iahb",     "ahb",               base + 0x70, 0);
+-	clk[IMX6QDL_CLK_HDMI_ISFR]    = imx_clk_gate2("hdmi_isfr",     "mipi_core_cfg",     base + 0x70, 4);
++	clk[IMX6QDL_CLK_HDMI_ISFR]    = imx_clk_gate2("hdmi_isfr",     "pll3_pfd1_540m",    base + 0x70, 4);
+ 	clk[IMX6QDL_CLK_I2C1]         = imx_clk_gate2("i2c1",          "ipg_per",           base + 0x70, 6);
+ 	clk[IMX6QDL_CLK_I2C2]         = imx_clk_gate2("i2c2",          "ipg_per",           base + 0x70, 8);
+ 	clk[IMX6QDL_CLK_I2C3]         = imx_clk_gate2("i2c3",          "ipg_per",           base + 0x70, 10);
+diff --git a/drivers/cpufreq/imx6q-cpufreq.c b/drivers/cpufreq/imx6q-cpufreq.c
+index 590c9e8..8b48d2e 100644
+--- a/drivers/cpufreq/imx6q-cpufreq.c
++++ b/drivers/cpufreq/imx6q-cpufreq.c
+@@ -194,6 +194,7 @@ static int imx6q_set_target(struct cpufreq_policy *policy, unsigned int index)
+ 
+ 		dev_err(cpu_dev, "failed to set clock rate: %d\n", ret);
+ 		ret1 = regulator_set_voltage_tol(arm_reg, volt_old, 0);
++		mutex_unlock(&set_cpufreq_lock);
+ 		if (ret1)
+ 			dev_warn(cpu_dev,
+ 				 "failed to restore vddarm voltage: %d\n", ret1);
+diff --git a/drivers/crypto/mxs-dcp.c b/drivers/crypto/mxs-dcp.c
+index e27deda..d4dd3c4 100644
+--- a/drivers/crypto/mxs-dcp.c
++++ b/drivers/crypto/mxs-dcp.c
+@@ -84,6 +84,10 @@ struct dcp {
+ 	spinlock_t			lock[DCP_MAX_CHANS];
+ 	struct task_struct		*thread[DCP_MAX_CHANS];
+ 	struct crypto_queue		queue[DCP_MAX_CHANS];
++#ifdef CONFIG_ARM
++	struct clk *dcp_clk;
++#endif
++	int                             enable_sha_workaround;
+ };
+ 
+ enum dcp_chan {
+diff --git a/drivers/dma/fsl-edma.c b/drivers/dma/fsl-edma.c
+index b3fdb00..beec5b9 100644
+--- a/drivers/dma/fsl-edma.c
++++ b/drivers/dma/fsl-edma.c
+@@ -953,6 +953,47 @@ static void fsl_disable_clocks(struct fsl_edma_engine *fsl_edma, int nr_clocks)
+ 		clk_disable_unprepare(fsl_edma->muxclk[i]);
+ }
+ 
++static int
++fsl_edma2_irq_init(struct platform_device *pdev,
++		   struct fsl_edma_engine *fsl_edma)
++{
++	struct device_node *np = pdev->dev.of_node;
++	int i, ret, irq;
++	int count = 0;
++
++	count = of_irq_count(np);
++	dev_info(&pdev->dev, "%s Found %d interrupts\r\n", __func__, count);
++	if(count < 2){
++		dev_err(&pdev->dev, "Interrupts in DTS not correct.\n");
++		return -EINVAL;
++	}
++
++	for (i = 0; i < count; i++) {
++		irq = platform_get_irq(pdev, i);
++		if (irq < 0)
++			return -ENXIO;
++
++		sprintf(fsl_edma->chans[i].chan_name, "eDMA2-CH%02d", i);
++
++		/* The last IRQ is for eDMA err */
++		if (i == count - 1)
++			ret = devm_request_irq(&pdev->dev, irq,
++						fsl_edma_err_handler,
++						0, "eDMA2-ERR", fsl_edma);
++		else
++
++			ret = devm_request_irq(&pdev->dev, irq,
++						fsl_edma_tx_handler, 0,
++						fsl_edma->chans[i].chan_name,
++						fsl_edma);
++		if(ret)
++			return ret;
++	}
++
++	return 0;
++}
++
++
+ static int fsl_edma_probe(struct platform_device *pdev)
+ {
+ 	struct device_node *np = pdev->dev.of_node;
+diff --git a/drivers/dma/imx-sdma.c b/drivers/dma/imx-sdma.c
+index f5f5e3f..12b64b0 100644
+--- a/drivers/dma/imx-sdma.c
++++ b/drivers/dma/imx-sdma.c
+@@ -2298,23 +2298,30 @@ static int sdma_probe(struct platform_device *pdev)
+ 				dev_warn(&pdev->dev, "failed to get firmware from device tree\n");
+ 		}
+ 	}
++	sdma->fw_name = fw_name;
+ 
+ 	sdma->dma_device.dev = &pdev->dev;
+ 
+ 	sdma->dma_device.device_alloc_chan_resources = sdma_alloc_chan_resources;
+ 	sdma->dma_device.device_free_chan_resources = sdma_free_chan_resources;
+ 	sdma->dma_device.device_tx_status = sdma_tx_status;
++	sdma->dma_device.device_synchronize = sdma_wait_tasklet;
+ 	sdma->dma_device.device_prep_slave_sg = sdma_prep_slave_sg;
+ 	sdma->dma_device.device_prep_dma_cyclic = sdma_prep_dma_cyclic;
+ 	sdma->dma_device.device_config = sdma_config;
+-	sdma->dma_device.device_terminate_all = sdma_disable_channel_with_delay;
++	sdma->dma_device.device_terminate_all = sdma_terminate_all;
++	sdma->dma_device.device_pause = sdma_channel_pause;
++	sdma->dma_device.device_resume = sdma_channel_resume;
+ 	sdma->dma_device.src_addr_widths = BIT(DMA_SLAVE_BUSWIDTH_4_BYTES);
+ 	sdma->dma_device.dst_addr_widths = BIT(DMA_SLAVE_BUSWIDTH_4_BYTES);
+ 	sdma->dma_device.directions = BIT(DMA_DEV_TO_MEM) | BIT(DMA_MEM_TO_DEV);
+ 	sdma->dma_device.residue_granularity = DMA_RESIDUE_GRANULARITY_BURST;
++	sdma->dma_device.device_prep_dma_memcpy = sdma_prep_memcpy;
++	sdma->dma_device.device_prep_dma_sg = sdma_prep_memcpy_sg;
+ 	sdma->dma_device.device_issue_pending = sdma_issue_pending;
+ 	sdma->dma_device.dev->dma_parms = &sdma->dma_parms;
+-	dma_set_max_seg_size(sdma->dma_device.dev, 65535);
++	sdma->dma_device.copy_align = 2;
++	dma_set_max_seg_size(sdma->dma_device.dev, SDMA_BD_MAX_CNT);
+ 
+ 	platform_set_drvdata(pdev, sdma);
+ 
+diff --git a/drivers/mmc/host/sdhci.c b/drivers/mmc/host/sdhci.c
+index 0629c40..f583ea6 100644
+--- a/drivers/mmc/host/sdhci.c
++++ b/drivers/mmc/host/sdhci.c
+@@ -3334,11 +3334,6 @@ int sdhci_setup_host(struct sdhci_host *host)
+ 	if (host->caps & SDHCI_CAN_DO_HISPD)
+ 		mmc->caps |= MMC_CAP_SD_HIGHSPEED | MMC_CAP_MMC_HIGHSPEED;
+ 
+-	if ((host->quirks & SDHCI_QUIRK_BROKEN_CARD_DETECTION) &&
+-	    mmc_card_is_removable(mmc) &&
+-	    mmc_gpio_get_cd(host->mmc) < 0)
+-		mmc->caps |= MMC_CAP_NEEDS_POLL;
+-
+ 	if (!IS_ERR(mmc->supply.vqmmc)) {
+ 		ret = regulator_enable(mmc->supply.vqmmc);
+ 
+diff --git a/drivers/net/ethernet/freescale/fec_main.c b/drivers/net/ethernet/freescale/fec_main.c
+index bdd213a..87bf920 100644
+--- a/drivers/net/ethernet/freescale/fec_main.c
++++ b/drivers/net/ethernet/freescale/fec_main.c
+@@ -3346,9 +3346,9 @@ static int fec_reset_phy(struct platform_device *pdev)
+ 	if (!np)
+ 		return 0;
+ 
+-	of_property_read_u32(np, "phy-reset-duration", &msec);
++	err = of_property_read_u32(np, "phy-reset-duration", &msec);
+ 	/* A sane reset duration should not be longer than 1s */
+-	if (msec > 1000)
++	if (!err && msec > 1000)
+ 		msec = 1;
+ 
+ 	phy_reset = of_get_named_gpio(np, "phy-reset-gpios", 0);
+@@ -3698,6 +3698,7 @@ fec_probe(struct platform_device *pdev)
+ 	pm_runtime_put(&pdev->dev);
+ 	pm_runtime_disable(&pdev->dev);
+ failed_regulator:
++failed_clk_ahb:
+ failed_clk_ipg:
+ 	fec_enet_clk_enable(ndev, false);
+ failed_clk:
+diff --git a/drivers/rtc/rtc-snvs.c b/drivers/rtc/rtc-snvs.c
+index c92c823..7c7fa88 100644
+--- a/drivers/rtc/rtc-snvs.c
++++ b/drivers/rtc/rtc-snvs.c
+@@ -75,7 +75,12 @@ static u32 rtc_read_lp_counter(struct snvs_rtc_data *data)
+ 	do {
+ 		read2 = read1;
+ 		read1 = rtc_read_lpsrt(data);
+-	} while (read1 != read2 && --timeout);
++	/*
++	 * when CPU/BUS are running at low speed, there is chance that
++	 * we never get same value during two consecutive read, so here
++	 * we only compare the second value.
++	 */
++	} while ((read1 >> CNTR_TO_SECS_SH) != (read2 >> CNTR_TO_SECS_SH));
+ 	if (!timeout)
+ 		dev_err(&data->rtc->dev, "Timeout trying to get valid LPSRT Counter read\n");
+ 
+@@ -177,6 +182,8 @@ static int snvs_rtc_set_time(struct device *dev, struct rtc_time *tm)
+ 	if (ret)
+ 		return ret;
+ 
++	udelay(50);
++
+ 	/* Write 32-bit time to 47-bit timer, leaving 15 LSBs blank */
+ 	regmap_write(data->regmap, data->offset + SNVS_LPSRTCLR, time << CNTR_TO_SECS_SH);
+ 	regmap_write(data->regmap, data->offset + SNVS_LPSRTCMR, time >> (32 - CNTR_TO_SECS_SH));
+diff --git a/drivers/staging/android/ion/ion.c b/drivers/staging/android/ion/ion.c
+index f122ccc..bb22cb0 100644
+--- a/drivers/staging/android/ion/ion.c
++++ b/drivers/staging/android/ion/ion.c
+@@ -364,6 +364,38 @@ struct ion_handle *ion_handle_get_by_id_nolock(struct ion_client *client,
+ 	return ERR_PTR(-EINVAL);
+ }
+ 
++struct ion_handle *ion_handle_get_by_id(struct ion_client *client,
++					       int id)
++{
++	struct ion_handle *handle;
++
++	mutex_lock(&client->lock);
++	handle = ion_handle_get_by_id_nolock(client, id);
++	mutex_unlock(&client->lock);
++
++	return handle;
++}
++
++/* for used in mxc_ion.c */
++int ion_handle_put_wrap(struct ion_handle *handle)
++{
++	return ion_handle_put(handle);
++}
++
++struct ion_handle *ion_handle_get_by_id_wrap(struct ion_client *client,
++						int id)
++{
++	return ion_handle_get_by_id(client, id);
++}
++
++struct device *ion_device_get_by_client(struct ion_client *client)
++{
++	if (client)
++		return client->dev->dev.this_device;
++	else
++		return NULL;
++}
++
+ static bool ion_handle_validate(struct ion_client *client,
+ 				struct ion_handle *handle)
+ {
+@@ -1042,6 +1074,8 @@ static struct dma_buf_ops dma_buf_ops = {
+ 	.kunmap_atomic = ion_dma_buf_kunmap,
+ 	.kmap = ion_dma_buf_kmap,
+ 	.kunmap = ion_dma_buf_kunmap,
++	.vmap = ion_dma_buf_vmap,
++	.vunmap = ion_dma_buf_vunmap,
+ };
+ 
+ static struct dma_buf *__ion_share_dma_buf(struct ion_client *client,
+diff --git a/drivers/staging/android/ion/ion_priv.h b/drivers/staging/android/ion/ion_priv.h
+index eb9bb98..7624ffe 100644
+--- a/drivers/staging/android/ion/ion_priv.h
++++ b/drivers/staging/android/ion/ion_priv.h
+@@ -468,6 +468,11 @@ int ion_handle_put(struct ion_handle *handle);
+ 
+ int ion_query_heaps(struct ion_client *client, struct ion_heap_query *query);
+ 
++int ion_handle_put_wrap(struct ion_handle *handle);
++struct ion_handle *ion_handle_get_by_id_wrap(struct ion_client *client,
++					       int id);
++struct device *ion_device_get_by_client(struct ion_client *client);
++
+ int ion_share_dma_buf_fd_nolock(struct ion_client *client,
+ 				struct ion_handle *handle);
+ 
+diff --git a/drivers/thermal/imx_thermal.c b/drivers/thermal/imx_thermal.c
+index dba266c..db6b226 100644
+--- a/drivers/thermal/imx_thermal.c
++++ b/drivers/thermal/imx_thermal.c
+@@ -873,20 +873,28 @@ static int imx_thermal_probe(struct platform_device *pdev)
+ 		 data->temp_passive / 1000);
+ 
+ 	/* Enable measurements at ~ 10 Hz */
+-	regmap_write(map, TEMPSENSE1 + REG_CLR, TEMPSENSE1_MEASURE_FREQ);
++	regmap_write(map, data->socdata->measure_freq_ctrl + REG_CLR,
++		     data->socdata->measure_freq_mask);
+ 	measure_freq = DIV_ROUND_UP(32768, 10); /* 10 Hz */
+-	regmap_write(map, TEMPSENSE1 + REG_SET, measure_freq);
++	regmap_write(map, data->socdata->measure_freq_ctrl + REG_SET,
++		     measure_freq << data->socdata->measure_freq_shift);
+ 	imx_set_alarm_temp(data, data->temp_passive);
+ 
+ 	if (data->socdata->version == TEMPMON_IMX6SX)
+ 		imx_set_panic_temp(data, data->temp_critical);
+ 
+-	regmap_write(map, TEMPSENSE0 + REG_CLR, TEMPSENSE0_POWER_DOWN);
+-	regmap_write(map, TEMPSENSE0 + REG_SET, TEMPSENSE0_MEASURE_TEMP);
++	regmap_write(map, data->socdata->sensor_ctrl + REG_CLR,
++		     data->socdata->power_down_mask);
++	regmap_write(map, data->socdata->sensor_ctrl + REG_SET,
++		     data->socdata->measure_temp_mask);
+ 
+ 	data->irq_enabled = true;
+ 	data->mode = THERMAL_DEVICE_ENABLED;
+ 
++	/* register the busfreq notifier called in low bus freq */
++	if (data->socdata->version != TEMPMON_IMX7)
++		register_busfreq_notifier(&thermal_notifier);
++
+ 	ret = devm_request_threaded_irq(&pdev->dev, data->irq,
+ 			imx_thermal_alarm_irq, imx_thermal_alarm_irq_thread,
+ 			0, "imx_thermal", data);
+@@ -894,7 +902,8 @@ static int imx_thermal_probe(struct platform_device *pdev)
+ 		dev_err(&pdev->dev, "failed to request alarm irq: %d\n", ret);
+ 		clk_disable_unprepare(data->thermal_clk);
+ 		thermal_zone_device_unregister(data->tz);
+-		cpufreq_cooling_unregister(data->cdev);
++		cpufreq_cooling_unregister(data->cdev[0]);
++		devfreq_cooling_unregister(data->cdev[1]);
+ 		return ret;
+ 	}
+ 
+diff --git a/drivers/tty/serial/fsl_lpuart.c b/drivers/tty/serial/fsl_lpuart.c
+index 27cf74a..d85b402 100644
+--- a/drivers/tty/serial/fsl_lpuart.c
++++ b/drivers/tty/serial/fsl_lpuart.c
+@@ -763,196 +763,143 @@ static irqreturn_t lpuart_int(int irq, void *dev_id)
+ static irqreturn_t lpuart32_int(int irq, void *dev_id)
+ {
+ 	struct lpuart_port *sport = dev_id;
+-	unsigned long sts, rxcount;
++	unsigned long sts, rxcount, crdma;
+ 
+ 	sts = lpuart32_read(sport->port.membase + UARTSTAT);
+ 	rxcount = lpuart32_read(sport->port.membase + UARTWATER);
+ 	rxcount = rxcount >> UARTWATER_RXCNT_OFF;
++	crdma = lpuart32_read(sport->port.membase +  UARTBAUD);
+ 
+-	if (sts & UARTSTAT_RDRF || rxcount > 0)
+-		lpuart32_rxint(irq, dev_id);
++	if (!sts)
++		return IRQ_NONE;
+ 
+-	if ((sts & UARTSTAT_TDRE) &&
+-		!(lpuart32_read(sport->port.membase + UARTBAUD) & UARTBAUD_TDMAE))
++	if (!(crdma & UARTBAUD_RDMAE) && rxcount > 0) {
++		if (!sport->lpuart_dma_rx_use ||
++			(sts & (UARTSTAT_PE | UARTSTAT_NF | UARTSTAT_FE)))
++			lpuart32_rxint(irq, dev_id);
++		else if (sport->lpuart_dma_rx_use && sport->dma_rx_chan_active)
++			lpuart_prepare_rx(sport);
++	}
++
++	if (sts & UARTSTAT_TDRE && !sport->lpuart_dma_tx_use)
+ 		lpuart_txint(irq, dev_id);
+ 
+ 	lpuart32_write(sts, sport->port.membase + UARTSTAT);
+ 	return IRQ_HANDLED;
+ }
+ 
+-static void lpuart_copy_rx_to_tty(struct lpuart_port *sport)
++static void lpuart_copy_rx_to_tty(struct lpuart_port *sport,
++		struct tty_port *tty, int count)
+ {
+-	struct tty_port *port = &sport->port.state->port;
+-	struct dma_tx_state state;
+-	enum dma_status dmastat;
+-	struct circ_buf *ring = &sport->rx_ring;
+-	unsigned long flags;
+-	int count = 0;
+-	unsigned char sr;
+-
+-	sr = readb(sport->port.membase + UARTSR1);
+-
+-	if (sr & (UARTSR1_PE | UARTSR1_FE)) {
+-		/* Read DR to clear the error flags */
+-		readb(sport->port.membase + UARTDR);
+-
+-		if (sr & UARTSR1_PE)
+-		    sport->port.icount.parity++;
+-		else if (sr & UARTSR1_FE)
+-		    sport->port.icount.frame++;
+-	}
++	int copied;
+ 
+-	async_tx_ack(sport->dma_rx_desc);
+-
+-	spin_lock_irqsave(&sport->port.lock, flags);
++	sport->port.icount.rx += count;
+ 
+-	dmastat = dmaengine_tx_status(sport->dma_rx_chan,
+-				sport->dma_rx_cookie,
+-				&state);
+-
+-	if (dmastat == DMA_ERROR) {
+-		dev_err(sport->port.dev, "Rx DMA transfer failed!\n");
+-		spin_unlock_irqrestore(&sport->port.lock, flags);
++	if (!tty) {
++		dev_err(sport->port.dev, "No tty port\n");
+ 		return;
+ 	}
+ 
+-	/* CPU claims ownership of RX DMA buffer */
+-	dma_sync_sg_for_cpu(sport->port.dev, &sport->rx_sgl, 1, DMA_FROM_DEVICE);
+-
+-	/*
+-	 * ring->head points to the end of data already written by the DMA.
+-	 * ring->tail points to the beginning of data to be read by the
+-	 * framework.
+-	 * The current transfer size should not be larger than the dma buffer
+-	 * length.
+-	 */
+-	ring->head = sport->rx_sgl.length - state.residue;
+-	BUG_ON(ring->head > sport->rx_sgl.length);
+-	/*
+-	 * At this point ring->head may point to the first byte right after the
+-	 * last byte of the dma buffer:
+-	 * 0 <= ring->head <= sport->rx_sgl.length
+-	 *
+-	 * However ring->tail must always points inside the dma buffer:
+-	 * 0 <= ring->tail <= sport->rx_sgl.length - 1
+-	 *
+-	 * Since we use a ring buffer, we have to handle the case
+-	 * where head is lower than tail. In such a case, we first read from
+-	 * tail to the end of the buffer then reset tail.
+-	 */
+-	if (ring->head < ring->tail) {
+-		count = sport->rx_sgl.length - ring->tail;
++	dma_sync_single_for_cpu(sport->port.dev, sport->dma_rx_buf_bus,
++			sport->rxdma_len, DMA_FROM_DEVICE);
++	copied = tty_insert_flip_string(tty,
++			((unsigned char *)(sport->dma_rx_buf_virt)), count);
+ 
+-		tty_insert_flip_string(port, ring->buf + ring->tail, count);
+-		ring->tail = 0;
+-		sport->port.icount.rx += count;
+-	}
++	if (copied != count)
++		sport->port.icount.buf_overrun += count - copied;
++	sport->port.icount.rx += copied;
++}
+ 
+-	/* Finally we read data from tail to head */
+-	if (ring->tail < ring->head) {
+-		count = ring->head - ring->tail;
+-		tty_insert_flip_string(port, ring->buf + ring->tail, count);
+-		/* Wrap ring->head if needed */
+-		if (ring->head >= sport->rx_sgl.length)
+-			ring->head = 0;
+-		ring->tail = ring->head;
+-		sport->port.icount.rx += count;
++static void lpuart_dma_stop(struct lpuart_port *sport, bool enable_pio)
++{
++	unsigned int temp;
++	unsigned int crdma;
++	if (sport->lpuart32) {
++		lpuart32_write(UARTSTAT_IDLE, sport->port.membase + UARTSTAT);
++		crdma = lpuart32_read(sport->port.membase + UARTBAUD);
++		lpuart32_write(crdma & ~(UARTBAUD_RDMAE),
++				sport->port.membase + UARTBAUD);
++		if (enable_pio) {
++			temp = lpuart32_read(sport->port.membase + UARTCTRL);
++			temp |= (UARTCTRL_RIE | UARTCTRL_ILIE);
++			lpuart32_write(temp, sport->port.membase + UARTCTRL);
++		}
++	} else {
++		temp = readb(sport->port.membase + UARTCR5);
++		writeb(temp & ~UARTCR5_RDMAS, sport->port.membase + UARTCR5);
+ 	}
+-
+-	dma_sync_sg_for_device(sport->port.dev, &sport->rx_sgl, 1,
+-			       DMA_FROM_DEVICE);
+-
+-	spin_unlock_irqrestore(&sport->port.lock, flags);
+-
+-	tty_flip_buffer_push(port);
+-	mod_timer(&sport->lpuart_timer, jiffies + sport->dma_rx_timeout);
+ }
+ 
+ static void lpuart_dma_rx_complete(void *arg)
+ {
+ 	struct lpuart_port *sport = arg;
++	struct tty_port *port = &sport->port.state->port;
++	unsigned long flags;
++	struct dma_tx_state state;
++	int count;
+ 
+-	lpuart_copy_rx_to_tty(sport);
+-}
++	async_tx_ack(sport->dma_rx_desc);
++	mod_timer(&sport->lpuart_timer, jiffies + sport->dma_rx_timeout);
+ 
+-static void lpuart_timer_func(unsigned long data)
+-{
+-	struct lpuart_port *sport = (struct lpuart_port *)data;
++	spin_lock_irqsave(&sport->port.lock, flags);
++	sport->dma_rx_in_progress = false;
++	dmaengine_tx_status(sport->dma_rx_chan, sport->dma_rx_cookie, &state);
++	count = sport->rxfifo_watermark - state.residue;
++	lpuart_copy_rx_to_tty(sport, port, count);
++	tty_flip_buffer_push(port);
++
++	if (count < sport->rxfifo_watermark)
++		lpuart_dma_stop(sport, true);
++	else
++		lpuart_dma_rx(sport);
+ 
+-	lpuart_copy_rx_to_tty(sport);
++	spin_unlock_irqrestore(&sport->port.lock, flags);
+ }
+ 
+-static inline int lpuart_start_rx_dma(struct lpuart_port *sport)
++static void lpuart_timer_func(unsigned long data)
+ {
+-	struct dma_slave_config dma_rx_sconfig = {};
+-	struct circ_buf *ring = &sport->rx_ring;
+-	int ret, nent;
+-	int bits, baud;
++	struct lpuart_port *sport = (struct lpuart_port *)data;
+ 	struct tty_port *port = &sport->port.state->port;
+-	struct tty_struct *tty = port->tty;
+-	struct ktermios *termios = &tty->termios;
+-
+-	baud = tty_get_baud_rate(tty);
+-
+-	bits = (termios->c_cflag & CSIZE) == CS7 ? 9 : 10;
+-	if (termios->c_cflag & PARENB)
+-		bits++;
++	struct dma_tx_state state;
++	unsigned long flags;
++	int count;
+ 
+-	/*
+-	 * Calculate length of one DMA buffer size to keep latency below
+-	 * 10ms at any baud rate.
+-	 */
+-	sport->rx_dma_rng_buf_len = (DMA_RX_TIMEOUT * baud /  bits / 1000) * 2;
+-	sport->rx_dma_rng_buf_len = (1 << (fls(sport->rx_dma_rng_buf_len) - 1));
+-	if (sport->rx_dma_rng_buf_len < 16)
+-		sport->rx_dma_rng_buf_len = 16;
+-
+-	ring->buf = kmalloc(sport->rx_dma_rng_buf_len, GFP_ATOMIC);
+-	if (!ring->buf) {
+-		dev_err(sport->port.dev, "Ring buf alloc failed\n");
+-		return -ENOMEM;
+-	}
++	del_timer(&sport->lpuart_timer);
++	dmaengine_pause(sport->dma_rx_chan);
++	dmaengine_tx_status(sport->dma_rx_chan, sport->dma_rx_cookie, &state);
++	dmaengine_terminate_all(sport->dma_rx_chan);
++	count = sport->rxdma_len - state.residue;
++	async_tx_ack(sport->dma_rx_desc);
+ 
+-	sg_init_one(&sport->rx_sgl, ring->buf, sport->rx_dma_rng_buf_len);
+-	sg_set_buf(&sport->rx_sgl, ring->buf, sport->rx_dma_rng_buf_len);
+-	nent = dma_map_sg(sport->port.dev, &sport->rx_sgl, 1, DMA_FROM_DEVICE);
++	spin_lock_irqsave(&sport->port.lock, flags);
+ 
+-	if (!nent) {
+-		dev_err(sport->port.dev, "DMA Rx mapping error\n");
+-		return -EINVAL;
+-	}
++	sport->dma_rx_in_progress = false;
++	lpuart_copy_rx_to_tty(sport, port, count);
++	tty_flip_buffer_push(port);
++	lpuart_dma_stop(sport, true);
+ 
+-	dma_rx_sconfig.src_addr = sport->port.mapbase + UARTDR;
+-	dma_rx_sconfig.src_addr_width = DMA_SLAVE_BUSWIDTH_1_BYTE;
+-	dma_rx_sconfig.src_maxburst = 1;
+-	dma_rx_sconfig.direction = DMA_DEV_TO_MEM;
+-	ret = dmaengine_slave_config(sport->dma_rx_chan, &dma_rx_sconfig);
++	spin_unlock_irqrestore(&sport->port.lock, flags);
++}
+ 
+-	if (ret < 0) {
+-		dev_err(sport->port.dev,
+-				"DMA Rx slave config failed, err = %d\n", ret);
+-		return ret;
+-	}
++static int lpuart_dma_rx(struct lpuart_port *sport)
++{
++	dma_sync_single_for_device(sport->port.dev, sport->dma_rx_buf_bus,
++			sport->rxdma_len, DMA_FROM_DEVICE);
++	sport->dma_rx_desc = dmaengine_prep_slave_single(sport->dma_rx_chan,
++			sport->dma_rx_buf_bus, sport->rxdma_len,
++			DMA_DEV_TO_MEM, DMA_PREP_INTERRUPT);
+ 
+-	sport->dma_rx_desc = dmaengine_prep_dma_cyclic(sport->dma_rx_chan,
+-				 sg_dma_address(&sport->rx_sgl),
+-				 sport->rx_sgl.length,
+-				 sport->rx_sgl.length / 2,
+-				 DMA_DEV_TO_MEM,
+-				 DMA_PREP_INTERRUPT);
+ 	if (!sport->dma_rx_desc) {
+-		dev_err(sport->port.dev, "Cannot prepare cyclic DMA\n");
+-		return -EFAULT;
++		dev_err(sport->port.dev, "Not able to get desc for rx\n");
++		return -EIO;
+ 	}
+ 
+ 	sport->dma_rx_desc->callback = lpuart_dma_rx_complete;
+ 	sport->dma_rx_desc->callback_param = sport;
++	sport->dma_rx_in_progress = true;
+ 	sport->dma_rx_cookie = dmaengine_submit(sport->dma_rx_desc);
+ 	dma_async_issue_pending(sport->dma_rx_chan);
+ 
+-	writeb(readb(sport->port.membase + UARTCR5) | UARTCR5_RDMAS,
+-				sport->port.membase + UARTCR5);
+-
+ 	return 0;
+ }
+ 
+@@ -2185,8 +2132,6 @@ static int lpuart_probe(struct platform_device *pdev)
+ 	if (!sport)
+ 		return -ENOMEM;
+ 
+-	pdev->dev.coherent_dma_mask = 0;
+-
+ 	ret = of_alias_get_id(np, "serial");
+ 	if (ret < 0) {
+ 		dev_err(&pdev->dev, "failed to get alias id, errno %d\n", ret);
+@@ -2197,7 +2142,8 @@ static int lpuart_probe(struct platform_device *pdev)
+ 		return -EINVAL;
+ 	}
+ 	sport->port.line = ret;
+-	sport->lpuart32 = of_device_is_compatible(np, "fsl,ls1021a-lpuart");
++	sport->lpuart32 = of_device_is_compatible(np, "fsl,ls1021a-lpuart") |
++			of_device_is_compatible(np, "fsl,imx7ulp-lpuart");
+ 
+ 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+ 	sport->port.membase = devm_ioremap_resource(&pdev->dev, res);
+diff --git a/drivers/usb/chipidea/core.c b/drivers/usb/chipidea/core.c
+index fd00cff..a408dd4 100644
+--- a/drivers/usb/chipidea/core.c
++++ b/drivers/usb/chipidea/core.c
+@@ -805,12 +805,39 @@ void ci_hdrc_remove_device(struct platform_device *pdev)
+ }
+ EXPORT_SYMBOL_GPL(ci_hdrc_remove_device);
+ 
++/**
++ * ci_hdrc_query_available_role: get runtime available operation mode
++ *
++ * The glue layer can get current operation mode (host/peripheral/otg)
++ * This function should be called after ci core device has created.
++ *
++ * @pdev: the platform device of ci core.
++ *
++ * Return USB_DR_MODE_XXX.
++ */
++enum usb_dr_mode ci_hdrc_query_available_role(struct platform_device *pdev)
++{
++	struct ci_hdrc *ci = platform_get_drvdata(pdev);
++
++	if (!ci)
++		return USB_DR_MODE_UNKNOWN;
++	if (ci->roles[CI_ROLE_HOST] && ci->roles[CI_ROLE_GADGET])
++		return USB_DR_MODE_OTG;
++	else if (ci->roles[CI_ROLE_HOST])
++		return USB_DR_MODE_HOST;
++	else if (ci->roles[CI_ROLE_GADGET])
++		return USB_DR_MODE_PERIPHERAL;
++	else
++		return USB_DR_MODE_UNKNOWN;
++}
++EXPORT_SYMBOL_GPL(ci_hdrc_query_available_role);
++
+ static inline void ci_role_destroy(struct ci_hdrc *ci)
+ {
+-	ci_hdrc_gadget_destroy(ci);
+-	ci_hdrc_host_destroy(ci);
+ 	if (ci->is_otg && ci->roles[CI_ROLE_GADGET])
+ 		ci_hdrc_otg_destroy(ci);
++	ci_hdrc_gadget_destroy(ci);
++	ci_hdrc_host_destroy(ci);
+ }
+ 
+ static void ci_get_otg_capable(struct ci_hdrc *ci)
+@@ -1026,11 +1053,14 @@ static int ci_hdrc_probe(struct platform_device *pdev)
+ 
+ 	device_set_wakeup_capable(&pdev->dev, true);
+ 
++	/* Init workqueue for controller power lost handling */
++	INIT_WORK(&ci->power_lost_work, ci_power_lost_work);
++	mutex_init(&ci->mutex);
++
+ 	ret = dbg_create_files(ci);
+ 	if (!ret)
+ 		return 0;
+ 
+-	ci_extcon_unregister(ci);
+ stop:
+ 	if (ci->is_otg && ci->roles[CI_ROLE_GADGET])
+ 		ci_hdrc_otg_destroy(ci);
+diff --git a/drivers/usb/chipidea/otg.c b/drivers/usb/chipidea/otg.c
+index 4d3130c..411ba3d 100644
+--- a/drivers/usb/chipidea/otg.c
++++ b/drivers/usb/chipidea/otg.c
+@@ -229,14 +229,64 @@ void ci_handle_id_switch(struct ci_hdrc *ci)
+ 			 * care vbus on the board, since it will not affect
+ 			 * external connector status.
+ 			 */
+-			hw_wait_vbus_lower_bsv(ci);
++			ret = hw_wait_vbus_lower_bsv(ci);
++		else if (ci->vbus_active)
++			/*
++			 * If the role switch happens(e.g. during
++			 * system sleep), and we lose vbus drop
++			 * event, disconnect gadget for it before
++			 * start host.
++			 */
++		       usb_gadget_vbus_disconnect(&ci->gadget);
++		/*
++		 * If the role switch happens(e.g. during system
++		 * sleep) and vbus keeps on afterwards, we connect
++		 * gadget as vbus connect event lost.
++		 */
++		if (ret == -ETIMEDOUT)
++			usb_gadget_vbus_connect(&ci->gadget);
+ 
+ 		ci_role_start(ci, role);
+ 		/* vbus change may have already occurred */
+ 		if (role == CI_ROLE_GADGET)
+ 			ci_handle_vbus_change(ci);
++		/*
++		 * If the role switch happens(e.g. during system
++		 * sleep) and vbus keeps on afterwards, we connect
++		 * gadget as vbus connect event lost.
++		 */
++		if (ret == -ETIMEDOUT)
++			usb_gadget_vbus_connect(&ci->gadget);
++
+ 	}
++	mutex_unlock(&ci->mutex);
+ }
++
++static void ci_handle_vbus_glitch(struct ci_hdrc *ci)
++{
++	bool valid_vbus_change = false;
++
++	if (hw_read_otgsc(ci, OTGSC_BSV)) {
++		if (!ci_is_vbus_glitch(ci)) {
++			if (ci_otg_is_fsm_mode(ci)) {
++				ci->fsm.b_sess_vld = 1;
++				ci->fsm.b_ssend_srp = 0;
++				otg_del_timer(&ci->fsm, B_SSEND_SRP);
++				otg_del_timer(&ci->fsm, B_SRP_FAIL);
++			}
++			valid_vbus_change = true;
++		}
++	} else {
++		if (ci->vbus_active && !ci_otg_is_fsm_mode(ci))
++			valid_vbus_change = true;
++	}
++
++	if (valid_vbus_change) {
++		ci->b_sess_valid_event = true;
++		ci_otg_queue_work(ci);
++	}
++}
++
+ /**
+  * ci_otg_work - perform otg (vbus/id) event handle
+  * @work: work struct
+diff --git a/drivers/usb/chipidea/otg.h b/drivers/usb/chipidea/otg.h
+index 3595c1e..95fa6c2 100644
+--- a/drivers/usb/chipidea/otg.h
++++ b/drivers/usb/chipidea/otg.h
+@@ -17,11 +17,17 @@ int ci_hdrc_otg_init(struct ci_hdrc *ci);
+ void ci_hdrc_otg_destroy(struct ci_hdrc *ci);
+ enum ci_role ci_otg_role(struct ci_hdrc *ci);
+ void ci_handle_vbus_change(struct ci_hdrc *ci);
++void ci_handle_id_switch(struct ci_hdrc *ci);
++void ci_handle_vbus_connected(struct ci_hdrc *ci);
+ static inline void ci_otg_queue_work(struct ci_hdrc *ci)
+ {
+-	disable_irq_nosync(ci->irq);
+-	if (queue_work(ci->wq, &ci->work) == false)
+-		enable_irq(ci->irq);
++	if (ci->wq) {
++		disable_irq_nosync(ci->irq);
++		if (!queue_work(ci->wq, &ci->work))
++			enable_irq(ci->irq);
++	} else {
++		WARN_ON(!ci->wq);
++	}
+ }
+ 
+ #endif /* __DRIVERS_USB_CHIPIDEA_OTG_H */
+diff --git a/drivers/usb/gadget/legacy/mass_storage.c b/drivers/usb/gadget/legacy/mass_storage.c
+index 746d20b..5956408 100644
+--- a/drivers/usb/gadget/legacy/mass_storage.c
++++ b/drivers/usb/gadget/legacy/mass_storage.c
+@@ -245,7 +245,6 @@ static int __init msg_init(void)
+ 	int ret;
+ 
+ 	ret = usb_composite_probe(&msg_driver);
+-	set_bit(0, &msg_registered);
+ 
+ 	return ret;
+ }
+diff --git a/drivers/watchdog/imx2_wdt.c b/drivers/watchdog/imx2_wdt.c
+index 075fafe..c5d8dc3 100644
+--- a/drivers/watchdog/imx2_wdt.c
++++ b/drivers/watchdog/imx2_wdt.c
+@@ -178,23 +178,6 @@ static inline void imx2_wdt_setup(struct watchdog_device *wdog)
+ 	regmap_write(wdev->regmap, IMX2_WDT_WCR, val);
+ }
+ 
+-static inline bool imx2_wdt_is_running(struct imx2_wdt_device *wdev)
+-{
+-	u32 val;
+-
+-	regmap_read(wdev->regmap, IMX2_WDT_WCR, &val);
+-
+-	return val & IMX2_WDT_WCR_WDE;
+-}
+-
+-static int imx2_wdt_ping(struct watchdog_device *wdog)
+-{
+-	struct imx2_wdt_device *wdev = watchdog_get_drvdata(wdog);
+-
+-	regmap_write(wdev->regmap, IMX2_WDT_WSR, IMX2_WDT_SEQ1);
+-	regmap_write(wdev->regmap, IMX2_WDT_WSR, IMX2_WDT_SEQ2);
+-	return 0;
+-}
+ 
+ static void __imx2_wdt_set_timeout(struct watchdog_device *wdog,
+ 				   unsigned int new_timeout)
+diff --git a/include/linux/cpu.h b/include/linux/cpu.h
+index ae5ac89..9f620a0 100644
+--- a/include/linux/cpu.h
++++ b/include/linux/cpu.h
+@@ -257,6 +257,13 @@ void cpuhp_report_idle_dead(void);
+ static inline void cpuhp_report_idle_dead(void) { }
+ #endif /* #ifdef CONFIG_HOTPLUG_CPU */
+ 
++#define IDLE_START 1
++#define IDLE_END 2
++
++void idle_notifier_register(struct notifier_block *n);
++void idle_notifier_unregister(struct notifier_block *n);
++void idle_notifier_call_chain(unsigned long val);
++
+ enum cpuhp_smt_control {
+ 	CPU_SMT_ENABLED,
+ 	CPU_SMT_DISABLED,
+diff --git a/kernel/cpu.c b/kernel/cpu.c
+index b5a0165..30eb4aa 100644
+--- a/kernel/cpu.c
++++ b/kernel/cpu.c
+@@ -2206,3 +2206,23 @@ void __init boot_cpu_hotplug_init(void)
+ #endif
+ 	this_cpu_write(cpuhp_state.state, CPUHP_ONLINE);
+ }
++
++static ATOMIC_NOTIFIER_HEAD(idle_notifier);
++
++void idle_notifier_register(struct notifier_block *n)
++{
++	atomic_notifier_chain_register(&idle_notifier, n);
++}
++EXPORT_SYMBOL_GPL(idle_notifier_register);
++
++void idle_notifier_unregister(struct notifier_block *n)
++{
++	atomic_notifier_chain_unregister(&idle_notifier, n);
++}
++EXPORT_SYMBOL_GPL(idle_notifier_unregister);
++
++void idle_notifier_call_chain(unsigned long val)
++{
++	atomic_notifier_call_chain(&idle_notifier, val, NULL);
++}
++EXPORT_SYMBOL_GPL(idle_notifier_call_chain);
+\ No newline at end of file
+-- 
+2.7.4
+

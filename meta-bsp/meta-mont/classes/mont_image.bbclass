@@ -38,7 +38,7 @@ IMAGE_CMD_mont_image () {
     echo vol_type=dynamic >> ${IMGDEPLOYDIR}/ubinize.nor.cfg
     echo vol_name=rootfs >> ${IMGDEPLOYDIR}/ubinize.nor.cfg
 	echo vol_flags=autoresize >> ${IMGDEPLOYDIR}/ubinize.nor.cfg
-	mkfs.ubifs -v -F -m 256 -e 65024 -x zlib -U -c 512 -o ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.nor.ubifs_temp -d ${IMAGE_ROOTFS}
+	mkfs.ubifs -v -F -m 256 -e 65024 -x zlib -U -c 1024 -o ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.nor.ubifs_temp -d ${IMAGE_ROOTFS}
 	ubinize -o ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.nor.ubi_temp -v -m 256 -p 64KiB -s 256 -O 256 ${IMGDEPLOYDIR}/ubinize.nor.cfg
 	rm -f ${IMGDEPLOYDIR}/${IMAGE_NAME}${IMAGE_NAME_SUFFIX}.nor.ubifs_temp
     #kernel and rootfs

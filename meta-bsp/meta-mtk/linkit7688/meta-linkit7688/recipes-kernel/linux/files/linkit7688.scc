@@ -1,0 +1,6 @@
+kconf hardware linkit7688.cfg
+
+# include cfg/usb-mass-storage.scc
+# include cfg/fs/vfat.scc
+
+include linkit7688-openwrt-deviations.scc

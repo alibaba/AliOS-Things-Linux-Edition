@@ -1,0 +1,39 @@
+Index: backports-2017-11-01/Makefile.real
+===================================================================
+--- backports-2017-11-01.orig/Makefile.real	2018-03-10 22:34:46.456149436 +0100
++++ backports-2017-11-01/Makefile.real	2018-03-06 22:24:20.000000000 +0100
+@@ -13,7 +13,7 @@
+ 
+ .PHONY: menuconfig
+ menuconfig:
+-	@$(MAKE) -C kconf mconf
++#	@$(MAKE) -C kconf mconf
+ 	@./kconf/mconf Kconfig
+ 
+ .PHONY: listnewconfig oldaskconfig oldconfig \
+@@ -24,21 +24,21 @@
+ silentoldconfig olddefconfig oldnoconfig \
+ allnoconfig allyesconfig allmodconfig \
+ alldefconfig randconfig:
+-	@$(MAKE) -C kconf conf
++#	@$(MAKE) -C kconf conf
+ 	@./kconf/conf --$@ Kconfig
+ 
+ .PHONY: usedefconfig
+ usedefconfig:
+-	@$(MAKE) -C kconf conf
++#	@$(MAKE) -C kconf conf
+ 	@./kconf/conf --defconfig=defconfig Kconfig
+ 
+ .PHONY: savedefconfig
+ savedefconfig:
+-	@$(MAKE) -C kconf conf
++#	@$(MAKE) -C kconf conf
+ 	@./kconf/conf --savedefconfig=defconfig Kconfig
+ 
+ defconfig-%::
+-	@$(MAKE) -C kconf conf
++#	@$(MAKE) -C kconf conf
+ 	@./kconf/conf --defconfig=defconfigs/$(@:defconfig-%=%) Kconfig
+ 
+ .config:

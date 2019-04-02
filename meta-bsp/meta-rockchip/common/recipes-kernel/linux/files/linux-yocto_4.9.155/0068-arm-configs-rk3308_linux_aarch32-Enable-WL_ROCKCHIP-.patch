@@ -1,0 +1,82 @@
+From 04959cfc66f54a3b3c7d2e60f5227dad54551d2c Mon Sep 17 00:00:00 2001
+From: Jeffy Chen <jeffy.chen@rock-chips.com>
+Date: Thu, 26 Jul 2018 12:19:51 +0800
+Subject: [PATCH 68/73] arm: configs: rk3308_linux_aarch32: Enable
+ WL_ROCKCHIP/RTL8723DS/AP6xxx
+
+Change-Id: I511126687ff38acb4cd631b934e942ac246de638
+Signed-off-by: Jeffy Chen <jeffy.chen@rock-chips.com>
+---
+ arch/arm/configs/rk3308_linux_aarch32_debug_defconfig | 7 +++++--
+ arch/arm/configs/rk3308_linux_aarch32_defconfig       | 9 ++++++---
+ 2 files changed, 11 insertions(+), 5 deletions(-)
+
+diff --git a/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig b/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
+index 369ce4b6d7cb..dd87aa4e0aa3 100644
+--- a/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
++++ b/arch/arm/configs/rk3308_linux_aarch32_debug_defconfig
+@@ -71,7 +71,6 @@ CONFIG_BT_HIDP=y
+ CONFIG_BT_HCIUART=y
+ CONFIG_BT_HCIUART_H4=y
+ CONFIG_BT_HCIUART_LL=y
+-CONFIG_CFG80211=y
+ CONFIG_RFKILL=y
+ CONFIG_DEVTMPFS=y
+ CONFIG_DEVTMPFS_MOUNT=y
+@@ -80,10 +79,14 @@ CONFIG_DEVTMPFS_MOUNT=y
+ CONFIG_NETDEVICES=y
+ # CONFIG_NET_CORE is not set
+ # CONFIG_ETHERNET is not set
++CONFIG_WL_ROCKCHIP=y
++CONFIG_WIFI_LOAD_DRIVER_WHEN_KERNEL_BOOTUP=y
++CONFIG_AP6XXX=y
+ CONFIG_BCMDHD=y
+ CONFIG_BCMDHD_FW_PATH="/lib/firmware/brcm/brcmfmac43455-sdio.bin"
+ CONFIG_BCMDHD_NVRAM_PATH="/lib/firmware/brcm/brcmfmac43455-sdio.txt"
+-CONFIG_BCMDHD_SDIO_IRQ=y
++# CONFIG_RTL_WIRELESS_SOLUTION is not set
++CONFIG_RTL8723DS=y
+ # CONFIG_INPUT_MOUSEDEV is not set
+ CONFIG_INPUT_EVDEV=y
+ CONFIG_KEYBOARD_ADC=y
+diff --git a/arch/arm/configs/rk3308_linux_aarch32_defconfig b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+index 843aa1674410..5917e76b552b 100644
+--- a/arch/arm/configs/rk3308_linux_aarch32_defconfig
++++ b/arch/arm/configs/rk3308_linux_aarch32_defconfig
+@@ -71,7 +71,6 @@ CONFIG_BT_HIDP=y
+ CONFIG_BT_HCIUART=y
+ CONFIG_BT_HCIUART_H4=y
+ CONFIG_BT_HCIUART_LL=y
+-CONFIG_CFG80211=y
+ CONFIG_RFKILL=y
+ CONFIG_DEVTMPFS=y
+ CONFIG_DEVTMPFS_MOUNT=y
+@@ -80,10 +79,14 @@ CONFIG_DEVTMPFS_MOUNT=y
+ CONFIG_NETDEVICES=y
+ # CONFIG_NET_CORE is not set
+ # CONFIG_ETHERNET is not set
++CONFIG_WL_ROCKCHIP=y
++CONFIG_WIFI_LOAD_DRIVER_WHEN_KERNEL_BOOTUP=y
++CONFIG_AP6XXX=y
+ CONFIG_BCMDHD=y
+ CONFIG_BCMDHD_FW_PATH="/lib/firmware/brcm/brcmfmac43455-sdio.bin"
+ CONFIG_BCMDHD_NVRAM_PATH="/lib/firmware/brcm/brcmfmac43455-sdio.txt"
+-CONFIG_BCMDHD_SDIO_IRQ=y
++# CONFIG_RTL_WIRELESS_SOLUTION is not set
++CONFIG_RTL8723DS=y
+ # CONFIG_INPUT_MOUSEDEV is not set
+ CONFIG_INPUT_EVDEV=y
+ CONFIG_KEYBOARD_ADC=y
+@@ -176,8 +179,8 @@ CONFIG_FIQ_DEBUGGER=y
+ CONFIG_FIQ_DEBUGGER_NO_SLEEP=y
+ CONFIG_FIQ_DEBUGGER_CONSOLE=y
+ CONFIG_FIQ_DEBUGGER_CONSOLE_DEFAULT_ENABLE=y
+-CONFIG_RK_CONSOLE_THREAD=y
+ CONFIG_FIQ_DEBUGGER_TRUST_ZONE=y
++CONFIG_RK_CONSOLE_THREAD=y
+ # CONFIG_ARM_ARCH_TIMER_EVTSTREAM is not set
+ # CONFIG_IOMMU_SUPPORT is not set
+ # CONFIG_CPU_RK312X is not set
+-- 
+2.11.0
+

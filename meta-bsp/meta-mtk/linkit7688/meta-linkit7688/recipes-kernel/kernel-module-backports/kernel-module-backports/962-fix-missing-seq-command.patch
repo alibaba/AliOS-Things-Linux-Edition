@@ -1,0 +1,26 @@
+Index: backports-2017-11-01/Makefile
+===================================================================
+--- backports-2017-11-01.orig/Makefile	2018-03-11 22:16:16.031571689 +0100
++++ backports-2017-11-01/Makefile	2018-03-11 22:19:08.047572032 +0100
+@@ -95,9 +95,9 @@
+ 		sed 's/^\(\([3-4]\|2\.6\)\.[0-9]\+\).*/\1/;t;d')		;\
+ 	test "$$kver" != "" || echo "Kernel version parse failed!"		;\
+ 	test "$$kver" != ""							;\
+-	kvers="$$(seq 14 39 | sed 's/^/2.6./')"					;\
+-	kvers="$$kvers $$(seq 0 19 | sed 's/^/3./')"				;\
+-	kvers="$$kvers $$(seq 0 99 | sed 's/^/4./')"				;\
++	kvers="$$(/usr/bin/seq 14 39 | sed 's/^/2.6./')"					;\
++	kvers="$$kvers $$(/usr/bin/seq 0 19 | sed 's/^/3./')"				;\
++	kvers="$$kvers $$(/usr/bin/seq 0 99 | sed 's/^/4./')"				;\
+ 	print=0									;\
+ 	for v in $$kvers ; do							\
+ 		if [ "$$print" = "1" ] ; then					\
+@@ -110,7 +110,7 @@
+ 				sed 's/.*=\s*\([0-9]*\)/\1/;t;d')		;\
+ 	RHEL_MINOR=$$(grep '^RHEL_MINOR' $(KERNEL_MAKEFILE) | 			\
+ 				sed 's/.*=\s*\([0-9]*\)/\1/;t;d')		;\
+-	for v in $$(seq 0 $$RHEL_MINOR) ; do 					\
++	for v in $$(/usr/bin/seq 0 $$RHEL_MINOR) ; do 					\
+ 		echo config BACKPORT_RHEL_KERNEL_$${RHEL_MAJOR}_$$v		;\
+ 		echo "    def_bool y"						;\
+ 	done >> $@
