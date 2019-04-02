@@ -1,3 +1,70 @@
-Welcome to AliOS Things Linux Edition !!
+meta-framework
+============
 
-Framework for Alios Things.
+This layer provides the framework of AliOS Things Linux Edition.
+For details, please read the "Contents" section.
+
+Dependencies
+============
+
+This layer depends on:
+    <repo>/meta-yp/meta
+
+The <repo> is the repository path of your AliOS Things Linux Edition.
+
+How to build
+============
+
+Add this layer into your bblayer.conf, e.g.
+    BBLAYERS ?= " \
+        <repo>/meta-yp/meta \
+        <repo>/meta-yp/meta-openembedded/meta-oe \
+        <repo>/meta-yp/meta-openembedded/meta-perl \
+        <repo>/meta-yp/meta-openembedded/meta-python \
+        <repo>/meta-yp/meta-openembedded/meta-networking \
+        <repo>/meta-core/meta-base \
+        <repo>/meta-framework \
+        "
+
+Contents
+============
+
+This layer provides the below frameworks of AliOS Things Linux Edition.
+
+uMESH
+------------
+
+uMesh is a wireless mesh network stack implementation with following features:
+    - RF standards independent, currently 802.11/802.15.4/BLE are supported, and more can be supported
+    - Routing mesh, support Tree Topology, Mesh Topology and Layered Tree&Mesh Topology
+    - Self-healing, no single point of failures
+    - Low Power Mode
+    - EAP(Extensible Authentication Protocol) with ID2
+    - Seamless IPv4/IPv6 integration providing Socket programming environment
+For details, please refer to https://github.com/alibaba/AliOS-Things/wiki/AliOS--Things-Networking-Overview#umesh-network
+
+The recipe umesh provides the libmesh.a and related header files, you can develop your
+application based on the mesh library. The recipe umesh also provides a test program mesh_test, you can use
+it to test the mesh library.
+
+uOTA
+------------
+
+An over-the-air update is the wireless delivery of new software or data to smart devices,
+especially IoT devices. Wireless carriers and OEMs typically use over-the-air (OTA) updates
+to deploy the new operating systems and the software app to these devices.
+
+The recipe uota provides the libOTA.a, libLK.a and related header files, you can develop your OTA
+application based on the OTA library. The recipe uota also provides an example program OTA_APP,
+you can use it for a quickly experience on our uOTA.
+
+Maintenance
+============
+
+License
+============
+
+All metadata files in this layer are MIT licensed unless otherwise stated. Source code included
+in tree for individual recipes is under the LICENSE stated in each recipe (.bb file) unless
+otherwise stated.
+
