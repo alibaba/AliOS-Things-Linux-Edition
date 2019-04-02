@@ -1,0 +1,8 @@
+[Unit]
+Description=Psplash Boot Screen Path /dev/fb0
+Wants=systemd-firstboot.service
+After=systemd-udev-trigger.service systemd-udevd.service
+Before=default.target
+
+[Path]
+PathExists=/dev/fb0

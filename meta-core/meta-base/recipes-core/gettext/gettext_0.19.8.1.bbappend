@@ -1,0 +1,1 @@
+FILES_${PN}_append_libc-bionic = " ${libdir}/charset.alias"

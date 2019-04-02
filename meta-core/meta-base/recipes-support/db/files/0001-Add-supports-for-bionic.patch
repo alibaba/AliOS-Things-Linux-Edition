@@ -1,0 +1,29 @@
+From afcbffae21036261c3c03ddea2b679c70c1d796c Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Mon, 17 Dec 2018 18:54:34 +0800
+Subject: [PATCH] Add support for bionic
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ lang/cxx/cxx_env.cpp | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/lang/cxx/cxx_env.cpp b/lang/cxx/cxx_env.cpp
+index f1f9856..3234064 100644
+--- a/lang/cxx/cxx_env.cpp
++++ b/lang/cxx/cxx_env.cpp
+@@ -22,7 +22,10 @@
+ #ifdef HAVE_CXX_STDHEADERS
+ using std::cerr;
+ #endif
+-
++/* aos-note: disable exceptions */
++#define throw
++#define try          if(true)
++#define catch(...)   if(false)
+ // Helper macros for simple methods that pass through to the
+ // underlying C method.  They may return an error or raise an exception.
+ // These macros expect that input _argspec is an argument
+-- 
+2.7.4
+

@@ -1,0 +1,2459 @@
+From 183ebee2484d6851db2b63fe32de7ae88754b8dd Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Tue, 25 Dec 2018 17:41:58 +0800
+Subject: [PATCH] Add makefiles for bionic
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ libc/Makefile              | 1628 ++++++++++++++++++++++++++++++++++++++++++++
+ libc/arch-arm64/arm64.mk   |    3 +
+ libc/arch-x86_64/x86_64.mk |    8 +-
+ libc/libc.arm64.map        |   39 ++
+ libc/libc.x86_64.map       |   39 ++
+ libdl/Makefile             |   61 ++
+ libm/Makefile              |  452 ++++++++++++
+ linker/Makefile            |  121 ++++
+ 8 files changed, 2350 insertions(+), 1 deletion(-)
+ create mode 100644 libc/Makefile
+ create mode 100644 libdl/Makefile
+ create mode 100644 libm/Makefile
+ create mode 100644 linker/Makefile
+
+diff --git a/libc/Makefile b/libc/Makefile
+new file mode 100644
+index 0000000..4544987
+--- /dev/null
++++ b/libc/Makefile
+@@ -0,0 +1,1628 @@
++ifeq ($(TARGET_ARCH), x86_64)
++TARGET_ASM_DIR := asm-x86
++TARGET_LIBM_DIR := amd64
++endif
++
++ifeq ($(TARGET_ARCH), arm64)
++TARGET_ASM_DIR := asm-arm64
++TARGET_LIBM_DIR := arm64
++endif
++
++ARCH_X86_HAVE_SSE4 = false
++
++INCLUDES := \
++	-I $(CURDIR)/../../external/jemalloc/include \
++	-I $(CURDIR)/../../bionic/libc/stdio \
++	-I $(CURDIR)/../../bionic/libc \
++	-isystem $(CURDIR)/../../system/core/include \
++	-isystem $(CURDIR)/arch-$(TARGET_ARCH)/include \
++	-isystem $(CURDIR)/include \
++	-isystem $(CURDIR)/kernel/uapi \
++	-isystem $(CURDIR)/kernel/common \
++	-isystem $(CURDIR)/kernel/uapi/$(TARGET_ASM_DIR) \
++	-isystem $(CURDIR)/../libm/include \
++	-isystem $(CURDIR)/../libm/include/$(TARGET_LIBM_DIR) \
++	-isystem $(GCC_INCLUDE)/include \
++	-isystem $(GCC_INCLUDE)/include-fixed \
++
++CFLAGS += \
++	-D_LIBC=1 \
++	-O2 \
++	-g \
++	-nostdinc \
++	-fno-exceptions \
++
++CONLYFLAGS += \
++	-nostdinc \
++	-std=gnu99 \
++
++CXXFLAGS += \
++	-std=gnu++11 \
++	-nostdinc++ \
++
++LOCAL_PATH := $(CURDIR)
++
++# Load config for TARGET_ARCH
++include $(CURDIR)/arch-$(TARGET_ARCH)/$(TARGET_ARCH).mk
++
++all: libc_stack_protector libc_init_static libc_tzcode libc_dns libc_freebsd libc_netbsd libc_openbsd_ndk libc_openbsd libc_gdtoa libc_bionic libc_bionic_ndk libc_pthread libc_cxa libc_syscalls libc_malloc libc_common libc_nomalloc libc libc_so
++
++# =========c===============================================
++# crt obj files
++# ========================================================
++#
++# crtbrand.c needs <stdint.h> and a #define for the platform SDK version.
++
++libc_crt_target_cflags := \
++	-I ./include \
++	-DPLATFORM_SDK_VERSION=24 \
++	$(libc_crt_target_cflags_$(TARGET_ARCH)) \
++
++libc_crt_target_so_cflags := \
++	-I ./include \
++	-DPLATFORM_SDK_VERSION=24 \
++	$(libc_crt_target_so_cflags_$(TARGET_ARCH)) \
++
++libc_crt_target_ldflags := \
++	$(libc_crt_target_ldflags_$(TARGET_ARCH)) \
++
++libc_crt_target_crtbegin_file := $(libc_crt_target_crtbegin_file_$(TARGET_ARCH))
++libc_crt_target_crtbegin_so_file := $(libc_crt_target_crtbegin_so_file_$(TARGET_ARCH))
++
++libc_crt:
++	@$(CC) $(libc_crt_target_so_cflags) -o crtbrand.o -c arch-common/bionic/crtbrand.S
++	@$(CC) $(libc_crt_target_so_cflags) -o crtbegin_so1.o -c $(libc_crt_target_crtbegin_so_file)
++	@$(LD) $(libc_crt_target_ldflags) -o crtbegin_so.o -r crtbegin_so1.o crtbrand.o
++	@$(CC) $(libc_crt_target_cflags) -o crtend_so.o -c arch-common/bionic/crtend_so.S
++	@$(CC) $(libc_crt_target_cflags) -o crtbegin_static1.o -c $(libc_crt_target_crtbegin_file)
++	@$(LD) $(libc_crt_target_ldflags) -o crtbegin_static.o -r crtbegin_static1.o crtbrand.o
++	@$(CC) $(libc_crt_target_cflags) -o crtbegin_dynamic1.o -c $(libc_crt_target_crtbegin_file)
++	@$(LD) $(libc_crt_target_ldflags) -o crtbegin_dynamic.o -r crtbegin_dynamic1.o crtbrand.o
++	@$(CC) $(libc_crt_target_cflags) -o crtend_android.o -c arch-common/bionic/crtend.S
++
++# ========================================================
++# libc_stack_protector.a - stack protector code
++# ========================================================
++#
++# Code that implements the stack protector (or that runs
++# before TLS has been set up) needs to be compiled with
++# -fno-stack-protector, since it accesses the stack canary
++# TLS slot.
++
++libc_stack_protector_src_files := \
++	bionic/__libc_init_main_thread.cpp \
++	bionic/__stack_chk_fail.cpp \
++
++ifeq ($(TARGET_ARCH),arm64)
++libc_stack_protector_src_files += \
++	arch-arm64/bionic/__set_tls.c
++endif
++
++ifeq ($(TARGET_ARCH),x86_64)
++libc_stack_protector_src_files += \
++	arch-x86_64/bionic/__set_tls.c
++endif
++
++libc_stack_protector_src_c_files := \
++	$(filter %.c,$(libc_stack_protector_src_files)) \
++
++libc_stack_protector_src_cpp_files := \
++	$(filter %.cpp,$(libc_stack_protector_src_files)) \
++
++libc_stack_protector_objs_dir := \
++	libc_stack_protector_objs/
++
++libc_stack_protector_obj_files := \
++	$(patsubst %.c,$(libc_stack_protector_objs_dir)%.o,$(notdir $(libc_stack_protector_src_c_files))) \
++	$(patsubst %.cpp,$(libc_stack_protector_objs_dir)%.o,$(notdir $(libc_stack_protector_src_cpp_files))) \
++
++libc_stack_protector_includes := \
++	$(INCLUDES) \
++
++libc_stack_protector_cflags := \
++	$(CFLAGS) \
++	$(CONLYFLAGS) \
++	-fno-stack-protector \
++
++libc_stack_protector_cppflags := \
++	$(CFLAGS) \
++	$(CXXFLAGS) \
++	-fno-stack-protector \
++
++libc_stack_protector:
++	@echo "building libc_stack_protector"
++
++	@if [ ! -d $(libc_stack_protector_objs_dir) ]; then \
++		mkdir $(libc_stack_protector_objs_dir); \
++	fi
++
++	@cd $(libc_stack_protector_objs_dir); \
++	for file in $(libc_stack_protector_src_c_files); do \
++		$(CC) $(libc_stack_protector_cflags) $(libc_stack_protector_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@cd $(libc_stack_protector_objs_dir); \
++	for file in $(libc_stack_protector_src_cpp_files); do \
++		$(CXX) $(libc_stack_protector_cppflags) $(libc_stack_protector_includes) -c  $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_stack_protector.a
++
++	@$(AR) crsPD libc_stack_protector.a $(libc_stack_protector_obj_files)
++
++# ========================================================
++# libc_init_static.a - stack protector code
++# ========================================================
++#
++# libc_init_static.cpp also needs to be built without stack protector,
++# because it's responsible for setting up TLS for static executables.
++# This isn't the case for dynamic executables because the dynamic linker
++# has already set up the main thread's TLS.
++
++libc_init_static_src_files := \
++	bionic/libc_init_static.cpp \
++
++libc_init_static_src_cppflags := \
++	$(CFLAGS) \
++	$(CXXFLAGS) \
++	-fno-stack-protector \
++
++libc_init_static_src_includes := \
++	$(INCLUDES) \
++
++libc_init_static_objs_dir := \
++	libc_init_static_objs/
++
++libc_init_static_obj_files := \
++	$(patsubst %.cpp,$(libc_init_static_objs_dir)%.o,$(notdir $(libc_init_static_src_files))) \
++
++libc_init_static:
++	@echo "building libc_init_static"
++
++	@if [ ! -d $(libc_init_static_objs_dir) ]; then \
++		mkdir $(libc_init_static_objs_dir); \
++	fi
++
++	@cd $(libc_init_static_objs_dir); \
++	for file in $(libc_init_static_src_files); do \
++		$(CXX) $(libc_init_static_src_cppflags) $(libc_init_static_src_includes) -c  $(CURDIR)/$$file; \
++	done
++
++	@cd $(libc_init_static_objs_dir) \
++	$(CXX) $(libc_init_static_src_cppflags) $(libc_init_static_src_includes) -c $(libc_init_static_src_files)
++
++	@$(RM) -rf libc_init_static.a
++
++	@$(AR) crsPD libc_init_static.a $(libc_init_static_obj_files)
++
++# ========================================================
++# libc_tzcode.a - upstream 'tzcode' code
++# ========================================================
++
++libc_tzcode_src_files := \
++	$(wildcard tzcode/*.c) \
++	upstream-openbsd/lib/libc/time/wcsftime.c \
++
++libc_tzcode_cflags := \
++	$(CFLAGS) \
++	$(CONLYFLAGS) \
++	-fvisibility=hidden \
++	-Wno-unused-parameter \
++	-DALL_STATE \
++	-DSTD_INSPIRED \
++	-DTHREAD_SAFE \
++	-DTM_GMTOFF=tm_gmtoff \
++	-DTZDIR=\"/usr/share/zoneinfo\" \
++	-DUSG_COMPAT=1 \
++	-DWILDABBR=\"\" \
++	-DNO_RUN_TIME_WARNINGS_ABOUT_YEAR_2000_PROBLEMS_THANK_YOU \
++	-Dlint \
++	-Wno-nonnull-compare \
++	-Wno-unused-const-variable \
++
++libc_tzcode_objs_dir := \
++	libc_tzcode_objs/
++
++libc_tzcode_obj_files := \
++	$(patsubst %.c,$(libc_tzcode_objs_dir)%.o,$(notdir $(libc_tzcode_src_files))) \
++
++libc_tzcode_includes := \
++	$(INCLUDES) \
++	-I $(CURDIR)/tzcode \
++
++libc_tzcode:
++	@echo "building libc_tzcode"
++
++	@if [ ! -d $(libc_tzcode_objs_dir) ]; then \
++		mkdir $(libc_tzcode_objs_dir); \
++	fi
++
++	@cd $(libc_tzcode_objs_dir); \
++	for file in $(libc_tzcode_src_files); do \
++		$(CC) $(libc_tzcode_cflags) $(libc_tzcode_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_tzcode.a
++
++	@$(AR) crsPD libc_tzcode.a $(libc_tzcode_obj_files)
++
++# ========================================================
++# libc_dns.a - modified NetBSD DNS code
++# ========================================================
++
++libc_dns_src_files := \
++	$(wildcard dns/nameser/*.c) \
++	$(wildcard dns/net/*.c) \
++	$(wildcard dns/resolv/*.c) \
++	upstream-netbsd/lib/libc/isc/ev_streams.c \
++	upstream-netbsd/lib/libc/isc/ev_timers.c \
++	upstream-netbsd/lib/libc/resolv/mtctxres.c \
++
++libc_dns_cflags := \
++	$(CFLAGS) \
++	$(CONLYFLAGS) \
++	-DANDROID_CHANGES \
++	-DINET6 \
++	-fvisibility=hidden \
++	-Wno-unused-parameter \
++	-include netbsd-compat.h \
++	-fno-strict-aliasing \
++
++libc_dns_includes := \
++	$(INCLUDES) \
++	-I $(CURDIR)/dns/include \
++	-I $(CURDIR)/private \
++	-I $(CURDIR)/upstream-netbsd/lib/libc/include \
++	-I $(CURDIR)/upstream-netbsd/android/include \
++
++libc_dns_objs_dir := \
++	libc_dns_objs/
++
++libc_dns_obj_files := \
++	$(patsubst %.c,$(libc_dns_objs_dir)%.o,$(notdir $(libc_dns_src_files))) \
++
++libc_dns:
++	@echo "building libc_dns"
++
++	@if [ ! -d $(libc_dns_objs_dir) ]; then \
++		mkdir $(libc_dns_objs_dir); \
++	fi
++
++	@cd $(libc_dns_objs_dir); \
++	for file in $(libc_dns_src_files); do \
++		$(CC) $(libc_dns_cflags) $(libc_dns_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_dns.a
++
++	@$(AR) crsPD libc_dns.a $(libc_dns_obj_files)
++
++# ========================================================
++# libc_freebsd.a - upstream FreeBSD C library code
++# ========================================================
++#
++# These files are built with the freebsd-compat.h header file
++# automatically included.
++
++libc_upstream_freebsd_src_files := \
++	upstream-freebsd/lib/libc/gen/ldexp.c \
++	upstream-freebsd/lib/libc/gen/sleep.c \
++	upstream-freebsd/lib/libc/gen/usleep.c \
++	upstream-freebsd/lib/libc/stdlib/getopt_long.c \
++	upstream-freebsd/lib/libc/stdlib/qsort.c \
++	upstream-freebsd/lib/libc/stdlib/quick_exit.c \
++	upstream-freebsd/lib/libc/stdlib/realpath.c \
++	upstream-freebsd/lib/libc/string/wcpcpy.c \
++	upstream-freebsd/lib/libc/string/wcpncpy.c \
++	upstream-freebsd/lib/libc/string/wcscasecmp.c \
++	upstream-freebsd/lib/libc/string/wcscat.c \
++	upstream-freebsd/lib/libc/string/wcschr.c \
++	upstream-freebsd/lib/libc/string/wcscmp.c \
++	upstream-freebsd/lib/libc/string/wcscpy.c \
++	upstream-freebsd/lib/libc/string/wcscspn.c \
++	upstream-freebsd/lib/libc/string/wcsdup.c \
++	upstream-freebsd/lib/libc/string/wcslcat.c \
++	upstream-freebsd/lib/libc/string/wcslen.c \
++	upstream-freebsd/lib/libc/string/wcsncasecmp.c \
++	upstream-freebsd/lib/libc/string/wcsncat.c \
++	upstream-freebsd/lib/libc/string/wcsncmp.c \
++	upstream-freebsd/lib/libc/string/wcsncpy.c \
++	upstream-freebsd/lib/libc/string/wcsnlen.c \
++	upstream-freebsd/lib/libc/string/wcspbrk.c \
++	upstream-freebsd/lib/libc/string/wcsrchr.c \
++	upstream-freebsd/lib/libc/string/wcsspn.c \
++	upstream-freebsd/lib/libc/string/wcstok.c \
++	upstream-freebsd/lib/libc/string/wmemchr.c \
++	upstream-freebsd/lib/libc/string/wmemcmp.c \
++	upstream-freebsd/lib/libc/string/wmemmove.c \
++	upstream-freebsd/lib/libc/string/wmemset.c \
++
++libc_freebsd_src_files = \
++	$(filter-out $(libc_freebsd_src_files_exclude_$(TARGET_ARCH)), $(libc_upstream_freebsd_src_files)) \
++
++libc_freebsd_cflags := \
++	$(CFLAGS) \
++	$(CONLYFLAGS) \
++	-Wno-sign-compare \
++	-Wno-uninitialized \
++	-include freebsd-compat.h \
++
++libc_freebsd_includes := \
++	$(INCLUDES) \
++	-I $(CURDIR)/upstream-freebsd/android/include \
++	-I $(CURDIR)/upstream-freebsd/lib/libc/include \
++
++libc_freebsd_objs_dir := \
++	libc_freebsd_objs/
++
++libc_freebsd_obj_files := \
++	$(patsubst %.c,$(libc_freebsd_objs_dir)%.o,$(notdir $(libc_freebsd_src_files))) \
++
++libc_freebsd:
++	@echo "building libc_freebsd"
++
++	@if [ ! -d $(libc_freebsd_objs_dir) ]; then \
++		mkdir $(libc_freebsd_objs_dir); \
++	fi
++
++	@cd $(libc_freebsd_objs_dir); \
++	for file in $(libc_freebsd_src_files); do \
++		$(CC) $(libc_freebsd_cflags) $(libc_freebsd_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_freebsd.a
++
++	@$(AR) crsPD libc_freebsd.a $(libc_freebsd_obj_files)
++
++# ========================================================
++# libc_netbsd.a - upstream NetBSD C library code
++# ========================================================
++
++libc_upstream_netbsd_src_files := \
++	upstream-netbsd/common/lib/libc/stdlib/random.c \
++	upstream-netbsd/lib/libc/gen/ftw.c \
++	upstream-netbsd/lib/libc/gen/nftw.c \
++	upstream-netbsd/lib/libc/gen/nice.c \
++	upstream-netbsd/lib/libc/gen/popen.c \
++	upstream-netbsd/lib/libc/gen/psignal.c \
++	upstream-netbsd/lib/libc/gen/utime.c \
++	upstream-netbsd/lib/libc/gen/utmp.c \
++	upstream-netbsd/lib/libc/inet/nsap_addr.c \
++	upstream-netbsd/lib/libc/regex/regcomp.c \
++	upstream-netbsd/lib/libc/regex/regerror.c \
++	upstream-netbsd/lib/libc/regex/regexec.c \
++	upstream-netbsd/lib/libc/regex/regfree.c \
++	upstream-netbsd/lib/libc/stdlib/bsearch.c \
++	upstream-netbsd/lib/libc/stdlib/div.c \
++	upstream-netbsd/lib/libc/stdlib/drand48.c \
++	upstream-netbsd/lib/libc/stdlib/erand48.c \
++	upstream-netbsd/lib/libc/stdlib/jrand48.c \
++	upstream-netbsd/lib/libc/stdlib/lcong48.c \
++	upstream-netbsd/lib/libc/stdlib/ldiv.c \
++	upstream-netbsd/lib/libc/stdlib/lldiv.c \
++	upstream-netbsd/lib/libc/stdlib/lrand48.c \
++	upstream-netbsd/lib/libc/stdlib/mrand48.c \
++	upstream-netbsd/lib/libc/stdlib/nrand48.c \
++	upstream-netbsd/lib/libc/stdlib/_rand48.c \
++	upstream-netbsd/lib/libc/stdlib/rand_r.c \
++	upstream-netbsd/lib/libc/stdlib/reallocarr.c \
++	upstream-netbsd/lib/libc/stdlib/seed48.c \
++	upstream-netbsd/lib/libc/stdlib/srand48.c \
++	upstream-netbsd/lib/libc/string/memccpy.c \
++	upstream-netbsd/lib/libc/string/strcasestr.c \
++	upstream-netbsd/lib/libc/string/strcoll.c \
++	upstream-netbsd/lib/libc/string/strxfrm.c \
++
++libc_netbsd_src_files := \
++	$(libc_upstream_netbsd_src_files) \
++	$(libc_upstream_netbsd_src_files_$(TARGET_ARCH)) \
++
++libc_netbsd_cflags := \
++	$(CFLAGS) \
++	$(CONLYFLAGS) \
++	-Wno-sign-compare \
++	-Wno-uninitialized \
++	-Wno-unused-parameter \
++	-DPOSIX_MISTAKE \
++	-include netbsd-compat.h \
++
++libc_netbsd_includes := \
++	$(INCLUDES) \
++	-I $(CURDIR)/upstream-netbsd/android/include \
++	-I $(CURDIR)/upstream-netbsd/lib/libc/include \
++
++libc_netbsd_objs_dir := \
++	libc_netbsd_objs/
++
++libc_netbsd_obj_files := \
++	$(patsubst %.c,$(libc_netbsd_objs_dir)%.o,$(notdir $(libc_netbsd_src_files))) \
++
++libc_netbsd:
++	@echo "building libc_netbsd"
++
++	@if [ ! -d $(libc_netbsd_objs_dir) ]; then \
++		mkdir $(libc_netbsd_objs_dir); \
++	fi
++
++	@cd $(libc_netbsd_objs_dir); \
++	for file in $(libc_netbsd_src_files); do \
++		$(CC) $(libc_netbsd_cflags) $(libc_netbsd_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_netbsd.a
++
++	@$(AR) crsPD libc_netbsd.a $(libc_netbsd_obj_files)
++
++# ========================================================
++# libc_openbsd_ndk.a - upstream OpenBSD C library code
++# that can be safely included in the libc_ndk.a (doesn't
++# contain any troublesome global data or constructors).
++# ========================================================
++#
++# These files are built with the openbsd-compat.h header file
++# automatically included.
++
++libc_upstream_openbsd_ndk_src_files := \
++	upstream-openbsd/lib/libc/compat-43/killpg.c \
++	upstream-openbsd/lib/libc/gen/alarm.c \
++	upstream-openbsd/lib/libc/gen/ctype_.c \
++	upstream-openbsd/lib/libc/gen/daemon.c \
++	upstream-openbsd/lib/libc/gen/err.c \
++	upstream-openbsd/lib/libc/gen/errx.c \
++	upstream-openbsd/lib/libc/gen/exec.c \
++	upstream-openbsd/lib/libc/gen/fnmatch.c \
++	upstream-openbsd/lib/libc/gen/ftok.c \
++	upstream-openbsd/lib/libc/gen/getprogname.c \
++	upstream-openbsd/lib/libc/gen/isctype.c \
++	upstream-openbsd/lib/libc/gen/setprogname.c \
++	upstream-openbsd/lib/libc/gen/time.c \
++	upstream-openbsd/lib/libc/gen/tolower_.c \
++	upstream-openbsd/lib/libc/gen/toupper_.c \
++	upstream-openbsd/lib/libc/gen/verr.c \
++	upstream-openbsd/lib/libc/gen/verrx.c \
++	upstream-openbsd/lib/libc/gen/vwarn.c \
++	upstream-openbsd/lib/libc/gen/vwarnx.c \
++	upstream-openbsd/lib/libc/gen/warn.c \
++	upstream-openbsd/lib/libc/gen/warnx.c \
++	upstream-openbsd/lib/libc/locale/btowc.c \
++	upstream-openbsd/lib/libc/locale/mbrlen.c \
++	upstream-openbsd/lib/libc/locale/mbstowcs.c \
++	upstream-openbsd/lib/libc/locale/mbtowc.c \
++	upstream-openbsd/lib/libc/locale/wcscoll.c \
++	upstream-openbsd/lib/libc/locale/wcstod.c \
++	upstream-openbsd/lib/libc/locale/wcstof.c \
++	upstream-openbsd/lib/libc/locale/wcstoimax.c \
++	upstream-openbsd/lib/libc/locale/wcstol.c \
++	upstream-openbsd/lib/libc/locale/wcstold.c \
++	upstream-openbsd/lib/libc/locale/wcstoll.c \
++	upstream-openbsd/lib/libc/locale/wcstombs.c \
++	upstream-openbsd/lib/libc/locale/wcstoul.c \
++	upstream-openbsd/lib/libc/locale/wcstoull.c \
++	upstream-openbsd/lib/libc/locale/wcstoumax.c \
++	upstream-openbsd/lib/libc/locale/wcsxfrm.c \
++	upstream-openbsd/lib/libc/locale/wctob.c \
++	upstream-openbsd/lib/libc/locale/wctomb.c \
++	upstream-openbsd/lib/libc/net/htonl.c \
++	upstream-openbsd/lib/libc/net/htons.c \
++	upstream-openbsd/lib/libc/net/inet_lnaof.c \
++	upstream-openbsd/lib/libc/net/inet_makeaddr.c \
++	upstream-openbsd/lib/libc/net/inet_netof.c \
++	upstream-openbsd/lib/libc/net/inet_ntoa.c \
++	upstream-openbsd/lib/libc/net/inet_ntop.c \
++	upstream-openbsd/lib/libc/net/inet_pton.c \
++	upstream-openbsd/lib/libc/net/ntohl.c \
++	upstream-openbsd/lib/libc/net/ntohs.c \
++	upstream-openbsd/lib/libc/net/res_random.c \
++	upstream-openbsd/lib/libc/stdio/asprintf.c \
++	upstream-openbsd/lib/libc/stdio/clrerr.c \
++	upstream-openbsd/lib/libc/stdio/dprintf.c \
++	upstream-openbsd/lib/libc/stdio/feof.c \
++	upstream-openbsd/lib/libc/stdio/ferror.c \
++	upstream-openbsd/lib/libc/stdio/fflush.c \
++	upstream-openbsd/lib/libc/stdio/fgetc.c \
++	upstream-openbsd/lib/libc/stdio/fgetln.c \
++	upstream-openbsd/lib/libc/stdio/fgets.c \
++	upstream-openbsd/lib/libc/stdio/fgetwc.c \
++	upstream-openbsd/lib/libc/stdio/fgetws.c \
++	upstream-openbsd/lib/libc/stdio/flags.c \
++	upstream-openbsd/lib/libc/stdio/fmemopen.c \
++	upstream-openbsd/lib/libc/stdio/fprintf.c \
++	upstream-openbsd/lib/libc/stdio/fpurge.c \
++	upstream-openbsd/lib/libc/stdio/fputc.c \
++	upstream-openbsd/lib/libc/stdio/fputs.c \
++	upstream-openbsd/lib/libc/stdio/fputwc.c \
++	upstream-openbsd/lib/libc/stdio/fputws.c \
++	upstream-openbsd/lib/libc/stdio/fscanf.c \
++	upstream-openbsd/lib/libc/stdio/fvwrite.c \
++	upstream-openbsd/lib/libc/stdio/fwalk.c \
++	upstream-openbsd/lib/libc/stdio/fwide.c \
++	upstream-openbsd/lib/libc/stdio/fwprintf.c \
++	upstream-openbsd/lib/libc/stdio/fwrite.c \
++	upstream-openbsd/lib/libc/stdio/fwscanf.c \
++	upstream-openbsd/lib/libc/stdio/getc.c \
++	upstream-openbsd/lib/libc/stdio/getchar.c \
++	upstream-openbsd/lib/libc/stdio/getdelim.c \
++	upstream-openbsd/lib/libc/stdio/getline.c \
++	upstream-openbsd/lib/libc/stdio/gets.c \
++	upstream-openbsd/lib/libc/stdio/getwc.c \
++	upstream-openbsd/lib/libc/stdio/getwchar.c \
++	upstream-openbsd/lib/libc/stdio/makebuf.c \
++	upstream-openbsd/lib/libc/stdio/mktemp.c \
++	upstream-openbsd/lib/libc/stdio/open_memstream.c \
++	upstream-openbsd/lib/libc/stdio/open_wmemstream.c \
++	upstream-openbsd/lib/libc/stdio/perror.c \
++	upstream-openbsd/lib/libc/stdio/printf.c \
++	upstream-openbsd/lib/libc/stdio/putc.c \
++	upstream-openbsd/lib/libc/stdio/putchar.c \
++	upstream-openbsd/lib/libc/stdio/puts.c \
++	upstream-openbsd/lib/libc/stdio/putwc.c \
++	upstream-openbsd/lib/libc/stdio/putwchar.c \
++	upstream-openbsd/lib/libc/stdio/remove.c \
++	upstream-openbsd/lib/libc/stdio/rewind.c \
++	upstream-openbsd/lib/libc/stdio/rget.c \
++	upstream-openbsd/lib/libc/stdio/scanf.c \
++	upstream-openbsd/lib/libc/stdio/setbuf.c \
++	upstream-openbsd/lib/libc/stdio/setbuffer.c \
++	upstream-openbsd/lib/libc/stdio/setvbuf.c \
++	upstream-openbsd/lib/libc/stdio/sscanf.c \
++	upstream-openbsd/lib/libc/stdio/swprintf.c \
++	upstream-openbsd/lib/libc/stdio/swscanf.c \
++	upstream-openbsd/lib/libc/stdio/tempnam.c \
++	upstream-openbsd/lib/libc/stdio/tmpnam.c \
++	upstream-openbsd/lib/libc/stdio/ungetc.c \
++	upstream-openbsd/lib/libc/stdio/ungetwc.c \
++	upstream-openbsd/lib/libc/stdio/vasprintf.c \
++	upstream-openbsd/lib/libc/stdio/vdprintf.c \
++	upstream-openbsd/lib/libc/stdio/vfprintf.c \
++	upstream-openbsd/lib/libc/stdio/vfscanf.c \
++	upstream-openbsd/lib/libc/stdio/vfwprintf.c \
++	upstream-openbsd/lib/libc/stdio/vfwscanf.c \
++	upstream-openbsd/lib/libc/stdio/vprintf.c \
++	upstream-openbsd/lib/libc/stdio/vscanf.c \
++	upstream-openbsd/lib/libc/stdio/vsnprintf.c \
++	upstream-openbsd/lib/libc/stdio/vsprintf.c \
++	upstream-openbsd/lib/libc/stdio/vsscanf.c \
++	upstream-openbsd/lib/libc/stdio/vswprintf.c \
++	upstream-openbsd/lib/libc/stdio/vswscanf.c \
++	upstream-openbsd/lib/libc/stdio/vwprintf.c \
++	upstream-openbsd/lib/libc/stdio/vwscanf.c \
++	upstream-openbsd/lib/libc/stdio/wbuf.c \
++	upstream-openbsd/lib/libc/stdio/wprintf.c \
++	upstream-openbsd/lib/libc/stdio/wscanf.c \
++	upstream-openbsd/lib/libc/stdio/wsetup.c \
++	upstream-openbsd/lib/libc/stdlib/abs.c \
++	upstream-openbsd/lib/libc/stdlib/atoi.c \
++	upstream-openbsd/lib/libc/stdlib/atol.c \
++	upstream-openbsd/lib/libc/stdlib/atoll.c \
++	upstream-openbsd/lib/libc/stdlib/getenv.c \
++	upstream-openbsd/lib/libc/stdlib/insque.c \
++	upstream-openbsd/lib/libc/stdlib/imaxabs.c \
++	upstream-openbsd/lib/libc/stdlib/imaxdiv.c \
++	upstream-openbsd/lib/libc/stdlib/labs.c \
++	upstream-openbsd/lib/libc/stdlib/llabs.c \
++	upstream-openbsd/lib/libc/stdlib/lsearch.c \
++	upstream-openbsd/lib/libc/stdlib/reallocarray.c \
++	upstream-openbsd/lib/libc/stdlib/remque.c \
++	upstream-openbsd/lib/libc/stdlib/setenv.c \
++	upstream-openbsd/lib/libc/stdlib/strtoimax.c \
++	upstream-openbsd/lib/libc/stdlib/strtol.c \
++	upstream-openbsd/lib/libc/stdlib/strtoll.c \
++	upstream-openbsd/lib/libc/stdlib/strtoul.c \
++	upstream-openbsd/lib/libc/stdlib/strtoull.c \
++	upstream-openbsd/lib/libc/stdlib/strtoumax.c \
++	upstream-openbsd/lib/libc/stdlib/system.c \
++	upstream-openbsd/lib/libc/stdlib/tfind.c \
++	upstream-openbsd/lib/libc/stdlib/tsearch.c \
++	upstream-openbsd/lib/libc/string/strcasecmp.c \
++	upstream-openbsd/lib/libc/string/strcspn.c \
++	upstream-openbsd/lib/libc/string/strdup.c \
++	upstream-openbsd/lib/libc/string/strndup.c \
++	upstream-openbsd/lib/libc/string/strpbrk.c \
++	upstream-openbsd/lib/libc/string/strsep.c \
++	upstream-openbsd/lib/libc/string/strspn.c \
++	upstream-openbsd/lib/libc/string/strstr.c \
++	upstream-openbsd/lib/libc/string/strtok.c \
++	upstream-openbsd/lib/libc/string/wmemcpy.c \
++	upstream-openbsd/lib/libc/string/wcslcpy.c \
++	upstream-openbsd/lib/libc/string/wcsstr.c \
++	upstream-openbsd/lib/libc/string/wcswidth.c \
++	external/mblen.c \
++
++libc_openbsd_ndk_src_files := \
++	$(libc_upstream_openbsd_ndk_src_files) \
++
++libc_openbsd_ndk_cflags := \
++	$(CFLAGS) \
++	$(CONLYFLAGS) \
++	-Wno-sign-compare \
++	-Wno-uninitialized \
++	-Wno-unused-parameter \
++	-include openbsd-compat.h \
++
++libc_openbsd_ndk_includes := \
++	$(INCLUDES) \
++	-I $(CURDIR)/private \
++	-I $(CURDIR)/upstream-openbsd/android/include \
++	-I $(CURDIR)/upstream-openbsd/lib/libc/include \
++	-I $(CURDIR)/upstream-openbsd/lib/libc/gdtoa/ \
++
++libc_openbsd_ndk_objs_dir := \
++	libc_openbsd_ndk_objs/
++
++libc_openbsd_ndk_obj_files := \
++	$(patsubst %.c,$(libc_openbsd_ndk_objs_dir)%.o,$(notdir $(libc_openbsd_ndk_src_files))) \
++
++libc_openbsd_ndk:
++	@echo "building libc_openbsd_ndk"
++
++	@if [ ! -d $(libc_openbsd_ndk_objs_dir) ]; then \
++		mkdir $(libc_openbsd_ndk_objs_dir); \
++	fi
++
++	@cd $(libc_openbsd_ndk_objs_dir); \
++	for file in $(libc_openbsd_ndk_src_files); do \
++		$(CC) $(libc_openbsd_ndk_cflags) $(libc_openbsd_ndk_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_openbsd_ndk.a
++
++	@$(AR) crsPD libc_openbsd_ndk.a $(libc_openbsd_ndk_obj_files)
++
++# ========================================================
++# libc_openbsd.a - upstream OpenBSD C library code
++# ========================================================
++#
++# These files are built with the openbsd-compat.h header file
++# automatically included.
++
++libc_upstream_openbsd_src_files := \
++	upstream-openbsd/lib/libc/crypt/arc4random.c \
++	upstream-openbsd/lib/libc/crypt/arc4random_uniform.c \
++	upstream-openbsd/lib/libc/string/memchr.c \
++	upstream-openbsd/lib/libc/string/memmove.c \
++	upstream-openbsd/lib/libc/string/memrchr.c \
++	upstream-openbsd/lib/libc/string/stpcpy.c \
++	upstream-openbsd/lib/libc/string/stpncpy.c \
++	upstream-openbsd/lib/libc/string/strcat.c \
++	upstream-openbsd/lib/libc/string/strcpy.c \
++	upstream-openbsd/lib/libc/string/strlcat.c \
++	upstream-openbsd/lib/libc/string/strlcpy.c \
++	upstream-openbsd/lib/libc/string/strncat.c \
++	upstream-openbsd/lib/libc/string/strncmp.c \
++	upstream-openbsd/lib/libc/string/strncpy.c \
++
++libc_openbsd_src_files := \
++	$(filter-out $(libc_openbsd_src_files_exclude_$(TARGET_ARCH)), $(libc_upstream_openbsd_src_files)) \
++
++libc_openbsd_cflags := \
++	$(CFLAGS) \
++	$(CONLYFLAGS) \
++	-Wno-sign-compare \
++	-Wno-uninitialized \
++	-Wno-unused-parameter \
++	-include openbsd-compat.h \
++
++libc_openbsd_includes := \
++	$(INCLUDES) \
++	-I $(CURDIR)/private \
++	-I $(CURDIR)/upstream-openbsd/android/include \
++	-I $(CURDIR)/upstream-openbsd/lib/libc/include \
++	-I $(CURDIR)/upstream-openbsd/lib/libc/gdtoa/ \
++
++libc_openbsd_objs_dir := \
++	libc_openbsd_objs/
++
++libc_openbsd_obj_files := \
++	$(patsubst %.c,$(libc_openbsd_objs_dir)%.o,$(notdir $(libc_openbsd_src_files))) \
++
++libc_openbsd:
++	@echo "building libc_openbsd"
++
++	@if [ ! -d $(libc_openbsd_objs_dir) ]; then \
++		mkdir $(libc_openbsd_objs_dir); \
++	fi
++
++	@cd $(libc_openbsd_objs_dir); \
++	for file in $(libc_openbsd_src_files); do \
++		$(CC) $(libc_openbsd_cflags) $(libc_openbsd_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_openbsd.a
++
++	@$(AR) crsPD libc_openbsd.a $(libc_openbsd_obj_files)
++
++# ========================================================
++# libc_gdtoa.a - upstream OpenBSD C library gdtoa code
++# ========================================================
++#
++# These files are built with the openbsd-compat.h header file
++# automatically included.
++
++libc_upstream_openbsd_gdtoa_src_files := \
++	upstream-openbsd/android/gdtoa_support.cpp \
++	upstream-openbsd/lib/libc/gdtoa/dmisc.c \
++	upstream-openbsd/lib/libc/gdtoa/dtoa.c \
++	upstream-openbsd/lib/libc/gdtoa/gdtoa.c \
++	upstream-openbsd/lib/libc/gdtoa/gethex.c \
++	upstream-openbsd/lib/libc/gdtoa/gmisc.c \
++	upstream-openbsd/lib/libc/gdtoa/hd_init.c \
++	upstream-openbsd/lib/libc/gdtoa/hdtoa.c \
++	upstream-openbsd/lib/libc/gdtoa/hexnan.c \
++	upstream-openbsd/lib/libc/gdtoa/ldtoa.c \
++	upstream-openbsd/lib/libc/gdtoa/misc.c \
++	upstream-openbsd/lib/libc/gdtoa/smisc.c \
++	upstream-openbsd/lib/libc/gdtoa/strtod.c \
++	upstream-openbsd/lib/libc/gdtoa/strtodg.c \
++	upstream-openbsd/lib/libc/gdtoa/strtof.c \
++	upstream-openbsd/lib/libc/gdtoa/strtord.c \
++	upstream-openbsd/lib/libc/gdtoa/sum.c \
++	upstream-openbsd/lib/libc/gdtoa/ulp.c \
++
++libc_upstream_openbsd_gdtoa_src_files_64 := \
++	$(libc_upstream_openbsd_gdtoa_src_files) \
++	upstream-openbsd/lib/libc/gdtoa/strtorQ.c \
++
++libc_gdtoa_src_c_files := \
++	$(filter %.c,$(libc_upstream_openbsd_gdtoa_src_files_64)) \
++
++libc_gdtoa_src_cpp_files := \
++	$(filter %.cpp,$(libc_upstream_openbsd_gdtoa_src_files_64)) \
++
++libc_gdtoa_cflags := \
++	$(CFLAGS) \
++	$(CONLYFLAGS) \
++	-Wno-sign-compare -Wno-uninitialized \
++	-fvisibility=hidden \
++	-include openbsd-compat.h \
++	-Wno-array-bounds \
++
++libc_gdtoa_cppflags := \
++	$(CFLAGS) \
++	$(CXXFLAGS) \
++	-Wno-sign-compare -Wno-uninitialized \
++	-fvisibility=hidden \
++	-include openbsd-compat.h \
++
++libc_gdtoa_includes := \
++	$(INCLUDES) \
++	-I $(CURDIR)/private \
++	-I $(CURDIR)/upstream-openbsd/android/include \
++	-I $(CURDIR)/upstream-openbsd/lib/libc/include \
++
++libc_gdtoa_objs_dir := \
++	libc_gdtoa_objs/
++
++libc_gdtoa_obj_files := \
++	$(patsubst %.c,$(libc_gdtoa_objs_dir)%.o,$(notdir $(libc_gdtoa_src_c_files))) \
++	$(patsubst %.cpp,$(libc_gdtoa_objs_dir)%.o,$(notdir $(libc_gdtoa_src_cpp_files))) \
++
++libc_gdtoa:
++	@echo "building libc_gdtoa"
++
++	@if [ ! -d $(libc_gdtoa_objs_dir) ]; then \
++		mkdir $(libc_gdtoa_objs_dir); \
++	fi
++
++	@cd $(libc_gdtoa_objs_dir); \
++	for file in $(libc_gdtoa_src_c_files); do \
++		$(CC) $(libc_gdtoa_cflags) $(libc_gdtoa_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@cd $(libc_gdtoa_objs_dir); \
++	for file in $(libc_gdtoa_src_cpp_files); do \
++		$(CXX) $(libc_gdtoa_cppflags) $(libc_gdtoa_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_gdtoa.a
++
++	@$(AR) crsPD libc_gdtoa.a $(libc_gdtoa_obj_files)
++
++# ========================================================
++# libc_bionic.a - home-grown C library code
++# ========================================================
++
++libc_bionic_src_files := \
++	bionic/__cxa_thread_atexit_impl.cpp \
++	bionic/fork.cpp \
++	bionic/getauxval.cpp \
++	bionic/getentropy_linux.c \
++	bionic/sysconf.cpp \
++	bionic/vdso.cpp \
++	bionic/setjmp_cookie.cpp \
++	bionic/__memcpy_chk.cpp \
++	bionic/__memset_chk.cpp \
++	bionic/__strcat_chk.cpp \
++	bionic/__strcpy_chk.cpp \
++	bionic/strchr.cpp \
++	bionic/strrchr.cpp \
++	bionic/strnlen.c \
++
++libc_bionic_src_files += \
++	$(libc_bionic_src_files_$(TARGET_ARCH)) \
++
++libc_bionic_src_s_files = \
++	$(filter %.S,$(filter-out $(libc_bionic_src_files_exclude_$(TARGET_ARCH)), $(libc_bionic_src_files))) \
++
++libc_bionic_src_c_files = \
++	$(filter %.c,$(filter-out $(libc_bionic_src_files_exclude_$(TARGET_ARCH)), $(libc_bionic_src_files))) \
++
++libc_bionic_src_cpp_files = \
++	$(filter %.cpp,$(filter-out $(libc_bionic_src_files_exclude_$(TARGET_ARCH)), $(libc_bionic_src_files))) \
++
++libc_bionic_cflags := \
++	$(CFLAGS) \
++	$(CONLYFLAGS) \
++	-Wframe-larger-than=2048 \
++
++libc_bionic_cppflags := \
++	$(CFLAGS) \
++	$(CXXFLAGS) \
++	-Wframe-larger-than=2048 \
++	-Wold-style-cast \
++
++libc_bionic_includes := \
++	$(INCLUDES) \
++	-I $(CURDIR)/../libstdc++/include \
++
++libc_bionic_objs_dir := \
++	libc_bionic_objs/
++
++libc_bionic_obj_files := \
++	$(patsubst %.c,$(libc_bionic_objs_dir)%.o,$(notdir $(libc_bionic_src_c_files))) \
++	$(patsubst %.S,$(libc_bionic_objs_dir)%.o,$(notdir $(libc_bionic_src_s_files))) \
++	$(patsubst %.cpp,$(libc_bionic_objs_dir)%.o,$(notdir $(libc_bionic_src_cpp_files))) \
++
++libc_bionic:
++	@echo "building libc_bionic"
++
++	@if [ ! -d $(libc_bionic_objs_dir) ]; then \
++		mkdir $(libc_bionic_objs_dir); \
++	fi
++
++	@cd $(libc_bionic_objs_dir); \
++	for file in $(libc_bionic_src_s_files); do \
++		$(CC) -D__ASSEMBLY__ $(libc_bionic_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@cd $(libc_bionic_objs_dir); \
++	for file in $(libc_bionic_src_c_files); do \
++		$(CC) $(libc_bionic_cflags) $(libc_bionic_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@cd $(libc_bionic_objs_dir); \
++	for file in $(libc_bionic_src_cpp_files); do \
++		$(CXX) $(libc_bionic_cppflags) $(libc_bionic_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_bionic.a
++
++	@$(AR) crsPD libc_bionic.a $(libc_bionic_obj_files)
++
++# ========================================================
++# libc_bionic_ndk.a - The portions of libc_bionic that can
++# be safely used in libc_ndk.a (no troublesome global data
++# or constructors).
++# ========================================================
++
++libc_bionic_ndk_src_files := \
++	bionic/sys_siglist.c \
++	bionic/sys_signame.c \
++	bionic/abort.cpp \
++	bionic/accept.cpp \
++	bionic/accept4.cpp \
++	bionic/access.cpp \
++	bionic/arpa_inet.cpp \
++	bionic/assert.cpp \
++	bionic/atof.cpp \
++	bionic/bionic_netlink.cpp \
++	bionic/bionic_systrace.cpp \
++	bionic/bionic_time_conversions.cpp \
++	bionic/brk.cpp \
++	bionic/c16rtomb.cpp \
++	bionic/c32rtomb.cpp \
++	bionic/chmod.cpp \
++	bionic/chown.cpp \
++	bionic/clearenv.cpp \
++	bionic/clock.cpp \
++	bionic/clock_getcpuclockid.cpp \
++	bionic/clock_nanosleep.cpp \
++	bionic/clone.cpp \
++	bionic/close.cpp \
++	bionic/__cmsg_nxthdr.cpp \
++	bionic/connect.cpp \
++	bionic/ctype.cpp \
++	bionic/dirent.cpp \
++	bionic/dup2.cpp \
++	bionic/epoll_create.cpp \
++	bionic/epoll_pwait.cpp \
++	bionic/epoll_wait.cpp \
++	bionic/__errno.cpp \
++	bionic/error.cpp \
++	bionic/eventfd_read.cpp \
++	bionic/eventfd_write.cpp \
++	bionic/faccessat.cpp \
++	bionic/fchmod.cpp \
++	bionic/fchmodat.cpp \
++	bionic/ffs.cpp \
++	bionic/fgetxattr.cpp \
++	bionic/flistxattr.cpp \
++	bionic/flockfile.cpp \
++	bionic/fpclassify.cpp \
++	bionic/fsetxattr.cpp \
++	bionic/ftruncate.cpp \
++	bionic/futimens.cpp \
++	bionic/getcwd.cpp \
++	bionic/gethostname.cpp \
++	bionic/getpgrp.cpp \
++	bionic/getpid.cpp \
++	bionic/gettid.cpp \
++	bionic/__gnu_basename.cpp \
++	bionic/ifaddrs.cpp \
++	bionic/inotify_init.cpp \
++	bionic/ioctl.cpp \
++	bionic/lchown.cpp \
++	bionic/lfs64_support.cpp \
++	bionic/__libc_current_sigrtmax.cpp \
++	bionic/__libc_current_sigrtmin.cpp \
++	bionic/libc_init_common.cpp \
++	bionic/libc_logging.cpp \
++	bionic/libgen.cpp \
++	bionic/link.cpp \
++	bionic/locale.cpp \
++	bionic/lockf.cpp \
++	bionic/lstat.cpp \
++	bionic/malloc_info.cpp \
++	bionic/mbrtoc16.cpp \
++	bionic/mbrtoc32.cpp \
++	bionic/mbstate.cpp \
++	bionic/mempcpy.cpp \
++	bionic/mkdir.cpp \
++	bionic/mkfifo.cpp \
++	bionic/mknod.cpp \
++	bionic/mntent.cpp \
++	bionic/mremap.cpp \
++	bionic/NetdClientDispatch.cpp \
++	bionic/net_if.cpp \
++	bionic/netinet_in.cpp \
++	bionic/open.cpp \
++	bionic/pathconf.cpp \
++	bionic/pause.cpp \
++	bionic/pipe.cpp \
++	bionic/poll.cpp \
++	bionic/posix_fadvise.cpp \
++	bionic/posix_fallocate.cpp \
++	bionic/posix_madvise.cpp \
++	bionic/posix_timers.cpp \
++	bionic/ptrace.cpp \
++	bionic/pty.cpp \
++	bionic/raise.cpp \
++	bionic/rand.cpp \
++	bionic/readlink.cpp \
++	bionic/reboot.cpp \
++	bionic/recv.cpp \
++	bionic/rename.cpp \
++	bionic/rmdir.cpp \
++	bionic/scandir.cpp \
++	bionic/sched_getaffinity.cpp \
++	bionic/sched_getcpu.cpp \
++	bionic/semaphore.cpp \
++	bionic/send.cpp \
++	bionic/setegid.cpp \
++	bionic/__set_errno.cpp \
++	bionic/seteuid.cpp \
++	bionic/setpgrp.cpp \
++	bionic/sigaction.cpp \
++	bionic/sigaddset.cpp \
++	bionic/sigdelset.cpp \
++	bionic/sigemptyset.cpp \
++	bionic/sigfillset.cpp \
++	bionic/sigismember.cpp \
++	bionic/signal.cpp \
++	bionic/signalfd.cpp \
++	bionic/sigpending.cpp \
++	bionic/sigprocmask.cpp \
++	bionic/sigqueue.cpp \
++	bionic/sigsuspend.cpp \
++	bionic/sigtimedwait.cpp \
++	bionic/sigwait.cpp \
++	bionic/sigwaitinfo.cpp \
++	bionic/socket.cpp \
++	bionic/stat.cpp \
++	bionic/statvfs.cpp \
++	bionic/strchrnul.cpp \
++	bionic/strerror.cpp \
++	bionic/strerror_r.cpp \
++	bionic/strsignal.cpp \
++	bionic/strtold.cpp \
++	bionic/stubs.cpp \
++	bionic/symlink.cpp \
++	bionic/sysinfo.cpp \
++	bionic/syslog.cpp \
++	bionic/system_properties.cpp \
++	bionic/tdestroy.cpp \
++	bionic/termios.cpp \
++	bionic/thread_private.cpp \
++	bionic/tmpfile.cpp \
++	bionic/umount.cpp \
++	bionic/unlink.cpp \
++	bionic/utimes.cpp \
++	bionic/wait.cpp \
++	bionic/wchar.cpp \
++	bionic/wctype.cpp \
++	bionic/wmempcpy.cpp \
++
++libc_bionic_ndk_src_files += \
++	$(libc_bionic_ndk_src_files_$(TARGET_ARCH))
++
++libc_bionic_ndk_cflags := \
++	$(CFLAGS) \
++	$(CONLYFLAGS) \
++	-Wframe-larger-than=2048 \
++
++libc_bionic_ndk_cppflags := \
++	$(CFLAGS) \
++	$(CXXFLAGS) \
++	-Wframe-larger-than=2048 \
++	-Wold-style-cast \
++	-fno-strict-aliasing \
++
++libc_bionic_ndk_includes := \
++	$(INCLUDES) \
++	-I $(CURDIR)/../libstdc++/include \
++
++libc_bionic_ndk_src_c_files := \
++	$(filter %.c,$(libc_bionic_ndk_src_files))
++
++libc_bionic_ndk_src_cpp_files := \
++	$(filter %.cpp,$(libc_bionic_ndk_src_files))
++
++libc_bionic_ndk_objs_dir := \
++	libc_bionic_ndk_objs/
++
++libc_bionic_ndk_obj_files := \
++	$(patsubst %.c,$(libc_bionic_ndk_objs_dir)%.o,$(notdir $(libc_bionic_ndk_src_c_files))) \
++	$(patsubst %.cpp,$(libc_bionic_ndk_objs_dir)%.o,$(notdir $(libc_bionic_ndk_src_cpp_files))) \
++
++libc_bionic_ndk:
++	@echo "building libc_bionic_ndk"
++
++	@if [ ! -d $(libc_bionic_ndk_objs_dir) ]; then \
++		mkdir $(libc_bionic_ndk_objs_dir); \
++	fi
++
++	@cd $(libc_bionic_ndk_objs_dir); \
++	for file in $(libc_bionic_ndk_src_c_files); do \
++		$(CC) $(libc_bionic_ndk_cflags) $(libc_bionic_ndk_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@cd $(libc_bionic_ndk_objs_dir); \
++	for file in $(libc_bionic_ndk_src_cpp_files); do \
++		$(CXX) $(libc_bionic_ndk_cppflags) $(libc_bionic_ndk_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_bionic_ndk.a
++
++	@$(AR) crsPD libc_bionic_ndk.a $(libc_bionic_ndk_obj_files)
++
++# ========================================================
++# libc_pthread.a - pthreads parts that previously lived in
++# libc_bionic.a. Relocated to their own library because
++# they can't be included in libc_ndk.a (as they layout of
++# pthread_t has changed over the years and has ABI
++# compatibility issues).
++# ========================================================
++
++libc_pthread_src_files := \
++	bionic/pthread_atfork.cpp \
++	bionic/pthread_attr.cpp \
++	bionic/pthread_barrier.cpp \
++	bionic/pthread_cond.cpp \
++	bionic/pthread_create.cpp \
++	bionic/pthread_detach.cpp \
++	bionic/pthread_equal.cpp \
++	bionic/pthread_exit.cpp \
++	bionic/pthread_getcpuclockid.cpp \
++	bionic/pthread_getschedparam.cpp \
++	bionic/pthread_gettid_np.cpp \
++	bionic/pthread_internal.cpp \
++	bionic/pthread_join.cpp \
++	bionic/pthread_key.cpp \
++	bionic/pthread_kill.cpp \
++	bionic/pthread_mutex.cpp \
++	bionic/pthread_once.cpp \
++	bionic/pthread_rwlock.cpp \
++	bionic/pthread_self.cpp \
++	bionic/pthread_setname_np.cpp \
++	bionic/pthread_setschedparam.cpp \
++	bionic/pthread_sigmask.cpp \
++	bionic/pthread_spinlock.cpp \
++
++libc_pthread_cppflags := \
++	$(CFLAGS) \
++	$(CXXFLAGS) \
++	-Wframe-larger-than=2048 \
++	-Wold-style-cast \
++	-fno-strict-aliasing \
++
++libc_pthread_includes := \
++	$(INCLUDES) \
++
++libc_pthread_objs_dir := \
++	libc_pthread_objs/
++
++libc_pthread_obj_files := \
++	$(patsubst %.cpp,$(libc_pthread_objs_dir)%.o,$(notdir $(libc_pthread_src_files))) \
++
++libc_pthread:
++	@echo "building libc_pthread"
++
++	@if [ ! -d $(libc_pthread_objs_dir) ]; then \
++		mkdir $(libc_pthread_objs_dir); \
++	fi
++
++	@cd $(libc_pthread_objs_dir); \
++	for file in $(libc_pthread_src_files); do \
++		$(CXX) $(libc_pthread_cppflags) $(libc_pthread_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_pthread.a
++
++	@$(AR) crsPD libc_pthread.a $(libc_pthread_obj_files)
++
++# ========================================================
++# libc_cxa.a - Things traditionally in libstdc++
++# ========================================================
++# do we really need this?
++
++libc_cxa_src_files := \
++	bionic/__cxa_guard.cpp \
++	bionic/__cxa_pure_virtual.cpp \
++	bionic/new.cpp \
++
++libc_cxa_cppflags := \
++	$(CFLAGS) \
++	$(CXXFLAGS) \
++	-fvisibility=hidden \
++
++libc_cxa_includes := \
++	$(INCLUDES) \
++	-I $(CURDIR)/../libstdc++/include \
++
++libc_cxa_objs_dir := \
++	libc_cxa_objs/
++
++libc_cxa_obj_files := \
++	$(patsubst %.cpp,$(libc_cxa_objs_dir)%.o,$(notdir $(libc_cxa_src_files))) \
++
++libc_cxa:
++	@echo "building libc_cxa"
++
++	@if [ ! -d $(libc_cxa_objs_dir) ]; then \
++		mkdir $(libc_cxa_objs_dir); \
++	fi
++
++	@cd $(libc_cxa_objs_dir); \
++	for file in $(libc_cxa_src_files); do \
++		$(CXX) $(libc_cxa_cppflags) $(libc_cxa_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_cxa.a
++
++	@$(AR) crsPD libc_cxa.a $(libc_cxa_obj_files)
++
++# ========================================================
++# libc_syscalls.a
++# ========================================================
++
++libc_syscalls_src_files := \
++	$(wildcard arch-$(TARGET_ARCH)/syscalls/*.S) \
++
++libc_syscalls_cflags := \
++	$(CFLAGS) \
++	$(CONLYFLAGS) \
++
++libc_syscalls_includes := \
++	$(INCLUDES) \
++
++libc_syscalls_objs_dir := \
++	libc_syscalls_objs/
++
++libc_syscalls_obj_files := \
++	$(patsubst %.S,$(libc_syscalls_objs_dir)%.o,$(notdir $(libc_syscalls_src_files))) \
++
++libc_syscalls:
++	@echo "building libc_syscalls"
++
++	@if [ ! -d $(libc_syscalls_objs_dir) ]; then \
++		mkdir $(libc_syscalls_objs_dir); \
++	fi
++
++	@cd $(libc_syscalls_objs_dir); \
++	for file in $(libc_syscalls_src_files); do \
++		$(CXX) $(libc_syscalls_cflags) $(libc_syscalls_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_syscalls.a
++
++	@$(AR) crsPD libc_syscalls.a $(libc_syscalls_obj_files)
++
++# ========================================================
++# libc_malloc.a: the _prefixed_ malloc functions (like dlcalloc).
++# ========================================================
++
++libc_malloc_src := bionic/jemalloc_wrapper.cpp
++
++libc_malloc_src_c_files := \
++	$(libc_malloc_src) \
++
++libc_malloc_includes := \
++	$(INCLUDES) \
++
++libc_malloc_cppflags := \
++	$(CFLAGS) \
++	$(CXXFLAGS) \
++
++libc_malloc_objs_dir := \
++	libc_malloc_objs/
++
++libc_malloc_obj_files := \
++	$(patsubst %.cpp,$(libc_malloc_objs_dir)%.o,$(notdir $(libc_malloc_src_c_files))) \
++
++libc_malloc:
++	@echo "building libc_malloc"
++
++	@if [ ! -d $(libc_malloc_objs_dir) ]; then \
++		mkdir $(libc_malloc_objs_dir); \
++	fi
++
++	@cd $(libc_malloc_objs_dir); \
++	for file in $(libc_malloc_src_c_files); do \
++		$(CC) $(libc_malloc_cppflags) $(libc_malloc_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_malloc.a
++
++	@$(AR) crsPD libc_malloc.a $(libc_malloc_obj_files)
++
++# ========================================================
++# libc_common.a
++# ========================================================
++
++libc_common_src_files := \
++	bionic/ether_aton.c \
++	bionic/ether_ntoa.c \
++	bionic/fts.c \
++	bionic/getpriority.c \
++	bionic/initgroups.c \
++	bionic/isatty.c \
++	bionic/memmem.c \
++	bionic/pututline.c \
++	bionic/sched_cpualloc.c \
++	bionic/sched_cpucount.c \
++	bionic/sigblock.c \
++	bionic/siginterrupt.c \
++	bionic/sigsetmask.c \
++	bionic/system_properties_compat.c \
++	stdio/fread.c \
++	stdio/refill.c \
++	stdio/snprintf.c\
++	stdio/sprintf.c \
++	stdio/stdio.cpp \
++	stdio/stdio_ext.cpp \
++	stdlib/atexit.c \
++	stdlib/exit.c \
++	bionic/__FD_chk.cpp \
++	bionic/__fgets_chk.cpp \
++	bionic/__fread_chk.cpp \
++	bionic/__fwrite_chk.cpp \
++	bionic/__getcwd_chk.cpp \
++	bionic/__memchr_chk.cpp \
++	bionic/__memmove_chk.cpp \
++	bionic/__memrchr_chk.cpp \
++	bionic/__poll_chk.cpp \
++	bionic/__pread64_chk.cpp \
++	bionic/__pread_chk.cpp \
++	bionic/__pwrite64_chk.cpp \
++	bionic/__pwrite_chk.cpp \
++	bionic/__read_chk.cpp \
++	bionic/__readlink_chk.cpp \
++	bionic/__readlinkat_chk.cpp \
++	bionic/__recvfrom_chk.cpp \
++	bionic/__stpcpy_chk.cpp \
++	bionic/__stpncpy_chk.cpp \
++	bionic/__strchr_chk.cpp \
++	bionic/__strlcat_chk.cpp \
++	bionic/__strlcpy_chk.cpp \
++	bionic/__strlen_chk.cpp \
++	bionic/__strncat_chk.cpp \
++	bionic/__strncpy_chk.cpp \
++	bionic/__strrchr_chk.cpp \
++	bionic/__umask_chk.cpp \
++	bionic/__vsnprintf_chk.cpp \
++	bionic/__vsprintf_chk.cpp \
++	bionic/__write_chk.cpp \
++	bionic/ndk_cruft.cpp \
++	external/shadow.c \
++	external/crypt.c \
++	external/iopl.c \
++	external/ioperm.c \
++	external/vhangup.c \
++	external/wait3.c \
++	external/langinfo.c \
++	external/gcvt.c \
++	external/pthread_cancel.cpp \
++
++libc_common_cflags := \
++	$(CFLAGS) \
++	$(CONLYFLAGS) \
++
++libc_common_cppflags := \
++	$(CXXFLAGS) \
++	$(CFLAGS) \
++
++libc_common_src_c_files := \
++	$(filter %.c,$(libc_common_src_files)) \
++
++libc_common_src_cpp_files := \
++	$(filter %.cpp,$(libc_common_src_files)) \
++
++libc_common_includes := \
++	$(INCLUDES) \
++	-I $(CURDIR)/../libstdc++/include \
++
++libc_common_objs_dir := \
++	libc_malloc_objs/
++
++libc_common_obj_files := \
++	$(patsubst %.c,$(libc_common_objs_dir)%.o,$(notdir $(libc_common_src_c_files))) \
++	$(patsubst %.cpp,$(libc_common_objs_dir)%.o,$(notdir $(libc_common_src_cpp_files))) \
++
++libc_common_whole_static_libraries := \
++	libc_bionic \
++	libc_bionic_ndk \
++	libc_cxa \
++	libc_dns \
++	libc_freebsd \
++	libc_gdtoa \
++	libc_malloc \
++	libc_netbsd \
++	libc_openbsd \
++	libc_openbsd_ndk \
++	libc_pthread \
++	libc_stack_protector \
++	libc_syscalls \
++	libc_tzcode \
++
++libc_common_obj_files += $(foreach lib,$(libc_common_whole_static_libraries),$($(lib)_obj_files))
++
++libc_common: $(libc_common_whole_static_libraries)
++	@echo "building libc_common"
++
++	@if [ ! -d $(libc_common_objs_dir) ]; then \
++		mkdir $(libc_common_objs_dir); \
++	fi
++
++	@cd $(libc_malloc_objs_dir); \
++	for file in $(libc_common_src_c_files); do \
++		$(CC) $(libc_common_cflags) $(libc_common_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@cd $(libc_malloc_objs_dir); \
++	for file in $(libc_common_src_cpp_files); do \
++		$(CXX) $(libc_common_cppflags) $(libc_common_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_common.a
++
++	@$(AR) crsPD libc_common.a $(libc_common_obj_files)
++
++# ========================================================
++# libc_nomalloc.a
++# ========================================================
++#
++# This is a version of the static C library that does not
++# include malloc. It's useful in situations when the user wants
++# to provide their own malloc implementation, or wants to
++# explicitly disallow the use of malloc, such as in the
++# dynamic linker.
++
++libc_arch_static_src_files := \
++	bionic/dl_iterate_phdr_static.cpp \
++
++libc_nomalloc_src_files := \
++	$(libc_arch_static_src_files) \
++
++libc_nomalloc_whole_static_libraries := \
++	libc_common \
++	libc_init_static \
++
++libc_nomalloc_objs_dir := \
++	libc_nomalloc_objs/
++
++libc_nomalloc_obj_files := $(patsubst %.cpp,$(libc_nomalloc_objs_dir)%.o,$(notdir $(libc_nomalloc_src_files))) \
++
++libc_nomalloc_obj_files += $(foreach lib,$(libc_nomalloc_whole_static_libraries),$($(lib)_obj_files)) \
++
++libc_nomalloc_cflags := \
++	$(CFLAGS) \
++	$(CONLYFLAGS) \
++
++libc_nomalloc_cppflags := \
++	$(CFLAGS) \
++	$(CXXFLAGS) \
++
++libc_nomalloc: $(libc_nomalloc_whole_static_libraries)
++	@echo "building libc_nomalloc"
++
++	@if [ ! -d $(libc_nomalloc_objs_dir) ]; then \
++		mkdir $(libc_nomalloc_objs_dir); \
++	fi
++
++	@cd $(libc_nomalloc_objs_dir); \
++	for file in $(libc_nomalloc_src_files); do \
++		$(CXX) $(libc_nomalloc_cppflags) $(libc_common_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc_nomalloc.a
++
++	@$(AR) crsPD libc_nomalloc.a $(libc_nomalloc_obj_files)
++
++# ========================================================
++# libc.a
++# ========================================================
++
++libjemalloc_obj_files := \
++	../../external/jemalloc/arena.o \
++	../../external/jemalloc/atomic.o \
++	../../external/jemalloc/base.o \
++	../../external/jemalloc/bitmap.o \
++	../../external/jemalloc/chunk.o \
++	../../external/jemalloc/chunk_dss.o \
++	../../external/jemalloc/chunk_mmap.o \
++	../../external/jemalloc/ckh.o \
++	../../external/jemalloc/ctl.o \
++	../../external/jemalloc/extent.o \
++	../../external/jemalloc/hash.o \
++	../../external/jemalloc/huge.o \
++	../../external/jemalloc/jemalloc.o \
++	../../external/jemalloc/mb.o \
++	../../external/jemalloc/mutex.o \
++	../../external/jemalloc/nstime.o \
++	../../external/jemalloc/pages.o \
++	../../external/jemalloc/prng.o \
++	../../external/jemalloc/prof.o \
++	../../external/jemalloc/quarantine.o \
++	../../external/jemalloc/rtree.o \
++	../../external/jemalloc/stats.o \
++	../../external/jemalloc/tcache.o \
++	../../external/jemalloc/ticker.o \
++	../../external/jemalloc/tsd.o \
++	../../external/jemalloc/util.o \
++
++libc_src_files := \
++	$(libc_arch_static_src_files) \
++	bionic/malloc_common.cpp \
++	bionic/libc_init_static.cpp \
++
++libc_whole_static_libraries := \
++	libc_common \
++	libc_init_static \
++	libjemalloc \
++
++libc_cflags := \
++	$(CFLAGS) \
++	$(CONLYFLAGS) \
++	-DLIBC_STATIC \
++
++libc_cppflags := \
++	$(CFLAGS) \
++	$(CXXFLAGS) \
++	-DLIBC_STATIC \
++
++libc_includes := \
++	$(INCLUDES) \
++
++libc_objs_dir := \
++	libc_objs/
++
++libc_obj_files := $(patsubst %.cpp,$(libc_objs_dir)%.o,$(notdir $(libc_src_files))) \
++
++libc_obj_a_files := $(foreach lib,$(libc_whole_static_libraries),$($(lib)_obj_files)) \
++
++libc: libc_common libc_init_static
++	@echo "building libc"
++
++	@if [ ! -d $(libc_objs_dir) ]; then \
++		mkdir $(libc_objs_dir); \
++	fi
++
++	@cd $(libc_objs_dir); \
++	for file in $(libc_src_files); do \
++		$(CXX) $(libc_cppflags) $(libc_includes) -c $(CURDIR)/$$file; \
++	done
++
++	@$(RM) -rf libc.a
++
++	@$(AR) crsPD libc.a $(libc_obj_files) $(libc_obj_a_files)
++
++libc_so_src_files := \
++	arch-common/bionic/crtbegin_so.c \
++	arch-common/bionic/crtbrand.S \
++	$(libc_arch_dynamic_src_files) \
++	bionic/malloc_common.cpp \
++	bionic/libc_init_dynamic.cpp \
++	bionic/NetdClient.cpp \
++	arch-common/bionic/crtend_so.S \
++
++libc_so_src_c_files = \
++	$(filter %.c, $(filter-out $(libc_src_exclude_files_$(TARGET_ARCH)), $(libc_so_src_files)))
++
++libc_so_src_cpp_files = \
++	$(filter %.cpp, $(filter-out $(libc_src_exclude_files_$(TARGET_ARCH)), $(libc_so_src_files)))
++
++libc_so_src_s_files = \
++	$(filter %.s, $(filter-out $(libc_src_exclude_files_$(TARGET_ARCH)), $(libc_so_src_files)))
++
++libc_so_objs_dir := \
++	libc_so_objs/
++
++libc_so_obj_files = \
++	$(patsubst %.c,$(libc_so_objs_dir)%.o,$(notdir $(libc_so_src_c_files))) \
++	$(patsubst %.cpp,$(libc_so_objs_dir)%.o,$(notdir $(libc_so_src_cpp_files))) \
++	$(patsubst %.S,$(libc_so_objs_dir)%.o,$(notdir $(libc_so_src_s_files))) \
++
++libc_so_a_files = \
++	-Wl,--whole-archive \
++	libc_common.a \
++	../../external/jemalloc/libjemalloc.a \
++	-Wl,--no-whole-archive \
++	$(GCC_LIB)/libgcc.a \
++	-L ../libdl -ldl \
++
++libc_so_ldflags = \
++	$(LDFLAGS) \
++	-Wl,--version-script,./libc.$(TARGET_ARCH).map \
++	-Wl,--exclude-libs,libgcc.a \
++	-Wl,--no-undefined \
++	-Wl,-soname,libc.so \
++	-Wl,--gc-sections \
++	-Wl,-shared \
++	-fuse-ld=gold \
++
++# ========================================================
++# libc.so
++# ========================================================
++
++libc_so: libc
++	@echo "building libc_so"
++
++	@if [ ! -d $(libc_so_objs_dir) ]; then \
++		mkdir $(libc_so_objs_dir); \
++	fi
++
++	@cd $(libc_so_objs_dir); \
++	for file in $(libc_so_src_c_files); do \
++		$(CC) $(libc_cflags) $(libc_includes) -ULIBC_STATIC -c $(CURDIR)/$$file; \
++	done
++
++	@cd $(libc_so_objs_dir); \
++	for file in $(libc_so_src_cpp_files); do \
++		$(CXX) $(libc_cppflags) $(libc_includes) -ULIBC_STATIC -c $(CURDIR)/$$file; \
++	done
++
++	@cd $(libc_so_objs_dir); \
++	for file in $(libc_so_src_s_files); do \
++		$(CC) -D__ASSEMBLY__ $(libc_includes) -DPLATFORM_SDK_VERSION=24 -c $(CURDIR)/$$file; \
++	done
++
++	@$(CXX) $(libc_so_obj_files) $(libc_so_a_files) -Wl,-soname,libc.so -o libc.so.1 $(libc_so_ldflags) -nostdlib
++
++	@rm -f libc.so
++	@ln -s libc.so.1 libc.so
++
++#	@$(STRIP) -s libc.so
++
++clean:
++	@$(RM) -rf *.o *.a *.so
++	@$(RM) -rf ./arch-$(TARGET_ARCH)/syscalls/*.o
++	@$(RM) -rf $(libc_bionic_ndk_objs_dir) $(libc_bionic_objs_dir) $(libc_cxa_objs_dir) $(libc_dns_objs_dir) $(libc_freebsd_objs_dir) $(libc_gdtoa_objs_dir) $(libc_init_static_objs_dir) $(libc_malloc_objs_dir) $(libc_netbsd_objs_dir) $(libc_nomalloc_objs_dir) $(libc_objs_dir) $(libc_openbsd_ndk_objs_dir) $(libc_openbsd_objs_dir) $(libc_pthread_objs_dir) $(libc_so_objs_dir) $(libc_stack_protector_objs_dir) $(libc_syscalls_objs_dir) $(libc_tzcode_objs_dir) 
+\ No newline at end of file
+diff --git a/libc/arch-arm64/arm64.mk b/libc/arch-arm64/arm64.mk
+index 9a76072..49b6690 100644
+--- a/libc/arch-arm64/arm64.mk
++++ b/libc/arch-arm64/arm64.mk
+@@ -4,6 +4,9 @@
+ # Generic arm64 optimizations, may be overriden by CPU variants.
+ #
+ 
++# aos-note: use generic as default
++TARGET_CPU_VARIANT ?= generic
++
+ libc_bionic_src_files_arm64 += \
+     arch-arm64/generic/bionic/memchr.S \
+     arch-arm64/generic/bionic/memcmp.S \
+diff --git a/libc/arch-x86_64/x86_64.mk b/libc/arch-x86_64/x86_64.mk
+index ce06217..d6904c3 100644
+--- a/libc/arch-x86_64/x86_64.mk
++++ b/libc/arch-x86_64/x86_64.mk
+@@ -32,6 +32,11 @@ libc_bionic_src_files_x86_64 += \
+ # Optimized memory/string functions.
+ #
+ 
++#
++# aos-note: most iot devices do not support sse4
++# arch-x86_64/string/sse4-memcmp-slm.S \
++#
++
+ libc_bionic_src_files_x86_64 += \
+     arch-x86_64/string/sse2-memcpy-slm.S \
+     arch-x86_64/string/sse2-memmove-slm.S \
+@@ -45,9 +50,9 @@ libc_bionic_src_files_x86_64 += \
+     arch-x86_64/string/sse2-strlen-slm.S \
+     arch-x86_64/string/sse2-strncat-slm.S \
+     arch-x86_64/string/sse2-strncpy-slm.S \
+-    arch-x86_64/string/sse4-memcmp-slm.S \
+     arch-x86_64/string/ssse3-strcmp-slm.S \
+     arch-x86_64/string/ssse3-strncmp-slm.S \
++    arch-mips/string/memcmp.c \
+ 
+ libc_crt_target_cflags_x86_64 += \
+     -m64 \
+@@ -63,3 +68,4 @@ libc_crt_target_crtbegin_so_file_x86_64 := \
+ 
+ libc_crt_target_so_cflags_x86_64 := \
+     -fPIC \
++
+diff --git a/libc/libc.arm64.map b/libc/libc.arm64.map
+index afbd0ee..23d84b5 100644
+--- a/libc/libc.arm64.map
++++ b/libc/libc.arm64.map
+@@ -1135,6 +1135,45 @@ LIBC {
+     write;
+     writev;
+     wscanf;
++    setspent;
++    endspent;
++    getspent;
++    getspnam;
++    sgetspent;
++    fgetspent;
++    putspent;
++    getspent_r;
++    getspnam_r;
++    sgetspent_r;
++    fgetspent_r;
++    lckpwdf;
++    ulckpwdf;
++    fgetpwent;
++    putpwent;
++    fgetgrent;
++    putgrent;
++    getpwent;
++    endpwent;
++    setpwent;
++    getutid;
++    crypt;
++    crypt_r;
++    pthread_cancel;
++    endutxent;
++    getutxent;
++    getutxid;
++    pututxline;
++    setutxent;
++    utmpxname;
++    mblen;
++    setgrent;
++    getgrent;
++    endgrent;
++    updwtmpx;
++    iopl;
++    ioperm;
++    vhangup;
++    nl_langinfo;
+   local:
+     *;
+ };
+diff --git a/libc/libc.x86_64.map b/libc/libc.x86_64.map
+index afbd0ee..23d84b5 100644
+--- a/libc/libc.x86_64.map
++++ b/libc/libc.x86_64.map
+@@ -1135,6 +1135,45 @@ LIBC {
+     write;
+     writev;
+     wscanf;
++    setspent;
++    endspent;
++    getspent;
++    getspnam;
++    sgetspent;
++    fgetspent;
++    putspent;
++    getspent_r;
++    getspnam_r;
++    sgetspent_r;
++    fgetspent_r;
++    lckpwdf;
++    ulckpwdf;
++    fgetpwent;
++    putpwent;
++    fgetgrent;
++    putgrent;
++    getpwent;
++    endpwent;
++    setpwent;
++    getutid;
++    crypt;
++    crypt_r;
++    pthread_cancel;
++    endutxent;
++    getutxent;
++    getutxid;
++    pututxline;
++    setutxent;
++    utmpxname;
++    mblen;
++    setgrent;
++    getgrent;
++    endgrent;
++    updwtmpx;
++    iopl;
++    ioperm;
++    vhangup;
++    nl_langinfo;
+   local:
+     *;
+ };
+diff --git a/libdl/Makefile b/libdl/Makefile
+new file mode 100644
+index 0000000..22de567
+--- /dev/null
++++ b/libdl/Makefile
+@@ -0,0 +1,61 @@
++ifeq ($(TARGET_ARCH), x86_64)
++TARGET_ASM_DIR := asm-x86
++TARGET_LIBM_DIR := amd64
++endif
++
++ifeq ($(TARGET_ARCH), arm64)
++TARGET_ASM_DIR := asm-arm64
++TARGET_LIBM_DIR := arm64
++endif
++
++ifeq ($(TARGET_ARCH),x86_64)
++LDFLAGS += \
++-Wl,--version-script=./libdl.x86_64.map \
++-Wl,--exclude-libs=libgcc.a \
++-Wl,--exclude-libs=libgcc_eh.a
++endif
++
++ifeq ($(TARGET_ARCH),arm64)
++LDFLAGS += \
++	-Wl,--version-script=./libdl.arm64.map \
++	-Wl,--exclude-libs=libgcc.a
++endif
++
++CFLAGS += \
++	-nostdinc \
++	-std=gnu99 \
++	-O2 \
++	-fno-exceptions \
++
++LDFLAGS += \
++	$(SYSROOT)/usr/lib/crtbegin_so.o \
++	-Wl,--no-whole-archive \
++	$(GCC_LIB)/libgcc.a \
++	$(SYSROOT)/usr/lib/crtend_so.o \
++	-fuse-ld=gold \
++
++INCLUDES := \
++	-I ./ \
++	-I ../../system/core/include \
++	-I ../libc/arch-$(TARGET_ARCH)/include \
++	-I ../libc/include \
++	-I ../libc/kernel/uapi \
++	-I ../libc/kernel/common \
++	-I ../libc/kernel/uapi/$(TARGET_ASM_DIR) \
++	-I ../libm/include \
++	-I ../libm/include/$(TARGET_LIBM_DIR) \
++	-I $(GCC_INCLUDE)/include \
++	-I $(GCC_INCLUDE)/include-fixed \
++
++libdl:
++	@echo "building libdl"
++
++	@$(CC) $(CFLAGS) $(INCLUDES) -c libdl.c
++	@$(AR) crsPD libdl.a libdl.o
++	@$(CXX) $(LDFLAGS) -nostdlib -Wl,-soname,libdl.so -Wl,-shared libdl.o -o libdl.so.1
++
++	@rm -f libdl.so
++	@ln -s libdl.so.1 libdl.so
++
++clean:
++	@$(RM) -rf *.o *.a *.so
+\ No newline at end of file
+diff --git a/libm/Makefile b/libm/Makefile
+new file mode 100644
+index 0000000..7d683e1
+--- /dev/null
++++ b/libm/Makefile
+@@ -0,0 +1,452 @@
++ifeq ($(TARGET_ARCH), x86_64)
++TARGET_ASM_DIR := asm-x86
++TARGET_LIBM_DIR := amd64
++endif
++
++ifeq ($(TARGET_ARCH), arm64)
++TARGET_ASM_DIR := asm-arm64
++TARGET_LIBM_DIR := arm64
++endif
++
++ARCH_X86_HAVE_SSE4_1 = false
++
++INCLUDES := \
++	-I ./upstream-freebsd/lib/msun/src \
++	-I ./upstream-freebsd/lib/msun/ld128 \
++	-I ./ \
++	-I ../../system/core/include \
++	-I ../libc/arch-$(TARGET_ARCH)/include \
++	-I ../libc/include \
++	-I ../libc/kernel/uapi \
++	-I ../libc/kernel/common \
++	-I ../libc/kernel/uapi/$(TARGET_ASM_DIR) \
++	-I ./include \
++	-I ./include/$(TARGET_LIBM_DIR) \
++	-I ../libc \
++	-I $(GCC_INCLUDE)/include \
++	-I $(GCC_INCLUDE)/include-fixed \
++
++# -----------------------------------------------------------------------------
++# libm.a
++# -----------------------------------------------------------------------------
++
++libm_src_files := \
++	upstream-freebsd/lib/msun/bsdsrc/b_exp.c \
++	upstream-freebsd/lib/msun/bsdsrc/b_log.c \
++	upstream-freebsd/lib/msun/bsdsrc/b_tgamma.c \
++	upstream-freebsd/lib/msun/src/catrig.c \
++	upstream-freebsd/lib/msun/src/catrigf.c \
++	upstream-freebsd/lib/msun/src/e_acos.c \
++	upstream-freebsd/lib/msun/src/e_acosf.c \
++	upstream-freebsd/lib/msun/src/e_acosh.c \
++	upstream-freebsd/lib/msun/src/e_acoshf.c \
++	upstream-freebsd/lib/msun/src/e_asin.c \
++	upstream-freebsd/lib/msun/src/e_asinf.c \
++	upstream-freebsd/lib/msun/src/e_atan2.c \
++	upstream-freebsd/lib/msun/src/e_atan2f.c \
++	upstream-freebsd/lib/msun/src/e_atanh.c \
++	upstream-freebsd/lib/msun/src/e_atanhf.c \
++	upstream-freebsd/lib/msun/src/e_cosh.c \
++	upstream-freebsd/lib/msun/src/e_coshf.c \
++	upstream-freebsd/lib/msun/src/e_exp.c \
++	upstream-freebsd/lib/msun/src/e_expf.c \
++	upstream-freebsd/lib/msun/src/e_fmod.c \
++	upstream-freebsd/lib/msun/src/e_fmodf.c \
++	upstream-freebsd/lib/msun/src/e_gamma.c \
++	upstream-freebsd/lib/msun/src/e_gammaf.c \
++	upstream-freebsd/lib/msun/src/e_gammaf_r.c \
++	upstream-freebsd/lib/msun/src/e_gamma_r.c \
++	upstream-freebsd/lib/msun/src/e_hypot.c \
++	upstream-freebsd/lib/msun/src/e_hypotf.c \
++	upstream-freebsd/lib/msun/src/e_j0.c \
++	upstream-freebsd/lib/msun/src/e_j0f.c \
++	upstream-freebsd/lib/msun/src/e_j1.c \
++	upstream-freebsd/lib/msun/src/e_j1f.c \
++	upstream-freebsd/lib/msun/src/e_jn.c \
++	upstream-freebsd/lib/msun/src/e_jnf.c \
++	upstream-freebsd/lib/msun/src/e_lgamma.c \
++	upstream-freebsd/lib/msun/src/e_lgammaf.c \
++	upstream-freebsd/lib/msun/src/e_lgammaf_r.c \
++	upstream-freebsd/lib/msun/src/e_lgamma_r.c \
++	upstream-freebsd/lib/msun/src/e_log10.c \
++	upstream-freebsd/lib/msun/src/e_log10f.c \
++	upstream-freebsd/lib/msun/src/e_log2.c \
++	upstream-freebsd/lib/msun/src/e_log2f.c \
++	upstream-freebsd/lib/msun/src/e_log.c \
++	upstream-freebsd/lib/msun/src/e_logf.c \
++	upstream-freebsd/lib/msun/src/e_pow.c \
++	upstream-freebsd/lib/msun/src/e_powf.c \
++	upstream-freebsd/lib/msun/src/e_remainder.c \
++	upstream-freebsd/lib/msun/src/e_remainderf.c \
++	upstream-freebsd/lib/msun/src/e_rem_pio2.c \
++	upstream-freebsd/lib/msun/src/e_rem_pio2f.c \
++	upstream-freebsd/lib/msun/src/e_scalb.c \
++	upstream-freebsd/lib/msun/src/e_scalbf.c \
++	upstream-freebsd/lib/msun/src/e_sinh.c \
++	upstream-freebsd/lib/msun/src/e_sinhf.c \
++	upstream-freebsd/lib/msun/src/e_sqrt.c \
++	upstream-freebsd/lib/msun/src/e_sqrtf.c \
++	upstream-freebsd/lib/msun/src/imprecise.c \
++	upstream-freebsd/lib/msun/src/k_cos.c \
++	upstream-freebsd/lib/msun/src/k_cosf.c \
++	upstream-freebsd/lib/msun/src/k_exp.c \
++	upstream-freebsd/lib/msun/src/k_expf.c \
++	upstream-freebsd/lib/msun/src/k_rem_pio2.c \
++	upstream-freebsd/lib/msun/src/k_sin.c \
++	upstream-freebsd/lib/msun/src/k_sinf.c \
++	upstream-freebsd/lib/msun/src/k_tan.c \
++	upstream-freebsd/lib/msun/src/k_tanf.c \
++	upstream-freebsd/lib/msun/src/s_asinh.c \
++	upstream-freebsd/lib/msun/src/s_asinhf.c \
++	upstream-freebsd/lib/msun/src/s_atan.c \
++	upstream-freebsd/lib/msun/src/s_atanf.c \
++	upstream-freebsd/lib/msun/src/s_carg.c \
++	upstream-freebsd/lib/msun/src/s_cargf.c \
++	upstream-freebsd/lib/msun/src/s_cargl.c \
++	upstream-freebsd/lib/msun/src/s_cbrt.c \
++	upstream-freebsd/lib/msun/src/s_cbrtf.c \
++	upstream-freebsd/lib/msun/src/s_ccosh.c \
++	upstream-freebsd/lib/msun/src/s_ccoshf.c \
++	upstream-freebsd/lib/msun/src/s_ceil.c \
++	upstream-freebsd/lib/msun/src/s_ceilf.c \
++	upstream-freebsd/lib/msun/src/s_cexp.c \
++	upstream-freebsd/lib/msun/src/s_cexpf.c \
++	upstream-freebsd/lib/msun/src/s_cimag.c \
++	upstream-freebsd/lib/msun/src/s_cimagf.c \
++	upstream-freebsd/lib/msun/src/s_cimagl.c \
++	upstream-freebsd/lib/msun/src/s_conj.c \
++	upstream-freebsd/lib/msun/src/s_conjf.c \
++	upstream-freebsd/lib/msun/src/s_conjl.c \
++	upstream-freebsd/lib/msun/src/s_copysign.c \
++	upstream-freebsd/lib/msun/src/s_copysignf.c \
++	upstream-freebsd/lib/msun/src/s_cos.c \
++	upstream-freebsd/lib/msun/src/s_cosf.c \
++	upstream-freebsd/lib/msun/src/s_cproj.c \
++	upstream-freebsd/lib/msun/src/s_cprojf.c \
++	upstream-freebsd/lib/msun/src/s_cprojl.c \
++	upstream-freebsd/lib/msun/src/s_creal.c \
++	upstream-freebsd/lib/msun/src/s_crealf.c \
++	upstream-freebsd/lib/msun/src/s_creall.c \
++	upstream-freebsd/lib/msun/src/s_csinh.c \
++	upstream-freebsd/lib/msun/src/s_csinhf.c \
++	upstream-freebsd/lib/msun/src/s_csqrt.c \
++	upstream-freebsd/lib/msun/src/s_csqrtf.c \
++	upstream-freebsd/lib/msun/src/s_csqrtl.c \
++	upstream-freebsd/lib/msun/src/s_ctanh.c \
++	upstream-freebsd/lib/msun/src/s_ctanhf.c \
++	upstream-freebsd/lib/msun/src/s_erf.c \
++	upstream-freebsd/lib/msun/src/s_erff.c \
++	upstream-freebsd/lib/msun/src/s_exp2.c \
++	upstream-freebsd/lib/msun/src/s_exp2f.c \
++	upstream-freebsd/lib/msun/src/s_expm1.c \
++	upstream-freebsd/lib/msun/src/s_expm1f.c \
++	upstream-freebsd/lib/msun/src/s_fdim.c \
++	upstream-freebsd/lib/msun/src/s_finite.c \
++	upstream-freebsd/lib/msun/src/s_finitef.c \
++	upstream-freebsd/lib/msun/src/s_floor.c \
++	upstream-freebsd/lib/msun/src/s_floorf.c \
++	upstream-freebsd/lib/msun/src/s_fma.c \
++	upstream-freebsd/lib/msun/src/s_fmaf.c \
++	upstream-freebsd/lib/msun/src/s_fmax.c \
++	upstream-freebsd/lib/msun/src/s_fmaxf.c \
++	upstream-freebsd/lib/msun/src/s_fmin.c \
++	upstream-freebsd/lib/msun/src/s_fminf.c \
++	upstream-freebsd/lib/msun/src/s_frexp.c \
++	upstream-freebsd/lib/msun/src/s_frexpf.c \
++	upstream-freebsd/lib/msun/src/s_ilogb.c \
++	upstream-freebsd/lib/msun/src/s_ilogbf.c \
++	upstream-freebsd/lib/msun/src/s_llrint.c \
++	upstream-freebsd/lib/msun/src/s_llrintf.c \
++	upstream-freebsd/lib/msun/src/s_llround.c \
++	upstream-freebsd/lib/msun/src/s_llroundf.c \
++	upstream-freebsd/lib/msun/src/s_log1p.c \
++	upstream-freebsd/lib/msun/src/s_log1pf.c \
++	upstream-freebsd/lib/msun/src/s_logb.c \
++	upstream-freebsd/lib/msun/src/s_logbf.c \
++	upstream-freebsd/lib/msun/src/s_lrint.c \
++	upstream-freebsd/lib/msun/src/s_lrintf.c \
++	upstream-freebsd/lib/msun/src/s_lround.c \
++	upstream-freebsd/lib/msun/src/s_lroundf.c \
++	upstream-freebsd/lib/msun/src/s_modf.c \
++	upstream-freebsd/lib/msun/src/s_modff.c \
++	upstream-freebsd/lib/msun/src/s_nan.c \
++	upstream-freebsd/lib/msun/src/s_nearbyint.c \
++	upstream-freebsd/lib/msun/src/s_nextafter.c \
++	upstream-freebsd/lib/msun/src/s_nextafterf.c \
++	upstream-freebsd/lib/msun/src/s_remquo.c \
++	upstream-freebsd/lib/msun/src/s_remquof.c \
++	upstream-freebsd/lib/msun/src/s_rint.c \
++	upstream-freebsd/lib/msun/src/s_rintf.c \
++	upstream-freebsd/lib/msun/src/s_round.c \
++	upstream-freebsd/lib/msun/src/s_roundf.c \
++	upstream-freebsd/lib/msun/src/s_scalbln.c \
++	upstream-freebsd/lib/msun/src/s_scalbn.c \
++	upstream-freebsd/lib/msun/src/s_scalbnf.c \
++	upstream-freebsd/lib/msun/src/s_signgam.c \
++	upstream-freebsd/lib/msun/src/s_significand.c \
++	upstream-freebsd/lib/msun/src/s_significandf.c \
++	upstream-freebsd/lib/msun/src/s_sin.c \
++	upstream-freebsd/lib/msun/src/s_sinf.c \
++	upstream-freebsd/lib/msun/src/s_tan.c \
++	upstream-freebsd/lib/msun/src/s_tanf.c \
++	upstream-freebsd/lib/msun/src/s_tanh.c \
++	upstream-freebsd/lib/msun/src/s_tanhf.c \
++	upstream-freebsd/lib/msun/src/s_tgammaf.c \
++	upstream-freebsd/lib/msun/src/s_trunc.c \
++	upstream-freebsd/lib/msun/src/s_truncf.c \
++	upstream-freebsd/lib/msun/src/w_cabs.c \
++	upstream-freebsd/lib/msun/src/w_cabsf.c \
++	upstream-freebsd/lib/msun/src/w_cabsl.c \
++	upstream-freebsd/lib/msun/src/w_drem.c \
++	upstream-freebsd/lib/msun/src/w_dremf.c \
++	digittoint.c  \
++	significandl.c \
++	sincos.c \
++	signbit.c \
++	fabs.cpp \
++
++libm_src_files_64 := \
++	upstream-freebsd/lib/msun/src/e_acosl.c \
++	upstream-freebsd/lib/msun/src/e_acoshl.c \
++	upstream-freebsd/lib/msun/src/e_asinl.c \
++	upstream-freebsd/lib/msun/src/e_atan2l.c \
++	upstream-freebsd/lib/msun/src/e_atanhl.c \
++	upstream-freebsd/lib/msun/src/e_fmodl.c \
++	upstream-freebsd/lib/msun/src/e_hypotl.c \
++	upstream-freebsd/lib/msun/src/e_lgammal.c \
++	upstream-freebsd/lib/msun/src/e_remainderl.c \
++	upstream-freebsd/lib/msun/src/e_sqrtl.c \
++	upstream-freebsd/lib/msun/src/s_asinhl.c \
++	upstream-freebsd/lib/msun/src/s_atanl.c \
++	upstream-freebsd/lib/msun/src/s_cbrtl.c \
++	upstream-freebsd/lib/msun/src/s_ceill.c \
++	upstream-freebsd/lib/msun/src/s_copysignl.c \
++	upstream-freebsd/lib/msun/src/e_coshl.c \
++	upstream-freebsd/lib/msun/src/s_cosl.c \
++	upstream-freebsd/lib/msun/src/s_floorl.c \
++	upstream-freebsd/lib/msun/src/s_fmal.c \
++	upstream-freebsd/lib/msun/src/s_fmaxl.c \
++	upstream-freebsd/lib/msun/src/s_fminl.c \
++	upstream-freebsd/lib/msun/src/s_modfl.c \
++	upstream-freebsd/lib/msun/src/s_frexpl.c \
++	upstream-freebsd/lib/msun/src/s_ilogbl.c \
++	upstream-freebsd/lib/msun/src/s_llrintl.c \
++	upstream-freebsd/lib/msun/src/s_llroundl.c \
++	upstream-freebsd/lib/msun/src/s_logbl.c \
++	upstream-freebsd/lib/msun/src/s_lrintl.c \
++	upstream-freebsd/lib/msun/src/s_lroundl.c \
++	upstream-freebsd/lib/msun/src/s_nextafterl.c \
++	upstream-freebsd/lib/msun/src/s_nexttoward.c \
++	upstream-freebsd/lib/msun/src/s_nexttowardf.c \
++	upstream-freebsd/lib/msun/src/s_remquol.c \
++	upstream-freebsd/lib/msun/src/s_rintl.c \
++	upstream-freebsd/lib/msun/src/s_roundl.c \
++	upstream-freebsd/lib/msun/src/s_scalbnl.c \
++	upstream-freebsd/lib/msun/src/e_sinhl.c \
++	upstream-freebsd/lib/msun/src/s_sinl.c \
++	upstream-freebsd/lib/msun/src/s_tanhl.c \
++	upstream-freebsd/lib/msun/src/s_tanl.c \
++	upstream-freebsd/lib/msun/src/s_truncl.c \
++	upstream-freebsd/lib/msun/ld128/invtrig.c \
++	upstream-freebsd/lib/msun/ld128/e_lgammal_r.c \
++	upstream-freebsd/lib/msun/ld128/k_cosl.c \
++	upstream-freebsd/lib/msun/ld128/k_sinl.c \
++	upstream-freebsd/lib/msun/ld128/k_tanl.c \
++	upstream-freebsd/lib/msun/ld128/s_erfl.c \
++	upstream-freebsd/lib/msun/ld128/s_exp2l.c \
++	upstream-freebsd/lib/msun/ld128/s_expl.c \
++	upstream-freebsd/lib/msun/ld128/s_logl.c \
++	upstream-freebsd/lib/msun/ld128/s_nanl.c \
++
++libm_src_files_arm64 := \
++	arm64/ceil.S \
++	arm64/fenv.c \
++	arm64/fma.S \
++	arm64/floor.S \
++	arm64/lrint.S \
++	arm64/rint.S \
++	arm64/sqrt.S \
++	arm64/trunc.S \
++
++libm_src_files_exclude_arm64 += \
++	upstream-freebsd/lib/msun/src/e_sqrt.c \
++	upstream-freebsd/lib/msun/src/e_sqrtf.c \
++	upstream-freebsd/lib/msun/src/s_ceil.c \
++	upstream-freebsd/lib/msun/src/s_ceilf.c \
++	upstream-freebsd/lib/msun/src/s_fma.c \
++	upstream-freebsd/lib/msun/src/s_fmaf.c \
++	upstream-freebsd/lib/msun/src/s_floor.c \
++	upstream-freebsd/lib/msun/src/s_floorf.c \
++	upstream-freebsd/lib/msun/src/s_llrint.c \
++	upstream-freebsd/lib/msun/src/s_llrintf.c \
++	upstream-freebsd/lib/msun/src/s_lrint.c \
++	upstream-freebsd/lib/msun/src/s_lrintf.c \
++	upstream-freebsd/lib/msun/src/s_rint.c \
++	upstream-freebsd/lib/msun/src/s_rintf.c \
++	upstream-freebsd/lib/msun/src/s_trunc.c \
++	upstream-freebsd/lib/msun/src/s_truncf.c \
++
++libm_src_files_x86_64 := \
++	amd64/fenv.c \
++	x86_64/sqrt.S \
++	x86_64/sqrtf.S \
++	x86_64/e_acos.S \
++	x86_64/e_asin.S \
++	x86_64/e_atan2.S \
++	x86_64/e_cosh.S \
++	x86_64/e_exp.S \
++	x86_64/e_hypot.S \
++	x86_64/e_log10.S \
++	x86_64/e_log.S \
++	x86_64/e_pow.S \
++	x86_64/e_sinh.S \
++	x86_64/lrint.S \
++	x86_64/lrintf.S \
++	x86_64/s_atan.S \
++	x86_64/s_cbrt.S \
++	x86_64/s_cos.S \
++	x86_64/s_expm1.S \
++	x86_64/s_log1p.S \
++	x86_64/s_sin.S \
++	x86_64/s_tanh.S \
++	x86_64/s_tan.S \
++
++libm_src_files_exclude_x86_64 += \
++	upstream-freebsd/lib/msun/src/e_acos.c \
++	upstream-freebsd/lib/msun/src/e_asin.c \
++	upstream-freebsd/lib/msun/src/e_atan2.c \
++	upstream-freebsd/lib/msun/src/e_cosh.c \
++	upstream-freebsd/lib/msun/src/e_exp.c \
++	upstream-freebsd/lib/msun/src/e_hypot.c \
++	upstream-freebsd/lib/msun/src/e_log.c \
++	upstream-freebsd/lib/msun/src/e_log10.c \
++	upstream-freebsd/lib/msun/src/e_pow.c \
++	upstream-freebsd/lib/msun/src/e_sinh.c \
++	upstream-freebsd/lib/msun/src/e_sqrt.c \
++	upstream-freebsd/lib/msun/src/e_sqrtf.c \
++	upstream-freebsd/lib/msun/src/s_atan.c \
++	upstream-freebsd/lib/msun/src/s_cbrt.c \
++	upstream-freebsd/lib/msun/src/s_cos.c \
++	upstream-freebsd/lib/msun/src/s_expm1.c \
++	upstream-freebsd/lib/msun/src/s_log1p.c \
++	upstream-freebsd/lib/msun/src/s_llrint.c \
++	upstream-freebsd/lib/msun/src/s_llrintf.c \
++	upstream-freebsd/lib/msun/src/s_lrint.c \
++	upstream-freebsd/lib/msun/src/s_lrintf.c \
++	upstream-freebsd/lib/msun/src/s_sin.c \
++	upstream-freebsd/lib/msun/src/s_tan.c \
++	upstream-freebsd/lib/msun/src/s_tanh.c \
++
++ifeq ($(ARCH_X86_HAVE_SSE4_1),true)
++libm_src_files_x86_64 += \
++	x86_64/ceil.S \
++	x86_64/ceilf.S \
++	x86_64/floor.S \
++	x86_64/floorf.S \
++	x86_64/rint.S \
++	x86_64/rintf.S \
++	x86_64/trunc.S \
++	x86_64/truncf.S \
++
++libm_src_files_exclude_x86_64 += \
++	upstream-freebsd/lib/msun/src/s_ceil.c \
++	upstream-freebsd/lib/msun/src/s_ceilf.c \
++	upstream-freebsd/lib/msun/src/s_floor.c \
++	upstream-freebsd/lib/msun/src/s_floorf.c \
++	upstream-freebsd/lib/msun/src/s_rint.c \
++	upstream-freebsd/lib/msun/src/s_rintf.c \
++	upstream-freebsd/lib/msun/src/s_trunc.c \
++	upstream-freebsd/lib/msun/src/s_truncf.c \
++
++endif
++
++libm_src_files += $(libm_src_files_$(TARGET_ARCH)) $(libm_src_files_64)
++
++libm_src_c_files = \
++	$(filter-out %.cpp %.S, $(filter-out $(libm_src_files_exclude_$(TARGET_ARCH)), $(libm_src_files)))
++
++libm_src_cpp_files = \
++	$(filter-out %.c %.S, $(filter-out $(libm_src_files_exclude_$(TARGET_ARCH)), $(libm_src_files)))
++
++libm_src_s_files = \
++	$(filter-out %.c %.cpp, $(filter-out $(libm_src_files_exclude_$(TARGET_ARCH)), $(libm_src_files)))
++
++LOCAL_PATH := $(CURDIR)
++
++libm_cflags := \
++	$(CFLAGS) \
++	-O2 \
++	-D__BIONIC_NO_MATH_INLINES \
++	-DFLT_EVAL_METHOD=0 \
++	-Werror \
++	-Wno-missing-braces \
++	-Wno-parentheses \
++	-Wno-sign-compare \
++	-Wno-uninitialized \
++	-Wno-unknown-pragmas \
++	-fvisibility=hidden \
++	-fno-builtin-rint \
++	-fno-builtin-rintf \
++	-fno-builtin-rintl \
++	-nostdinc \
++	-fno-exceptions \
++
++libm_conlyflags := \
++	-std=gnu99 \
++	-D_FORTIFY_SOURCE=2 \
++
++libm_cppflags := \
++	$(CXXFLAGS) \
++	-std=gnu++11 \
++
++libm_incudes := \
++	$(INCLUDES) \
++
++libm_obj_files = \
++	$(patsubst %.c,%.o,$(notdir $(libm_src_c_files))) \
++	$(patsubst %.S,%.o,$(notdir $(libm_src_s_files))) \
++	$(patsubst %.cpp,%.o,$(notdir $(libm_src_cpp_files))) \
++
++libm_so_ldflags = \
++	$(LDFLAGS) \
++	$(SYSROOT)/usr/lib/crtbegin_so.o \
++	-Wl,--version-script,./libm.$(TARGET_ARCH).map \
++	-Wl,--no-undefined \
++	$(SYSROOT)/usr/lib/crtend_so.o \
++	-fuse-ld=gold \
++
++libm_so_a_files = \
++	-Wl,--whole-archive \
++	libm.a \
++	-Wl,--no-whole-archive \
++	$(GCC_LIB)/libgcc.a \
++	-L ../libc -lc \
++
++all:
++	@echo "building libm"
++
++	@for file in $(libm_src_c_files); do \
++		$(CC) $(libm_cflags) $(libm_conlyflags) $(libm_incudes) -include freebsd-compat.h -c $$file; \
++	done
++
++	@for file in $(libm_src_cpp_files); do \
++		$(CXX) $(libm_cflags) $(libm_cppflags) $(libm_incudes) -include freebsd-compat.h -c $$file; \
++	done
++
++	@for file in $(libm_src_s_files); do \
++		$(CXX) -D__ASSEMBLY__ $(libm_incudes) -c $$file; \
++	done
++
++	@$(RM) -rf libm.a
++
++	@$(AR) crsPD libm.a $(libm_obj_files)
++
++	@$(CXX) -nostdlib -Wl,-soname,libm.so -Wl,-shared $(libm_so_a_files) -Wl,-soname,libm.so -o libm.so.1 $(libm_so_ldflags)
++
++	@rm -f libm.so
++	@ln -s libm.so.1 libm.so
++
++#	@$(STRIP) -s libm.so
++
++clean:
++	@rm -rf *.o *.a *.so
+\ No newline at end of file
+diff --git a/linker/Makefile b/linker/Makefile
+new file mode 100644
+index 0000000..9927cf8
+--- /dev/null
++++ b/linker/Makefile
+@@ -0,0 +1,121 @@
++ifeq ($(TARGET_ARCH), x86_64)
++TARGET_ASM_DIR := asm-x86
++TARGET_LIBM_DIR := amd64
++endif
++
++ifeq ($(TARGET_ARCH), arm64)
++TARGET_ASM_DIR := asm-arm64
++TARGET_LIBM_DIR := arm64
++endif
++
++linker_src_files := \
++	debugger.cpp \
++	dlfcn.cpp \
++	linker.cpp \
++	linker_allocator.cpp \
++	linker_block_allocator.cpp \
++	linker_dlwarning.cpp \
++	linker_gdb_support.cpp \
++	linker_libc_support.c \
++	linker_mapped_file_fragment.cpp \
++	linker_memory.cpp \
++	linker_phdr.cpp \
++	linker_sdk_versions.cpp \
++	linker_utils.cpp \
++	rt.cpp \
++
++linker_src_files += arch/$(TARGET_ARCH)/begin.S
++
++linker_includes := \
++	-I ./ \
++	-I ../libc \
++	-I ../../system/core/base/include \
++	-I ../../external/zlib \
++	-I $(SYSROOT)/usr/include/c++/$(GCC_VERSION) \
++	-I $(SYSROOT)/usr/include/c++/$(GCC_VERSION)/$(TARGET_NAME) \
++	-I ../libc/include \
++	-I ../../system/core/include \
++	-I ../libc/arch-$(TARGET_ARCH)/include \
++	-I ../libc/kernel/uapi \
++	-I ../libc/kernel/linux \
++	-I ../libc/kernel/common \
++	-I ../libc/kernel/uapi/$(TARGET_ASM_DIR) \
++	-I ../libm/include \
++	-I ../libm/include/$(TARGET_LIBM_DIR) \
++	-I $(GCC_INCLUDE)/include \
++	-I $(GCC_INCLUDE)/include-fixed \
++
++linker_cflags := \
++	$(CFLAGS) \
++	-D_LIBC=1 \
++	-O2 \
++	-fPIE \
++	-pie \
++	-fno-exceptions \
++	-nostdinc \
++	-fno-stack-protector \
++	-Wstrict-overflow=5 \
++	-fvisibility=hidden \
++
++linker_conlyflags := \
++	-std=gnu99 \
++
++linker_cppflags := \
++	-std=gnu++14 \
++	-nostdinc++ \
++
++linker_src_c_files := \
++	$(filter-out %.cpp %.S, $(linker_src_files))
++
++linker_src_cpp_files := \
++	$(filter-out %.c %.S, $(linker_src_files))
++
++linker_src_s_files := \
++	$(filter-out %.c %.cpp, $(linker_src_files))
++
++linker_obj_files := \
++	$(patsubst %.c,%.o,$(notdir $(linker_src_c_files))) \
++	$(patsubst %.cpp,%.o,$(notdir $(linker_src_cpp_files))) \
++	$(patsubst %.S,%.o,$(notdir $(linker_src_s_files))) \
++
++linker_ldflags := \
++	$(LDFLAGS) \
++	-nostdlib \
++	-shared \
++	-Wl,-Bsymbolic \
++	-Wl,--exclude-libs,ALL \
++	-Wl,--no-undefined \
++	-Wl,--no-whole-archive \
++	$(SYSROOT)/usr/lib/libdl.a \
++	../../system/core/base/libbase.a \
++	-Wl,--start-group \
++	$(SYSROOT)/usr/lib/libc.a \
++	$(SYSROOT)/usr/lib/libm.a \
++	$(SYSROOT)/usr/lib/libc_nomalloc.a \
++	$(GCC_LIB)/libgcc.a \
++	$(GCC_LIB)/libgcc_eh.a \
++	$(SYSROOT)/usr/lib/libstdc++.a \
++	-Wl,--end-group \
++	-fuse-ld=gold \
++
++linker:
++	@for file in $(linker_src_c_files); do \
++		$(CC) $(linker_cflags) $(linker_conlyflags) $(linker_includes) -c $$file; \
++	done
++
++	@for file in $(linker_src_cpp_files); do \
++		$(CXX) $(linker_cflags) $(linker_cppflags) $(linker_includes) -c $$file; \
++	done
++
++	@for file in $(linker_src_s_files); do \
++		$(CC) -D__ASSEMBLY__ $(linker_includes) -c $$file; \
++	done
++
++	@$(CXX) $(linker_ldflags) -o linker64 $(linker_obj_files) $(linker_ldflags) $(linker_start_group)
++
++	@$(OBJCOPY) --prefix-symbols=__dl_ linker64
++
++#	@$(STRIP) -s ./linker64
++
++clean:
++	@$(RM) *.o *.so linker64
+-- 
+2.7.4
+

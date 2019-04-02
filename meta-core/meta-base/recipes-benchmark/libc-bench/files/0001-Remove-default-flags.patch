@@ -1,0 +1,28 @@
+From e6c36f158a3daca922c06e3b73c1eef66eebc495 Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Thu, 20 Dec 2018 17:07:10 +0800
+Subject: [PATCH] Remove default flags
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ Makefile | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index efda5c0..4316abc 100644
+--- a/Makefile
++++ b/Makefile
+@@ -2,8 +2,8 @@
+ SRCS = $(sort $(wildcard *.c))
+ OBJS = $(SRCS:.c=.o)
+ 
+-CFLAGS = -Os -D_XOPEN_SOURCE=700
+-LDFLAGS = -static
++CFLAGS += -Os -D_XOPEN_SOURCE=700
++#LDFLAGS = -static
+ LIBS = -lpthread -lrt -lpthread
+ 
+ 
+-- 
+2.7.4
+

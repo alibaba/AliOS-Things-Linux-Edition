@@ -62,7 +62,13 @@ SRC_URI = "${GLIBC_GIT_URI};branch=${SRCBRANCH};name=glibc \
            file://CVE-2017-15671-2.patch \
            file://CVE-2017-15804.patch \
            file://TCWRLGCC-282.patch \
-		   file://fix_glibc_2.24_build_error.patch \
+           file://fix_glibc_2.24_build_error.patch \
+           file://0031-elf-Check-for-empty-tokens-before-dynamic-string-tok.patch \
+           file://CVE-2018-1000001.patch \
+           file://CVE-2018-6485_CVE-2018-6551.patch \
+           file://CVE-2017-18269.patch \
+           file://CVE-2018-11236.patch \
+           file://CVE-2018-11237.patch \
 "
 
 SRC_URI += "\

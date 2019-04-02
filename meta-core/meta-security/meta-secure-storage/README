@@ -1,0 +1,48 @@
+Secure Storage
+============
+This feature provides secure storage for application data. Applications
+can leverage this feature to protect their sensitive data from offline
+attacks or compromised / malicious programs.
+
+In general, this feature takes advantage of eCryptfs to provide secure storage
+for applications. It also provides a secure store library, libsecstore.
+Applications can use the library API to access the secure storage.
+
+The system uid/gid is used to control the access to the secure storage.
+Applications running with the same uid will use the same secure storage.
+This means application can have its own private secure storage if started with
+an unique uid. Applications with different uids are stilled allowd to share
+secret in a shared secure storage - if they have the same gid.
+
+How to use it
+============
+1. Add this layer into your bblayer.conf.
+
+2. Add "Inherit secstore" to you applications' bb files
+
+3. If your application runs with a specified user rather than root,
+add the username to SECSTORE_USER_NAME. e.g.
+
+SECSTORE_USER_NAME += "<username>"
+
+4. Use the libsecstore API in your application to access the securee storage.
+
+5. While using "devtool deploy-target", remember to run "secstore-manager start"
+before running your app if you have a new username in SECSTORE_USER_NAME,
+to ensure that the secure storage is initialized corretly.
+
+API
+============
+Two API functions are provided by libsecstore: secure_store_write and secure_store_read.
+The size of data you can read / write when calling API functions are limited to
+SECSTORE_DATA_MAX_LENGTH, which is set to 65536 by default.
+
+However, you can modify SECSTORE_DATA_MAX_LENGTH by adding:
+"-DSECSTORE_DATA_MAX_LENGTH=<value>" in libsecstore.bb
+
+License
+============
+
+All metadata files in this layer are MIT licensed unless otherwise stated.
+Source code included in tree for individual recipes is under the LICENSE stated
+in each recipe (.bb file) unless otherwise stated.

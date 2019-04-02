@@ -1,5 +1,5 @@
 From 868b7b18b43082726a27a7752134d3cc13c34739 Mon Sep 17 00:00:00 2001
-From: Jinliang Li <ljl150821@alibaba-inc.com>
+From: Jinliang Li <jinliang.li@linux.alibaba.com>
 Date: Thu, 26 Jul 2018 14:33:31 +0800
 Subject: [PATCH] always enable adb network and listen on the default tcp port
 

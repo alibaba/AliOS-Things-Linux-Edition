@@ -1,0 +1,131 @@
+From 106c5ed536d6da3ff1adc94534b361835a8525b6 Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Mon, 24 Dec 2018 17:17:19 +0800
+Subject: [PATCH] Fix libbase and add makefile
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ base/Makefile        | 57 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ base/errors_unix.cpp |  3 +++
+ base/file.cpp        |  8 ++++++++
+ base/logging.cpp     |  3 +++
+ 4 files changed, 71 insertions(+)
+ create mode 100644 base/Makefile
+
+diff --git a/base/Makefile b/base/Makefile
+new file mode 100644
+index 0000000..166ce4a
+--- /dev/null
++++ b/base/Makefile
+@@ -0,0 +1,57 @@
++ifeq ($(TARGET_ARCH), x86_64)
++TARGET_ASM_DIR := asm-x86
++TARGET_LIBM_DIR := amd64
++endif
++
++ifeq ($(TARGET_ARCH), arm64)
++TARGET_ASM_DIR := asm-arm64
++TARGET_LIBM_DIR := arm64
++endif
++
++LIBBASE_SRC_FILES := \
++	file.cpp \
++	logging.cpp \
++	parsenetaddress.cpp \
++	stringprintf.cpp \
++	strings.cpp \
++	test_utils.cpp \
++	errors_unix.cpp \
++
++CFLAGS += \
++	-nostdinc \
++	-O2 \
++
++CXXFLAGS += \
++	-nostdinc++ \
++
++INCLUDES = \
++	-I ../../../system/core/base/include \
++	-I ../../../system/core/base \
++	-I $(SYSROOT)/usr/include/c++/$(GCC_VERSION) \
++	-I $(SYSROOT)/usr/include/c++/$(GCC_VERSION)/$(TARGET_NAME) \
++	-I ../../../system/core/include \
++	-I ../../../bionic/libc/arch-$(TARGET_ARCH)/include \
++	-I ../../../bionic/libc/include \
++	-I ../../../bionic/libc/kernel/uapi \
++	-I ../../../bionic/libc/kernel/common \
++	-I ../../../bionic/libc/kernel/uapi/$(TARGET_ASM_DIR) \
++	-I ../../../bionic/libm/include \
++	-I ../../../bionic/libm/include/$(TARGET_LIBM_DIR) \
++	-I $(GCC_INCLUDE)/include \
++
++LIBBASE_OBJ_FILES = \
++	$(patsubst %.cpp,%.o,$(notdir $(LIBBASE_SRC_FILES)))
++
++.PHONY: all clean
++
++all:
++	@echo "building libbase"
++
++	@for file in $(LIBBASE_SRC_FILES); do \
++		$(CXX) $(CFLAGS) $(CXXFLAGS) $(INCLUDES) -c $$file; \
++	done
++
++	@$(AR) crsPD libbase.a $(LIBBASE_OBJ_FILES)
++
++clean:
++	@$(RM) -rf *.o *.a
+diff --git a/base/errors_unix.cpp b/base/errors_unix.cpp
+index 296995e..789ee0e 100644
+--- a/base/errors_unix.cpp
++++ b/base/errors_unix.cpp
+@@ -18,6 +18,9 @@
+ 
+ #include <errno.h>
+ 
++/* aos-note: compatible with libstdc++ */
++#include <cstring>
++
+ namespace android {
+ namespace base {
+ 
+diff --git a/base/file.cpp b/base/file.cpp
+index da1adba..2835889 100644
+--- a/base/file.cpp
++++ b/base/file.cpp
+@@ -23,6 +23,9 @@
+ 
+ #include <string>
+ 
++/* aos-note: compatible with libstdc++ */
++#include <cstring>
++
+ #include "android-base/macros.h"  // For TEMP_FAILURE_RETRY on Darwin.
+ #include "android-base/utf8.h"
+ #define LOG_TAG "base.file"
+@@ -174,3 +177,8 @@ bool RemoveFileIfExists(const std::string& path, std::string* err) {
+ 
+ }  // namespace base
+ }  // namespace android
++
++/* aos-note: add a fake log */
++int __android_log_print(int prio, const char *tag,  const char *fmt, ...){
++  return 0;
++}
+diff --git a/base/logging.cpp b/base/logging.cpp
+index 1741871..0e582fb 100644
+--- a/base/logging.cpp
++++ b/base/logging.cpp
+@@ -36,6 +36,9 @@
+ #include <utility>
+ #include <vector>
+ 
++/* aos-note: compatible with libstdc++ */
++#include <cstring>
++
+ #ifndef _WIN32
+ #include <mutex>
+ #endif
+-- 
+2.7.4
+

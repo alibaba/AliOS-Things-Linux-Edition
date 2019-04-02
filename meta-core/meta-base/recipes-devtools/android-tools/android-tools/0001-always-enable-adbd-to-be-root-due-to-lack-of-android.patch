@@ -1,10 +1,10 @@
 From 22da788ec429c55980dd78a535de176075ba1e0d Mon Sep 17 00:00:00 2001
-From: Jinliang Li <ljl150821@alibaba-inc.com>
+From: Jinliang Li <jinliang.li@linux.alibaba.com>
 Date: Tue, 7 Aug 2018 13:19:42 +0800
 Subject: [PATCH] always enable adbd to be root due to lack of android
  property.
 
-Signed-off-by: Jinliang Li <ljl150821@alibaba-inc.com>
+Signed-off-by: Jinliang Li <jinliang.li@linux.alibaba.com>
 ---
  system/core/adb/adb.c | 1 +
  1 file changed, 1 insertion(+)

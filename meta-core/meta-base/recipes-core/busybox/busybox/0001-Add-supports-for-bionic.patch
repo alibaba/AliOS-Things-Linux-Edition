@@ -1,0 +1,40 @@
+From 71a50359b00961ac77aa71da0a9813eeebc9a8ba Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Mon, 3 Dec 2018 16:41:27 +0800
+Subject: [PATCH] Add supports for bionic
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ include/platform.h | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff --git a/include/platform.h b/include/platform.h
+index 1706b18..c9f47e1 100644
+--- a/include/platform.h
++++ b/include/platform.h
+@@ -479,11 +479,8 @@ typedef unsigned smalluint;
+ # undef HAVE_STPCPY
+ #endif
+ 
+-#if defined(ANDROID) || defined(__ANDROID__)
+ # if __ANDROID_API__ < 8
+-#  undef HAVE_DPRINTF
+-# else
+-#  define dprintf fdprintf
++
+ # endif
+ # if __ANDROID_API__ < 21
+ #  undef HAVE_TTYNAME_R
+@@ -495,8 +492,8 @@ typedef unsigned smalluint;
+ # undef HAVE_STRVERSCMP
+ # undef HAVE_UNLOCKED_LINE_OPS
+ # undef HAVE_NET_ETHERNET_H
+-#endif
+ 
++# define fdprintf dprintf
+ /*
+  * Now, define prototypes for all the functions defined in platform.c
+  * These must come after all the HAVE_* macros are defined (or not)
+-- 
+2.7.4
+

@@ -1,0 +1,10 @@
+[Unit]
+Description=secstore-manager
+
+[Service]
+ExecStart=/usr/bin/secstore-manager start
+Type=simple
+KillMode=process
+
+[Install]
+WantedBy=sysinit.target

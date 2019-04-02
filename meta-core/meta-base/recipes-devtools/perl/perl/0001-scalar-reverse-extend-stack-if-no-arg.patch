@@ -1,0 +1,41 @@
+From 69b230f14e01d68e7b70bacdbab287f81255f0b1 Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Tue, 12 Feb 2019 19:37:58 +0800
+Subject: [PATCH] scalar reverse(): extend stack if no arg
+
+If we';re using the implicit $_ there's nothing to pop off the stack,
+so there may not be a spare stack slot to push the result.
+
+The patch comes from:
+https://perl5.git.perl.org/perl.git/commit/d5d91c1e89a7882099b788fe66dfd438c0eb0a9e
+
+Upstream-Status: Backport
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ pp.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+ mode change 100644 => 100755 pp.c
+
+diff --git a/pp.c b/pp.c
+old mode 100644
+new mode 100755
+index 5ef1287..06b8bbe
+--- a/pp.c
++++ b/pp.c
+@@ -5778,8 +5778,11 @@ PP(pp_reverse)
+ 	SvUTF8_off(TARG);				/* decontaminate */
+ 	if (SP - MARK > 1)
+ 	    do_join(TARG, &PL_sv_no, MARK, SP);
++	else if (SP > MARK)
++	    sv_setsv(TARG, *SP);
+ 	else {
+-	    sv_setsv(TARG, SP > MARK ? *SP : DEFSV);
++	    sv_setsv(TARG, DEFSV);
++	    EXTEND(SP, 1);
+ 	}
+ 
+ 	up = SvPV_force(TARG, len);
+-- 
+2.7.4
+

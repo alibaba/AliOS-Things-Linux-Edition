@@ -1,0 +1,1 @@
+require libtool-bionic.inc

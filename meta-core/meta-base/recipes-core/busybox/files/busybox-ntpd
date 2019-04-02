@@ -1,0 +1,30 @@
+#!/bin/sh
+DAEMON=/usr/sbin/ntpd
+NAME=ntpd
+DESC="Busybox NTP Daemon"
+
+test -f $DAEMON || exit 0
+
+set -e
+
+case "$1" in
+    start)
+        $DAEMON
+        ;;
+    stop)
+        killall $NAME
+        ;;
+    restart)
+        $0 stop
+        $0 start
+        ;;
+    reload)
+        killall -HUP $(basename ${DAEMON})
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart|reload}"
+        exit 1
+        ;;
+esac
+
+exit 0

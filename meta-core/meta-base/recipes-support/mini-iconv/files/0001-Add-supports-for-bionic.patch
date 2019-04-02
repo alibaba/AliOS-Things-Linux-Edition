@@ -1,0 +1,26 @@
+From fc05dc6c1b364ec38a2526811bfccf55427c5f44 Mon Sep 17 00:00:00 2001
+From: Benxi Liu <bxliu@linux.alibaba.com>
+Date: Wed, 19 Dec 2018 14:23:14 +0800
+Subject: [PATCH] Add supports for bionic
+
+Signed-off-by: Benxi Liu <bxliu@linux.alibaba.com>
+---
+ iconv.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/iconv.h b/iconv.h
+index f778b4d..ce5c525 100644
+--- a/iconv.h
++++ b/iconv.h
+@@ -1,7 +1,7 @@
+ #ifndef _ICONV_H
+ #define _ICONV_H
+ #include <sys/types.h>
+-
++#define __THROW
+ typedef int *iconv_t;
+ 
+ extern iconv_t iconv_open(const char *tocode, const char *fromcode) __THROW;
+-- 
+2.7.4
+

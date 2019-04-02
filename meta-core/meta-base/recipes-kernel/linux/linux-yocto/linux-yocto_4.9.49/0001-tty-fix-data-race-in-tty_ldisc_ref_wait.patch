@@ -1,0 +1,47 @@
+From a4a3e061149f09c075f108b6f1cf04d9739a6bc2 Mon Sep 17 00:00:00 2001
+From: Dmitry Vyukov <dvyukov@google.com>
+Date: Sat, 4 Mar 2017 13:46:12 +0100
+Subject: [PATCH] tty: fix data race in tty_ldisc_ref_wait()
+
+tty_ldisc_ref_wait() checks tty->ldisc under tty->ldisc_sem.
+But if ldisc==NULL it releases them sem and reloads
+tty->ldisc without holding the sem. This is wrong and
+can lead to returning non-NULL ldisc without protection.
+
+Don't reload tty->ldisc second time.
+
+Signed-off-by: Dmitry Vyukov <dvyukov@google.com>
+Cc: syzkaller@googlegroups.com
+Cc: linux-kernel@vger.kernel.org
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Jiri Slaby <jslaby@suse.com>
+Cc: Peter Hurley <peter@hurleysoftware.com>
+Cc: One Thousand Gnomes <gnomes@lxorguk.ukuu.org.uk>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+---
+ drivers/tty/tty_ldisc.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/tty/tty_ldisc.c b/drivers/tty/tty_ldisc.c
+index c3956ca..b0500a0 100644
+--- a/drivers/tty/tty_ldisc.c
++++ b/drivers/tty/tty_ldisc.c
+@@ -271,10 +271,13 @@ const struct file_operations tty_ldiscs_proc_fops = {
+ 
+ struct tty_ldisc *tty_ldisc_ref_wait(struct tty_struct *tty)
+ {
++	struct tty_ldisc *ld;
++
+ 	ldsem_down_read(&tty->ldisc_sem, MAX_SCHEDULE_TIMEOUT);
+-	if (!tty->ldisc)
++	ld = tty->ldisc;
++	if (!ld)
+ 		ldsem_up_read(&tty->ldisc_sem);
+-	return tty->ldisc;
++	return ld;
+ }
+ EXPORT_SYMBOL_GPL(tty_ldisc_ref_wait);
+ 
+-- 
+2.7.4
+

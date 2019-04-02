@@ -1,0 +1,1 @@
+EXTRA_OECONF_append_libc-bionic = " --enable-initfini-array --enable-gold=default"
