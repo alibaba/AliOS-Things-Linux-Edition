@@ -1,3 +1,55 @@
-Welcome to AliOS Things Linux Edition !!!
+meta-linkx
+============
 
-LinkX for AliOS Things.
+This layer provides link series middleware of AliOS Things Linux Edition.
+
+Dependencies
+============
+
+This layer depends on:
+    <repo>/meta-yp/meta
+
+The <repo> is the repository path of your AliOS Things Linux Edition.
+
+How to build
+============
+
+Add this layer into your bblayer.conf, e.g.
+    BBLAYERS ?= " \
+        <repo>/meta-yp/meta \
+        <repo>/meta-yp/meta-openembedded/meta-oe \
+        <repo>/meta-yp/meta-openembedded/meta-perl \
+        <repo>/meta-yp/meta-openembedded/meta-python \
+        <repo>/meta-yp/meta-openembedded/meta-networking \
+        <repo>/meta-core/meta-base \
+        <repo>/meta-linkx \
+        "
+
+Contents
+============
+
+Linkkit SDK
+------------
+
+Link Platform, provided by Alibaba Cloud, is a professional platform designed for IoT market
+development. The goal of Link Platform is to provide data path with enhanced security and powerful
+performance to facilitate communication between devices (e.g. sensor, embedded devices, etc.) and
+cloud. Linkkit SDK included in AliOS Things Linux Edition provides device-side capabilities of the
+Link Platform. Lots of powerful components are introduced, such as MQTT, CoAP, OTA, etc. With the
+help of Linkit SDK, it becomes extremely efficiently and conveniently to connect to and communicate
+with Alibaba cloud.
+
+The recipe linkkit provides the libraries and header files of Linkkit SDK, and also provides some
+example programs. Regarding to how to use this SDK, please refer to
+https://github.com/aliyun/iotkit-embedded/wiki.
+
+Maintenance
+============
+
+License
+============
+
+All metadata files in this layer are MIT licensed unless otherwise stated. Source code included
+in tree for individual recipes is under the LICENSE stated in each recipe (.bb file) unless
+otherwise stated.
+

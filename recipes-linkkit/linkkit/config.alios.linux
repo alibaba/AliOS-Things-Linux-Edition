@@ -1,0 +1,12 @@
+CONFIG_ENV_CFLAGS   += \
+    -Wall \
+    -D_PLATFORM_IS_LINUX_ \
+
+CONFIG_ENV_CFLAGS   += \
+     -DNO_EXECUTABLES \
+     -DMUTE_VERSION_REPORT
+
+CONFIG_ENV_LDFLAGS  += -lpthread -lrt -lmbedtls -lmbedcrypto -lmbedx509
+
+CROSS_PREFIX = arm-alios-linux-gnueabi-
+CONFIG_external_libs/mbedtls :=

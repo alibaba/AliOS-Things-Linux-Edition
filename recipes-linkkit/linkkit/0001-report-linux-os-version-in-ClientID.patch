@@ -1,0 +1,108 @@
+From e59c26b782de376883f33152409a7afc96b31451 Mon Sep 17 00:00:00 2001
+From: Jinliang Li <jinliang.li@linux.alibaba.com>
+Date: Thu, 21 Mar 2019 20:42:24 +0800
+Subject: [PATCH] report linux os version in ClientID
+
+Signed-off-by: Jinliang Li <jinliang.li@linux.alibaba.com>
+---
+ src/dev_sign/dev_sign_mqtt.c | 68 ++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 68 insertions(+)
+
+diff --git a/src/dev_sign/dev_sign_mqtt.c b/src/dev_sign/dev_sign_mqtt.c
+index 6c6fac3..945ab09 100644
+--- a/src/dev_sign/dev_sign_mqtt.c
++++ b/src/dev_sign/dev_sign_mqtt.c
+@@ -1,5 +1,7 @@
+ #include <stdio.h>
++#include <stdlib.h>
+ #include <string.h>
++#include <sys/types.h>
+ #include "infra_defs.h"
+ #include "infra_config.h"
+ #include "infra_sha256.h"
+@@ -67,9 +69,62 @@ static void _hex2str(uint8_t *input, uint16_t input_len, char *output)
+     }
+ }
+ 
++static char* aos_linux_get_distribution_version(void)
++{
++    char* result = NULL;
++    char *version = "";
++    FILE* fp = NULL;
++    char *line = NULL;
++    size_t len = 0;
++    ssize_t read = 0;
++    char *end = NULL;
++    char *version_code_start = NULL;
++    char *found = NULL;
++    char *space = NULL;
++
++    fp = fopen("/etc/issue", "r");
++    if (fp == NULL) {
++        return NULL;
++    }
++    while ((read = getline(&line, &len, fp)) > 0) {
++        if (strstr(line, "\\n \\l") != NULL) {
++            end = strchr(line, '\\') - 1;
++            *end='\0';
++            version = line;
++            break;
++        }
++    }
++    fclose(fp);
++
++    /* example: AliOS Things Linux Edition 1.2.0
++     * '.' seperat version numbers,
++     * if do not have '.' treat hole line as version.
++     */
++    len = strlen(version);
++    version_code_start = version;
++    found = strchr(version, '.');
++    if (found != NULL) {
++        /* " " seperat distribution and version */
++        space = strrchr(version, ' ');
++        if (space != NULL && (space - version + 1 < len)) {
++            version_code_start = space + 1;
++        }
++    }
++    result = (char *) malloc( len * sizeof(char));
++    memset(result, '\0', len * sizeof(char));
++    strcat(result, version_code_start); /* version */
++
++    if (line != NULL) {
++        free(line);
++        line = NULL;
++    }
++    return result;
++}
++
+ int _sign_get_clientid(char *clientid_string, const char *device_id)
+ {
+     uint8_t i;
++    char *linux_version = NULL;
+ 
+     if (clientid_string == NULL || device_id == NULL) {
+         return FAIL_RETURN;
+@@ -91,6 +146,19 @@ int _sign_get_clientid(char *clientid_string, const char *device_id)
+         memcpy(clientid_string + strlen(clientid_string), ",", 1);
+     }
+ 
++    /*add linux os version*/
++    linux_version = aos_linux_get_distribution_version();
++    if ((linux_version != NULL) &&
++        ((strlen(clientid_string) + strlen(linux_version) + 11) < DEV_SIGN_CLIENT_ID_MAXLEN)) {
++        memcpy(clientid_string + strlen(clientid_string), "_v=aos-l-", 9);
++        memcpy(clientid_string + strlen(clientid_string), linux_version, strlen(linux_version));
++        memcpy(clientid_string + strlen(clientid_string), ",", 1);
++    }
++    if (linux_version != NULL) {
++        free(linux_version);
++        linux_version = NULL;
++    }
++
+     memcpy(clientid_string + strlen(clientid_string) - 1, "|", 1);
+ 
+     return SUCCESS_RETURN;
+-- 
+2.7.4
+
