@@ -5,6 +5,8 @@ LIC_FILES_CHKSUM = "file://${S}/LICENSE;md5=e3fc50a88d0a364313df4b21ef20c29e"
 
 #CFLAGS_prepend = " -g "
 
+DEPENDS += "uota"
+DEPENDS += "triple"
 #DEPENDS += "bluez5"
 #DEPENDS := "${@bb.utils.contains('DISTRO_FEATURES','bluez5','bluez5','bluez4',d)}"
 

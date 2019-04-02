@@ -1,0 +1,133 @@
+From e92d2f58da52d1bf7e0286257b18cdc45d7fced0 Mon Sep 17 00:00:00 2001
+From: Honghui Li <xiaoyi.lhh@alibaba-inc.com>
+Date: Tue, 15 Jan 2019 14:33:04 +0800
+Subject: [PATCH] BugID:17103492:[LINKX-LINKKIT]:report os version in ClientID
+
+such as ver=AliOS-L-1.2.0
+linkkit 0.7
+
+Signed-off-by: Honghui Li <xiaoyi.lhh@alibaba-inc.com>
+---
+ iotx-sdk-c_clone/src/infra/system/guider.c | 57 ++++++++++++++++++++++++++++++
+ 1 file changed, 57 insertions(+)
+
+diff --git a/iotx-sdk-c_clone/src/infra/system/guider.c b/iotx-sdk-c_clone/src/infra/system/guider.c
+index 70d3f7a..7646e51 100644
+--- a/iotx-sdk-c_clone/src/infra/system/guider.c
++++ b/iotx-sdk-c_clone/src/infra/system/guider.c
+@@ -571,6 +571,53 @@ do_exit:
+ }
+ #endif  /* MQTT_DIRECT */
+ 
++char* aos_linux_get_distribution_version(void)
++{
++    char* result = NULL;
++    char *version = "";
++    FILE* fp = fopen("/etc/issue", "r");
++    if (fp == NULL) {
++        return result;
++    }
++    char *line = NULL;
++    size_t len = 0;
++    ssize_t read = 0;
++    while ((read = getline(&line, &len, fp)) > 0) {
++        if (strstr(line, "\\n \\l") != NULL) {
++            char* end = strchr(line, '\\') - 1;
++            *end='\0';
++            version = line;
++            break;
++        }
++    }
++    fclose(fp);
++
++    /* example: AliOS Things Linux Edition 1.2.0
++     * '.' seperat version numbers,
++     * if do not have '.' treat hole line as version.
++     */
++    len = strlen(version);
++    char *version_code_start = version;
++    char *found = strchr(version, '.');
++    if (found != NULL) {
++        // " " seperat distribution and version
++        char *space = strrchr(version, ' ');
++        if (space != NULL && (space - version + 1 < len)) {
++            version_code_start = space + 1;
++        }
++    }
++
++    result = (char *) LITE_malloc( len * sizeof(char));
++    memset(result, '\0', len * sizeof(char));
++    strcat(result, version_code_start); /* version */
++
++    if (line != NULL) {
++        LITE_free(line);
++        line = NULL;
++    }
++    return result;
++}
++
+ int iotx_guider_authenticate(void)
+ {
+     char                partner_id[PID_STRLEN_MAX + 16] = {0};
+@@ -583,6 +630,7 @@ int iotx_guider_authenticate(void)
+     iotx_device_info_pt dev = iotx_device_info_get();
+     iotx_conn_info_pt   conn = iotx_conn_info_get();
+     char               *req_str = NULL;
++    char               *version = NULL;
+     int                 gw = 0;
+     int                 ext = 0;
+ 
+@@ -594,6 +642,7 @@ int iotx_guider_authenticate(void)
+     guider_get_url(guider_url, sizeof(guider_url));
+     secure_mode = guider_get_secure_mode();
+     guider_get_timestamp_str(timestamp_str, sizeof(timestamp_str));
++    version = aos_linux_get_distribution_version();
+ 
+ 
+ #ifndef MQTT_DIRECT
+@@ -711,6 +760,7 @@ int iotx_guider_authenticate(void)
+                       ",timestamp=%s,signmethod=" SHA_METHOD ",gw=%d" ",ext=%d"
+                       "%s"
+                       "%s"
++                      ",_v=aos-l-%s"
+                       "|"
+                       , dev->device_id
+                       , secure_mode
+@@ -719,6 +769,7 @@ int iotx_guider_authenticate(void)
+                       , ext
+                       , partner_id
+                       , module_id
++                      , version
+                      );
+ #else
+     /* add "aututype=1d2" string as ITLS used */
+@@ -729,6 +780,7 @@ int iotx_guider_authenticate(void)
+                       "%s"
+                       "%s"
+                       ",authtype=id2"
++                      ",_v=aos-l-%s"
+                       "|"
+                       , dev->device_id
+                       , secure_mode
+@@ -737,6 +789,7 @@ int iotx_guider_authenticate(void)
+                       , ext
+                       , partner_id
+                       , module_id
++                      , version
+                      );
+ #endif  /* SUPPORT_ITLS */
+ 
+@@ -745,6 +798,10 @@ int iotx_guider_authenticate(void)
+     if (req_str) {
+         LITE_free(req_str);
+     }
++    if (version) {
++        LITE_free(version);
++        version = NULL;
++    }
+ 
+     return 0;
+ 
+-- 
+2.7.4
+
