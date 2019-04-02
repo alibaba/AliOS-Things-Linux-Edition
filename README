@@ -1,5 +1,48 @@
-Welcome to AliOS Things Linux Edition !!!
+meta-application
+============
 
-meta-demo
+This layer provides some useful applications, including some demo applications.
+You can develop your applications based on our frameworks, and integrate them in this layer.
 
-    => Helloworld example.
+Dependencies
+============
+
+This layer depends on:
+    <repo>/meta-yp/meta
+
+The <repo> is the repository path of your AliOS Things Linux Edition.
+
+How to build
+============
+
+Add this layer into your bblayer.conf, e.g.
+    BBLAYERS ?= " \
+        <repo>/meta-yp/meta \
+        <repo>/meta-yp/meta-openembedded/meta-oe \
+        <repo>/meta-yp/meta-openembedded/meta-perl \
+        <repo>/meta-yp/meta-openembedded/meta-python \
+        <repo>/meta-yp/meta-openembedded/meta-networking \
+        <repo>/meta-core/meta-base \
+        <repo>/meta-application \
+        "
+
+Contents
+============
+
+helloworld
+------------
+A helloworld application, it printes a "hello world" message in endless loop at intervals of 9s.
+
+This recipe provides a demo to you about how to write a recipe (yocto bb).
+
+
+Maintenance
+============
+
+License
+============
+
+All metadata files in this layer are MIT licensed unless otherwise stated. Source code included
+in tree for individual recipes is under the LICENSE stated in each recipe (.bb file) unless
+otherwise stated.
+
