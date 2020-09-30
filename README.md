@@ -60,5 +60,5 @@ and covering all supported architecture variants, to effectively assure system r
 
 **Development Tools**
 
-- Handy and easy-to-use SDK are released in the meantime.
+- Well Designed and easy-to-use SDK are released in the meantime.
 
